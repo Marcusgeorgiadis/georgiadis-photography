@@ -37,7 +37,7 @@
     if (C.audio) return C.audio;
     const a = (C.audio = new Audio());
     a.preload = "auto";
-    a.addEventListener("ended", () => { sync(); stopLoop(); });
+    a.addEventListener("ended", () => { sync(); stopLoop(); if (CH.on) nextChorus(); });
     a.addEventListener("pause", () => sync());
     a.addEventListener("play", () => { sync(); loop(); });
     a.addEventListener("error", () => { if (C.key) app().toast("That recording didn't load"); sync(); });
@@ -180,7 +180,7 @@
   /* ---------- events ---------- */
   document.addEventListener("click", (e) => {
     const b = e.target.closest(".call-play");
-    if (b) { e.preventDefault(); toggleKey(b.closest(".call").dataset.call); return; }
+    if (b) { e.preventDefault(); if (CH.on) { CH.on = false; clearTimeout(CH.t); paintChorus(); } toggleKey(b.closest(".call").dataset.call); return; }
     const t = e.target.closest(".call [role=slider]");
     if (t) seekFrom(t, e.clientX);
   });
@@ -216,8 +216,49 @@
   // re-paint players that appear after a page renders (and keep the switch in step)
   new MutationObserver(() => { if (C.key) sync(); }).observe(document.documentElement, { childList: true, subtree: true });
 
+  /* ---------- a chorus: one call after another ---------- */
+  const CH = { list: [], i: 0, btn: null, t: 0, on: false, label: "" };
+  function paintChorus() {
+    const b = CH.btn;
+    if (!b) return;
+    if (!CH.label) CH.label = b.innerHTML;
+    b.setAttribute("aria-pressed", String(CH.on));
+    b.innerHTML = CH.on ? `${ICON.pause.replace('aria-hidden="true"', 'aria-hidden="true" class="ch-i"')} Stop the chorus` : CH.label;
+    b.classList.toggle("chorus-on", CH.on);
+  }
+  function nextChorus() {
+    clearTimeout(CH.t);
+    if (!CH.on) return;
+    if (CH.i >= CH.list.length) { stopChorus(); return; }
+    const key = CH.list[CH.i++];
+    document.querySelectorAll(".chorus-now").forEach((e) => e.classList.remove("chorus-now"));
+    const box = document.querySelector(`.call[data-call="${CSS.escape(key)}"]`);
+    const card = box && (box.closest(".board-card") || box);
+    if (card) { card.classList.add("chorus-now"); const r = card.getBoundingClientRect(); if (r.top < 80 || r.bottom > innerHeight) card.scrollIntoView({ block: "center", behavior: reduced() ? "auto" : "smooth" }); }
+    play(key, { restart: true });
+    // each call gets up to seven seconds before the next one starts
+    CH.t = setTimeout(() => { fadeTo(0, 400, () => { if (C.audio) { C.audio.pause(); C.audio.volume = 1; } nextChorus(); }); }, 7000);
+  }
+  function chorus(keys, btn) {
+    if (CH.on && CH.btn === btn) { stopChorus(); return; }
+    stopChorus();
+    CH.list = keys.filter((k) => { const s = speciesOf(k); return s && s.call; });
+    if (!CH.list.length) return;
+    CH.i = 0; CH.btn = btn || null; CH.label = ""; CH.on = true;
+    paintChorus();
+    nextChorus();
+  }
+  function stopChorus() {
+    if (!CH.on) return;
+    CH.on = false;
+    clearTimeout(CH.t);
+    pause(true);
+    paintChorus();
+    document.querySelectorAll(".chorus-now").forEach((e) => e.classList.remove("chorus-now"));
+  }
+
   // species pages: with sound on, the call plays when the page opens
   function onSpeciesPage(s) { if (C.on && s && s.call) play(s.slug, { auto: true, restart: C.key !== s.slug }); }
 
-  GP.calls = { available, player, button, toggle, play, pause, toggleKey, onSpeciesPage, region, get on() { return C.on; }, get state() { const a = C.audio; return { key: C.key, playing: !!(a && !a.paused), t: a ? a.currentTime : 0, on: C.on }; } };
+  GP.calls = { available, player, button, toggle, play, pause, toggleKey, onSpeciesPage, region, chorus, stopChorus, get chorusOn() { return CH.on; }, get on() { return C.on; }, get state() { const a = C.audio; return { key: C.key, playing: !!(a && !a.paused), t: a ? a.currentTime : 0, on: C.on }; } };
 })(window.GP = window.GP || {});

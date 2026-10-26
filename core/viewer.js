@@ -1,4 +1,4 @@
-/* Georgiadis Photography: the viewer and exhibition mode.
+/* Georgiadis Photography: the viewer.
    GP.viewer.open(list, index, fromImg) flies the photo out of its tile; zoom with the wheel,
    a pinch or a double tap; drag to pan with inertia; swipe to move on or down to close. */
 (function (GP) {
@@ -26,6 +26,8 @@
     <div class="vw-top"><div class="t"><b></b><span></span></div>
       <button class="icon-btn" data-v="zoom" title="Zoom (Z)" aria-label="Zoom to full resolution" aria-pressed="false">${I.zoom}</button>
       <a class="icon-btn" data-v="download" title="Download the original (D)" aria-label="Download the original" target="_blank" rel="noopener">${I.download}</a>
+      <button class="icon-btn" data-v="fav" title="Favourite (L)" aria-label="Add to your favourites" aria-pressed="false">${I.heart}</button>
+      <button class="icon-btn" data-v="play" title="Play from here (P)" aria-label="Play these photographs as an exhibition">${I.play}</button>
       <button class="icon-btn" data-v="share" title="Share" aria-label="Share">${I.share}</button>
       <button class="icon-btn" data-v="info" title="Specimen label (I)" aria-label="Show details" aria-pressed="false">${I.info}</button>
       <button class="icon-btn" data-v="fs" title="Full screen (F)" aria-label="Full screen">${I.expand}</button>
@@ -201,6 +203,7 @@
     dl.hidden = !d;
     if (d && typeof d === "string") { dl.href = d; dl.setAttribute("download", x.name); } else dl.removeAttribute("href");
     $$('[data-v="share"]', V.el).forEach((b) => { b.hidden = !shareUrl(x); });
+    paintFav(x);
     $(".vw-prev", V.el).hidden = V.list.length < 2;
     $(".vw-next", V.el).hidden = V.list.length < 2;
     strip(x);
@@ -232,6 +235,12 @@
     const h = H(), w = Math.min(2560, Math.max(V.sw, V.sh) * Math.min(2, devicePixelRatio || 1));
     for (const d of [1, -1]) { const n = V.list[V.i + d]; if (n) { const im = new Image(); im.src = h.src(n, w); } }
   }
+  function moreLike(x) {
+    const h = H(), list = similar(x);
+    V.similar = list;
+    if (!list.length) return "";
+    return `<div class="vw-more"><div class="sc">More like this</div><div class="vw-more-grid">${list.map((y, i) => `<button data-similar="${i}" title="${h.esc(h.titleOf(y) + " · " + h.fmtShort(y.t))}" aria-label="${h.esc(h.titleOf(y) + ", " + h.fmtDate(y.t))}">${h.cover(y, 240)}</button>`).join("")}</div></div>`;
+  }
   function renderInfo(x) {
     const h = H(), ws = GP.app.workshop;
     const sp = x.spKey ? GP.app.model.speciesByKey.get(x.spKey) : null;
@@ -251,6 +260,7 @@ ${h.specimenTag(x)}
 ${pal}
 <div class="acts">${dl ? `<a class="btn primary" data-v="download" ${typeof dl === "string" ? `href="${h.esc(dl)}" download="${h.esc(x.name)}"` : ""} target="_blank" rel="noopener">${h.ICON.download} Download original</a>` : ""}${shareUrl(x) ? `<button class="btn" data-v="share">${h.ICON.share} Share</button>` : ""}</div>
 <div class="acts">${sp ? `<a class="btn ghost" href="#/species/${h.esc(sp.slug)}">All ${h.esc(sp.name)} ${h.ICON.arrow}</a>` : ""}<a class="btn ghost" href="#/outings/${h.esc(x.fid)}">This outing ${h.ICON.arrow}</a></div>
+${moreLike(x)}
 ${ws && ws.infoExtra ? ws.infoExtra(x) : ""}`;
   }
 
@@ -506,6 +516,8 @@ ${ws && ws.infoExtra ? ws.infoExtra(x) : ""}`;
       GP.app.workshop.rate(x, n === x.rating ? 0 : n);
       return;
     }
+    const sim = e.target.closest("[data-similar]");
+    if (sim && V.similar) { const list = V.similar.slice(); open(list, +sim.dataset.similar, sim.querySelector("img")); return; }
     const col = e.target.closest("[data-colour]");
     if (col) { const name = colourName(col.dataset.colour); if (name) { close({ instant: true, fromRoute: true }); location.hash = GP.app.hashFor(["gallery"], new URLSearchParams({ q: name })); } return; }
     const b = e.target.closest("[data-v]");
@@ -521,6 +533,8 @@ ${ws && ws.infoExtra ? ws.infoExtra(x) : ""}`;
     else if (v === "zoom") toggleZoom();
     else if (v === "fs") fullscreen();
     else if (v === "share") share();
+    else if (v === "fav") fav();
+    else if (v === "play") playFrom();
     else if (v === "download") { const d = GP.app.adapter.download && GP.app.adapter.download(cur()); if (d && typeof d !== "string") { e.preventDefault(); Promise.resolve(d).then((u) => { if (u) window.open(u, "_blank", "noopener"); }); } }
   }
   function colourName(hex) {
@@ -570,6 +584,53 @@ ${ws && ws.infoExtra ? ws.infoExtra(x) : ""}`;
     if (navigator.share && matchMedia("(pointer: coarse)").matches) navigator.share({ title, url }).catch((e) => { if (!e || e.name !== "AbortError") copy(); });
     else copy();
   }
+  /* ---------- favourites, playing on, more like this ---------- */
+  function paintFav(x) {
+    const b = $('[data-v="fav"]', V.el);
+    if (!b) return;
+    // the Workshop has its own ratings; favourites belong to visitors of the public site
+    b.hidden = !GP.visitor || !!GP.app.workshop;
+    if (b.hidden) return;
+    const on = GP.visitor.isFav(x.id);
+    b.setAttribute("aria-pressed", String(on));
+    b.setAttribute("aria-label", on ? "Remove from your favourites" : "Add to your favourites");
+    b.innerHTML = on ? H().ICON.heartOn : H().ICON.heart;
+    b.classList.toggle("on", on);
+  }
+  function fav() {
+    const x = cur();
+    if (!x || !GP.visitor || GP.app.workshop) return;
+    const on = GP.visitor.toggleFav(x.id);
+    paintFav(x);
+    const b = $('[data-v="fav"]', V.el);
+    if (b && on) { b.classList.remove("pop"); void b.offsetWidth; b.classList.add("pop"); }
+    GP.app.toast(on ? "Saved to your favourites" : "Removed from your favourites", on ? { label: "See them", run: () => { close({ instant: true, fromRoute: true }); location.hash = "#/rooms/favourites"; } } : null);
+  }
+  function playFrom() {
+    if (!GP.exhibit || !V.list.length) return;
+    const list = V.list.slice(V.i).concat(V.list.slice(0, V.i));
+    close({ instant: true });
+    setTimeout(() => GP.exhibit(list, { title: "From the viewer" }), 60);
+  }
+  function hueDist(a, b) {
+    const pa = (a.hsl || [])[0], pb = (b.hsl || [])[0];
+    if (!pa || !pb) return 1;
+    const dh = Math.min(Math.abs(pa[0] - pb[0]), 360 - Math.abs(pa[0] - pb[0])) / 180;
+    return dh * Math.min(pa[1], pb[1]) + Math.abs(pa[2] - pb[2]) + Math.abs(pa[1] - pb[1]) * 0.5;
+  }
+  // The same species from other days first, then frames that share its colour and light.
+  function similar(x, n = 8) {
+    const m = GP.app.model, out = [], seen = new Set([x.burst ? x.burst.id : x.id]);
+    const add = (y) => { const k = y.burst ? y.burst.id : y.id; if (seen.has(k) || out.length >= n) return; seen.add(k); out.push(y); };
+    const s = x.spKey ? m.speciesByKey.get(x.spKey) : null;
+    if (s) {
+      const other = s.heroes.filter((y) => y.fid !== x.fid), same = s.heroes.filter((y) => y.fid === x.fid);
+      other.slice(0, 4).forEach(add); same.slice(0, 5 - out.length).forEach(add);
+    }
+    const pool = m.heroes.filter((y) => y.spKey !== x.spKey && (y.group === x.group || x.group === "scene"));
+    pool.map((y) => [y, hueDist(x, y) + (y.light === x.light ? 0 : 0.15) - y.score * 0.02]).sort((a, b) => a[1] - b[1]).forEach(([y]) => add(y));
+    return out;
+  }
   function onKey(e) {
     if (!V.open || e.metaKey || e.ctrlKey || e.altKey) return;
     const tag = (e.target.tagName || "").toLowerCase();
@@ -586,6 +647,8 @@ ${ws && ws.infoExtra ? ws.infoExtra(x) : ""}`;
     else if (k === "+" || k === "=") zoomTo(V.k * 1.5, V.sw / 2, V.sh / 2, 260);
     else if (k === "-") { if (V.k / 1.5 <= 1.02) fit(true); else zoomTo(V.k / 1.5, V.sw / 2, V.sh / 2, 260); }
     else if (k === "f" || k === "F") fullscreen();
+    else if ((k === "l" || k === "L") && GP.visitor && !GP.app.workshop) fav();
+    else if (k === "p" || k === "P") playFrom();
     else if (k === "d" || k === "D") { const a = $('.vw-top [data-v="download"]', V.el); if (a && !a.hidden) a.click(); }
     else if (GP.app.workshop && GP.app.workshop.rate && /^[1-5]$/.test(k)) { GP.app.workshop.rate(cur(), +k); }
     else if (!(GP.app.workshop && GP.app.workshop.key && GP.app.workshop.key(k, cur()))) return;
@@ -628,67 +691,4 @@ ${ws && ws.infoExtra ? ws.infoExtra(x) : ""}`;
 
   GP.viewer = { open, close, isOpen: () => V.open, current: () => (V.open && cur() ? cur().id : null), refresh, toggleInfo };
 
-  /* ---------- exhibition mode ---------- */
-  // A slow, quiet slideshow: full-screen, cross-fading, drifting toward each subject.
-  GP.exhibit = function (list) {
-    list = (list || []).filter(Boolean);
-    if (!list.length) return;
-    const h = H();
-    const ex = document.createElement("div");
-    ex.className = "ex";
-    ex.setAttribute("role", "dialog");
-    ex.setAttribute("aria-label", "Exhibition mode");
-    ex.tabIndex = -1;
-    ex.innerHTML = `<div class="slide"><img alt=""><div class="cap"><b></b><span></span></div></div><div class="slide"><img alt=""><div class="cap"><b></b><span></span></div></div><button class="icon-btn exit" aria-label="Leave exhibition mode" style="color:#eee">${h.ICON.close}</button><div class="ex-state sc" aria-live="polite"></div>`;
-    document.body.appendChild(ex);
-    document.documentElement.style.overflow = "hidden";
-    const slides = [...ex.querySelectorAll(".slide")];
-    const w = Math.min(2560, Math.max(innerWidth, innerHeight) * Math.min(2, devicePixelRatio || 1));
-    let i = -1, which = 0, t = 0, paused = false;
-    const put = (s, x) => {
-      const img = s.querySelector("img");
-      img.src = h.src(x, w);
-      img.alt = h.titleOf(x);
-      img.style.setProperty("--fx", (x.fp[0] * 100).toFixed(1) + "%");
-      img.style.setProperty("--fy", (x.fp[1] * 100).toFixed(1) + "%");
-      s.querySelector("b").textContent = h.titleOf(x);
-      s.querySelector("span").textContent = [h.fmtDate(x.t), x.light, x.sci].filter(Boolean).join(" · ");
-    };
-    const next = (d = 1) => {
-      i = (i + d + list.length) % list.length;
-      const s = slides[which], o = slides[1 - which];
-      put(s, list[i]);
-      const img = s.querySelector("img");
-      const reveal = () => { s.classList.remove("on"); void s.offsetWidth; s.classList.add("on"); o.classList.remove("on"); };
-      if (img.complete && img.naturalWidth) reveal(); else { img.onload = reveal; img.onerror = reveal; }
-      which = 1 - which;
-      const pre = new Image(); pre.src = h.src(list[(i + 1) % list.length], w);
-      clearTimeout(t);
-      if (!paused) t = setTimeout(() => next(1), 8500);
-    };
-    const end = () => {
-      clearTimeout(t);
-      document.removeEventListener("keydown", key, true);
-      document.removeEventListener("fullscreenchange", fsc);
-      if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
-      ex.remove();
-      document.documentElement.style.overflow = "";
-    };
-    const key = (e) => {
-      if (e.key === "Escape") end();
-      else if (e.key === "ArrowRight") next(1);
-      else if (e.key === "ArrowLeft") next(-1);
-      else if (e.key === " ") { paused = !paused; ex.querySelector(".ex-state").textContent = paused ? "Paused" : ""; if (!paused) next(1); else clearTimeout(t); }
-      else return;
-      e.preventDefault(); e.stopPropagation();
-    };
-    const fsc = () => { if (!document.fullscreenElement && ex.dataset.fs) end(); };
-    ex.querySelector(".exit").onclick = end;
-    ex.addEventListener("click", (e) => { if (!e.target.closest(".exit")) next(1); });
-    document.addEventListener("keydown", key, true);
-    document.addEventListener("fullscreenchange", fsc);
-    if (ex.requestFullscreen) ex.requestFullscreen().then(() => { ex.dataset.fs = "1"; }).catch(() => {});
-    ex.focus();
-    next(1);
-  };
 })(window.GP = window.GP || {});

@@ -101,6 +101,7 @@
       <div class="tl-bar" aria-hidden="true"><i></i><span class="sc">${h.esc(h.fmtShort(first.first))}</span><span class="sc">${h.esc(h.fmtShort(last.first))}</span></div>
       <a class="tl-now" href="#/species/${h.esc(first.slug)}"><span class="tl-now-img">${h.cover(first.best, 240)}</span><span class="tl-now-t"><span class="sc">New · No. <b>001</b></span><b class="nm">${h.esc(first.name)}</b><i class="binomial">${h.esc(first.bin || "")}</i><span class="tl-lin sc"></span></span></a>
       <p class="tl-hint sc">Scroll to grow the tree</p>
+      <button class="btn tl-play" data-tl="play" aria-pressed="false">▶ Grow it for me</button>
     </div>
     <div class="tl-box">
       <svg class="tl-svg" viewBox="-500 -500 1000 1000" role="img" aria-label="Radial tree of ${h.plural(T.N, "species", "species")} by class, order and family">${rings}<g class="tl-links">${paths}</g>${clsLabels}</svg>
@@ -160,6 +161,27 @@
       addEventListener("scroll", onScroll, { passive: true, signal });
       addEventListener("resize", onScroll, { passive: true, signal });
       onScroll();
+      // "Grow it for me": scroll through the section on its own, about eight species a second
+      const btn = el.querySelector('[data-tl="play"]');
+      let auto = 0;
+      const stop = () => { if (!auto) return; cancelAnimationFrame(auto); auto = 0; btn.setAttribute("aria-pressed", "false"); btn.textContent = "▶ Grow it for me"; };
+      btn.addEventListener("click", () => {
+        if (auto) { stop(); return; }
+        const head = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--head-h")) || 64;
+        const top = el.getBoundingClientRect().top + scrollY - head, end = top + el.offsetHeight - el.querySelector(".tl-stage").offsetHeight;
+        const from = shown >= N ? top : Math.max(top, scrollY), dur = Math.max(2500, ((end - from) / Math.max(1, end - top)) * N * 130);
+        const t0 = performance.now();
+        btn.setAttribute("aria-pressed", "true"); btn.textContent = "❚❚ Stop";
+        const step = (t) => {
+          const k = Math.min(1, (t - t0) / dur);
+          window.scrollTo(0, from + (end - from) * k);
+          auto = k < 1 ? requestAnimationFrame(step) : 0;
+          if (!auto) stop();
+        };
+        auto = requestAnimationFrame(step);
+      }, { signal });
+      for (const ev of ["wheel", "touchstart", "keydown"]) addEventListener(ev, (e) => { if (auto && !(ev === "keydown" && e.target === btn)) stop(); }, { passive: true, signal });
+      signal.addEventListener("abort", stop);
     }
     // hovering a leaf lights its lineage back to the root
     const hl = (leaf, on) => {
@@ -173,5 +195,14 @@
     el.addEventListener("focusout", (e) => { const l = e.target.closest(".tl-leaf"); if (l) hl(l, false); }, { signal });
   }
 
-  GP.treeOfLife = { html, mount };
+  // A small still of the whole tree, for the home page.
+  function mini(model) {
+    const T = build(model);
+    if (!T.N) return "";
+    const paths = T.links.map((l) => `<path d="${linkPath(l)}" class="k-${l.to.kind}"/>`).join("");
+    const dots = T.leaves.map((l, i) => { const [x, y] = xy(l.a, l.r); return `<circle cx="${x.toFixed(0)}" cy="${y.toFixed(0)}" r="${Math.max(8, T.leafD * 0.3).toFixed(1)}" style="--i:${i};fill:${(l.s.best && l.s.best.pal[0]) || "#888"}"/>`; }).join("");
+    return `<svg class="tree-mini" viewBox="-520 -520 1040 1040"><g class="tm-l">${paths}</g><g class="tm-d">${dots}</g><circle r="74" class="tm-core"/><text y="12" text-anchor="middle" class="tm-n">${T.N}</text></svg>`;
+  }
+
+  GP.treeOfLife = { html, mount, mini };
 })(window.GP = window.GP || {});

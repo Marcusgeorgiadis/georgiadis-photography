@@ -52,7 +52,8 @@
   ${pic}<span class="cab-holder"><span class="cab-card"><b>${h.esc(f.name)}</b><i>${h.esc(f.common)}</i><span>${h.plural(f.species.length, "specimen")}</span></span></span>
   <span class="cab-pull" aria-hidden="true"></span></button>`;
     };
-    return `<div class="cab" data-cab>
+    return `<div class="cab-find"><label class="search">${h.ICON.search}<span class="visually-hidden">Find a specimen</span><input type="search" autocomplete="off" spellcheck="false" placeholder="Find a specimen: heron, Ardea, owl, woodpecker…"></label><div class="cab-results" role="listbox" hidden></div></div>
+<div class="cab" data-cab>
 ${cases.map((c) => `<section class="cab-case${c.extra ? " varia" : ""}" aria-label="${h.esc(c.common)}">
   <header class="cab-crest"><span class="cab-plaque"><b>${h.esc(c.cls)}</b><i>${h.esc(c.common)}</i></span><span class="sc">${h.plural(c.n, "species", "species")} · ${h.plural(c.fams.length, "drawer")}</span></header>
   <div class="cab-drawers">${c.fams.map(front).join("")}</div>
@@ -149,6 +150,50 @@ ${cases.map((c) => `<section class="cab-case${c.extra ? " varia" : ""}" aria-lab
       clearTimeout(rt);
       rt = setTimeout(() => { if (open && open.tray.isConnected) { const end = rowEnd(open.btn); if (end.nextElementSibling !== open.tray) end.after(open.tray); } }, 120);
     }, { signal });
+    /* finding a specimen: matching drawers stay lit, a pick opens its drawer at the specimen */
+    const findIn = main.querySelector(".cab-find input"), res = main.querySelector(".cab-results");
+    const all = [];
+    for (const f of byId.values()) for (const sp of f.species) all.push({ sp, f });
+    let hits = [];
+    const norm = (v) => String(v || "").toLowerCase();
+    function find() {
+      const v = norm(findIn.value.trim());
+      root.querySelectorAll(".cab-drawer").forEach((d) => d.classList.remove("dim", "lit"));
+      if (v.length < 2) { res.hidden = true; return; }
+      hits = all.filter(({ sp, f }) => norm(sp.name).includes(v) || norm(sp.bin).includes(v) || norm(f.common).includes(v) || norm(f.name).includes(v)).slice(0, 10);
+      const fams = new Set(hits.map((x) => x.f.id));
+      root.querySelectorAll(".cab-drawer").forEach((d) => { const lit = fams.has(d.dataset.fam); d.classList.toggle("lit", lit); d.classList.toggle("dim", !lit); });
+      res.innerHTML = hits.length ? hits.map(({ sp, f }, i) => `<button role="option" data-hit="${i}">${h.cover(sp.best, 120)}<span><b>${h.esc(sp.name)}</b><i>${h.esc(sp.bin || "")} · ${h.esc(f.common)}</i></span></button>`).join("") : `<p class="sc">No specimen by that name. Try a family, like “herons”.</p>`;
+      res.hidden = false;
+    }
+    function pick(i) {
+      const hit = hits[i];
+      if (!hit) return;
+      res.hidden = true;
+      if (!open || open.id !== hit.f.id) openDrawer(hit.f.id, { instant: reduced() });
+      setTimeout(() => {
+        const spec = root.querySelector(`.cab-tray .cab-spec[href="#/species/${CSS.escape(hit.sp.slug)}"]`);
+        if (!spec) return;
+        spec.scrollIntoView({ block: "center", behavior: reduced() ? "auto" : "smooth" });
+        spec.classList.remove("found"); void spec.offsetWidth; spec.classList.add("found");
+        spec.focus({ preventScroll: true });
+      }, reduced() ? 0 : 650);
+    }
+    findIn.addEventListener("input", find, { signal });
+    findIn.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); pick(0); }
+      else if (e.key === "Escape") { findIn.value = ""; find(); }
+      else if (e.key === "ArrowDown" && !res.hidden) { e.preventDefault(); const b = res.querySelector("button"); if (b) b.focus(); }
+    }, { signal });
+    res.addEventListener("click", (e) => { const b = e.target.closest("[data-hit]"); if (b) pick(+b.dataset.hit); }, { signal });
+    res.addEventListener("keydown", (e) => {
+      const bs = [...res.querySelectorAll("button")], i = bs.indexOf(document.activeElement);
+      if (e.key === "ArrowDown") { e.preventDefault(); (bs[i + 1] || bs[i]).focus(); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); if (i <= 0) findIn.focus(); else bs[i - 1].focus(); }
+      else if (e.key === "Escape") { res.hidden = true; findIn.focus(); }
+    }, { signal });
+    document.addEventListener("click", (e) => { if (!e.target.closest(".cab-find")) res.hidden = true; }, { signal });
+
     const q = GP.app.parseHash().q.get("open");
     if (q && byId.has(q)) requestAnimationFrame(() => openDrawer(q, { instant: true, fromUrl: true }));
   }

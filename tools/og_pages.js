@@ -110,5 +110,9 @@ const outingPages = m.outings.filter((o) => o.cover).map((o) => {
   const facts = `${o.photos.length} frames, ${o.species.length} species`;
   return [o.id, page({ title: `${fmtDate(o.date)}: ${o.title}`, description: o.note ? `${firstSentence(o.note)} ${facts}.` : `${o.type}. ${facts}.`, img: image(o.cover, 1200), alt: o.title, to: `#/outings/${encodeURIComponent(o.id)}`, self: `o/${o.id}` })];
 });
-const report = { p: writeAll("p", photoPages), s: writeAll("s", speciesPages), o: writeAll("o", outingPages), base: base || null };
+const roomPages = (m.rooms || []).filter((r) => r.photos && r.photos.length && r.cover).map((r) => {
+  const facts = `${r.photos.length} photographs`;
+  return [r.id, page({ title: `${r.title}: an exhibition`, description: r.sub ? `${r.sub} ${facts}.` : facts + ".", img: image(r.cover, 1200), alt: r.title, to: `#/rooms/${encodeURIComponent(r.id)}`, self: `r/${r.id}` })];
+});
+const report = { p: writeAll("p", photoPages), s: writeAll("s", speciesPages), o: writeAll("o", outingPages), r: writeAll("r", roomPages), base: base || null };
 console.log(JSON.stringify(report));

@@ -171,17 +171,20 @@
     <div class="uv-modes" role="group" aria-label="Arrangement">${MODES.map(([id, label], i) => `<button class="chip" data-mode="${id}" aria-pressed="${id === mode}" title="${label} (${i + 1})">${label}</button>`).join("")}</div>
     <div class="uv-zoom" role="group" aria-label="Zoom"><button class="icon-btn" data-z="in" aria-label="Zoom in">+</button><button class="icon-btn" data-z="out" aria-label="Zoom out">−</button><button class="icon-btn" data-z="fit" aria-label="Fit everything">${h.ICON.expand}</button></div>
     <div class="uv-hint sc">Scroll or pinch to zoom · drag to move · select a photograph to open it</div>
+    <div class="uv-find"><label class="uv-search">${h.ICON.search}<span class="visually-hidden">Find in the universe</span><input type="search" autocomplete="off" spellcheck="false" placeholder="Find: herons, golden hour, red…" value="${h.esc(q.get("find") || "")}"></label>
+      <div class="uv-groups" role="group" aria-label="Show only">${[["", "All"], ["bird", "Birds"], ["mammal", "Mammals"], ["reptile", "Reptiles"], ["small", "Small lives"], ["scene", "Scenes"]].map(([g, l]) => `<button class="chip" data-g="${g}" aria-pressed="${(q.get("g") || "") === g}">${l}</button>`).join("")}</div>
+      <span class="uv-found sc" aria-live="polite"></span></div>
     <div class="uv-tip" hidden></div>
   </div>
 </section>`;
-    return { html, title: "Universe", full: true, after: (main, signal) => mount(main, model, h, mode, signal) };
+    return { html, title: "Universe", full: true, after: (main, signal) => mount(main, model, h, mode, signal, q) };
   }
 
-  function mount(main, model, h, mode, signal) {
+  function mount(main, model, h, mode, signal, q0) {
     const sec = main.querySelector(".uv"), cv = sec.querySelector(".uv-c"), ctx = cv.getContext("2d");
     const tip = sec.querySelector(".uv-tip"), sub = sec.querySelector(".uv-sub");
     const items = model.photos.map((x, i) => ({ x, i, v: vivid(x), lq: null, th: null, thW: 0, req: false, px: 0, py: 0, fx: 0, fy: 0, tx: 0, ty: 0, delay: 0 }));
-    const S = { mode, scale: 10, cx: 0, cy: 0, W: 0, H: 0, dpr: 1, anim: null, cam: null, hover: -1, layout: null, dirty: true, raf: 0, colors: {}, alive: true, queue: [], loading: 0, ptrs: new Map(), drag: null, vx: 0, vy: 0, dived: 0 };
+    const S = { mode, scale: 10, cx: 0, cy: 0, W: 0, H: 0, dpr: 1, anim: null, cam: null, hover: -1, layout: null, dirty: true, raf: 0, colors: {}, alive: true, queue: [], loading: 0, ptrs: new Map(), drag: null, vx: 0, vy: 0, dived: 0, match: null };
     cv.__uv = S; // for tests
     const order = () => items.map((_, k) => k).sort((a, b) => (items[a].ty - items[b].ty) || (items[a].tx - items[b].tx));
 
@@ -301,8 +304,11 @@
         const [sx, sy] = toScreen(it.px, it.py);
         if (sx < -sz || sy < -sz || sx > S.W + sz || sy > S.H + sz) continue;
         const img = it.th || it.lq;
+        const dim = S.match && !S.match.has(k);
+        if (dim) c.globalAlpha = 0.09;
         if (sz < 2.2 || !img) { c.fillStyle = it.v.hex; c.fillRect(sx - sz / 2, sy - sz / 2, Math.max(1, sz), Math.max(1, sz)); }
         else drawCover(c, img, it, sx - sz / 2, sy - sz / 2, sz);
+        if (dim) { c.globalAlpha = 1; continue; }
         if (big && !it.req && it.thW < want) need.push(it);
       }
       if (hov >= 0) {
@@ -432,6 +438,7 @@
       const [wx, wy] = toWorld(sx, sy), half = 0.5;
       let best = -1, bd = Infinity;
       for (let k = 0; k < items.length; k++) {
+        if (S.match && !S.match.has(k)) continue;
         const it = items[k], dx = Math.abs(it.px - wx), dy = Math.abs(it.py - wy);
         if (dx <= half && dy <= half) { const d = dx + dy; if (d < bd) { bd = d; best = k; } }
       }
@@ -474,7 +481,7 @@
       fly.src = (it.th && it.th.src) || it.x.lq || "";
       Object.assign(fly.style, { position: "fixed", left: r.left + sx - sz / 2 + "px", top: r.top + sy - sz / 2 + "px", width: sz + "px", height: sz + "px", objectFit: "cover", opacity: "0", pointerEvents: "none" });
       document.body.appendChild(fly);
-      const list = order().map((j) => items[j].x);
+      const list = order().filter((j) => !S.match || S.match.has(j)).map((j) => items[j].x);
       GP.viewer.open(list, list.indexOf(it.x), fly);
       setTimeout(() => fly.remove(), 800);
     }
@@ -557,6 +564,41 @@
       else return;
       e.preventDefault(); e.stopPropagation();
     }, { signal });
+    /* ---------- finding: dim everything but the matches, then fly to them ---------- */
+    const findIn = sec.querySelector(".uv-find input"), found = sec.querySelector(".uv-found");
+    let group = q0.get("g") || "", ft = 0;
+    function applyFind(fly) {
+      const text = findIn.value.trim(), sq = text ? model.search(text) : null;
+      const okG = (x) => !group || (group === "small" ? ["insect", "other"].includes(x.group) : x.group === group);
+      if (!text && !group) { S.match = null; found.textContent = ""; }
+      else {
+        S.match = new Set();
+        items.forEach((it, k) => { if (okG(it.x) && (!sq || sq.empty || sq.test(it.x))) S.match.add(k); });
+        found.textContent = S.match.size ? `${h.fmtN(S.match.size)} lit` : "Nothing matches";
+      }
+      GP.app.setQuery((qq) => { if (text) qq.set("find", text); else qq.delete("find"); if (group) qq.set("g", group); else qq.delete("g"); });
+      S.hover = -1; S.dirty = true; kick();
+      if (fly && S.match && S.match.size && S.match.size < items.length * 0.6) flyTo([...S.match]);
+      else if (fly && !S.match) { const t = fitCam(); S.cam = { from: { scale: S.scale, cx: S.cx, cy: S.cy }, to: t, t0: performance.now(), dur: reduced() ? 1 : 700 }; kick(); }
+    }
+    function flyTo(ks) {
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      for (const k of ks) { const it = items[k]; x0 = Math.min(x0, it.tx); x1 = Math.max(x1, it.tx); y0 = Math.min(y0, it.ty); y1 = Math.max(y1, it.ty); }
+      const pad = 3, head = Math.min(200, S.H * 0.24);
+      const scale = Math.min(Math.min(S.W, S.H) * 0.45, Math.min((S.W - 120) / (x1 - x0 + pad * 2), (S.H - head - 110) / (y1 - y0 + pad * 2)));
+      const to = { scale, cx: (x0 + x1) / 2, cy: (y0 + y1) / 2 - (head - 92) / 2 / scale };
+      S.cam = { from: { scale: S.scale, cx: S.cx, cy: S.cy }, to, t0: performance.now(), dur: reduced() ? 1 : 900 };
+      kick();
+    }
+    findIn.addEventListener("input", () => { clearTimeout(ft); ft = setTimeout(() => applyFind(true), 260); }, { signal });
+    findIn.addEventListener("keydown", (e) => { e.stopPropagation(); if (e.key === "Escape") { findIn.value = ""; applyFind(true); } }, { signal });
+    sec.querySelector(".uv-groups").addEventListener("click", (e) => {
+      const b = e.target.closest("[data-g]");
+      if (!b) return;
+      group = b.dataset.g;
+      sec.querySelectorAll(".uv-groups [data-g]").forEach((c) => c.setAttribute("aria-pressed", String(c === b)));
+      applyFind(true);
+    }, { signal });
     function switchMode(m) {
       if (m === S.mode && !S.anim) return;
       sec.querySelectorAll("[data-mode]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.mode === m)));
@@ -565,6 +607,7 @@
       GP.app.setQuery((qq) => (m === "colour" ? qq.delete("mode") : qq.set("mode", m)));
       S.hover = -1; tip.hidden = true;
       setLayout(m, false);
+      if (S.match && S.match.size && S.match.size < items.length * 0.6) setTimeout(() => { if (S.alive) flyTo([...S.match]); }, reduced() ? 0 : 1500);
       kick();
     }
 
@@ -572,9 +615,10 @@
     ro.observe(cv);
     resize();
     setLayout(mode, true);
+    if (findIn.value.trim() || group) setTimeout(() => { if (S.alive) applyFind(true); }, reduced() ? 0 : 2300);
     kick();
     signal.addEventListener("abort", () => { S.alive = false; ro.disconnect(); mo.disconnect(); cancelAnimationFrame(S.raf); });
   }
 
-  (GP.views = GP.views || []).push({ id: "universe", label: "Universe", navAfter: "gallery", render });
+  (GP.views = GP.views || []).push({ id: "universe", label: "Universe", navAfter: "species", render });
 })(window.GP = window.GP || {});

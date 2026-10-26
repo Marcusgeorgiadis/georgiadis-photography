@@ -8,7 +8,7 @@ repository's notes and taxonomy, then writes:
   data/gallery.json   everything the site needs, minus private fields (critiques, GPS,
                       asset ids, hidden photos)
   index.html          from index.template.html, with link-preview tags filled in
-  p/ s/ o/            one small link-preview page per photograph, species and outing
+  p/ s/ o/ r/         one small link-preview page per photograph, species, outing and room
                       (tools/og_pages.js; needs Node)
   audio/calls/        calls for species new since the last build (tools/fetch_calls.py;
                       needs ffmpeg, skipped without it or with --no-calls)
@@ -373,7 +373,7 @@ def cmd_build(a):
             outs.append({"fid": fid, "outing": f["outing"], "date": f["date"], "photos": len(f["photos"]), "species": [c for c, _ in sorted(tally.items(), key=lambda kv: -kv[1])][:8]})
         json.dump({"species": sp, "outings": outs}, open(a.report, "w"), indent=1)
     pages = og_pages(repo, site.get("url") or a.base) if not a.dev else {"skipped": "dev build"}
-    if any((pages.get(k) or {}).get("written") or (pages.get(k) or {}).get("removed") for k in ("p", "s", "o")):
+    if any((pages.get(k) or {}).get("written") or (pages.get(k) or {}).get("removed") for k in ("p", "s", "o", "r")):
         changed = True
     n = len(live)
     print(json.dumps({"calls": calls_run, "pages": pages, "photos": n, "outings": len(out_folders), "missingPublicCopy": missing, "bytes": len(body.encode()), "changed": changed, "manifestComplete": (manifest or {}).get("complete"), "manifestError": (manifest or {}).get("error")}))

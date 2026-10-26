@@ -58,10 +58,17 @@
     right: I('<path d="m9 5 7 7-7 7"/>'),
     arrow: I('<path d="M5 12h14m-5-5 5 5-5 5"/>'),
     keys: I('<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h.01M11 10h.01M15 10h.01M7 14h10"/>'),
+    heart: I('<path d="M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.2a4.3 4.3 0 0 1 7.5 2.6C19.5 15.4 12 20 12 20z"/>'),
+    heartOn: I('<path d="M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.2a4.3 4.3 0 0 1 7.5 2.6C19.5 15.4 12 20 12 20z" fill="currentColor"/>'),
+    shuffle: I('<path d="M4 7h3.5c4.5 0 4.5 10 9 10H20m0 0-2.5-2.5M20 17l-2.5 2.5M4 17h3.5c1.6 0 2.6-1.2 3.4-2.8M20 7h-3.5c-1.6 0-2.6 1.2-3.4 2.8M20 7l-2.5-2.5M20 7l-2.5 2.5"/>'),
+    up: I('<path d="M12 19V5m0 0-6 6m6-6 6 6"/>'),
+    pause: I('<path d="M8 5.5v13M16 5.5v13"/>'),
+    grid: I('<rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/>'),
+    rows: I('<path d="M4 6h16M4 12h16M4 18h16"/>'),
   };
 
   /* ---------- state ---------- */
-  const A = { model: null, adapter: null, site: {}, workshop: null, ctx: new Map(), ctxN: 0, sel: new Set(), selecting: false, lastKey: "", timers: [], views: [] };
+  const A = { model: null, adapter: null, site: {}, workshop: null, ctx: new Map(), ctxN: 0, sel: new Set(), selecting: false, lastKey: "", timers: [], views: [], scrollMem: new Map(), traverse: false, rendered: false };
   const BUCKETS = [360, 540, 720, 960, 1280, 1600, 2048, 2560];
   const bucket = (px) => BUCKETS.find((b) => b >= px) || BUCKETS[BUCKETS.length - 1];
   const dpr = () => Math.min(2, window.devicePixelRatio || 1);
@@ -82,7 +89,10 @@
     const badge = bt ? `<span class="badge">${esc(bt)}</span>` : "";
     const scrub = stack ? `<span class="stack">${b.size}</span><span class="scrub">${b.frames.map((f) => `<i${f === x ? ' class="on"' : ""}></i>`).join("")}</span>` : "";
     const sub = [fmtShort(x.t), x.light].filter(Boolean).join(" · ");
-    return `<button class="tile${stack ? " burst" : ""}${A.sel.has(x.id) ? " sel" : ""}" data-id="${esc(x.id)}" style="--ar:${x.ar.toFixed(3)}" aria-label="${esc(titleOf(x) + ", " + fmtDate(x.t))}">${lq}<img src="${esc(src(x, w))}" alt="" loading="lazy" decoding="async" draggable="false"><span class="cap"><b>${esc(titleOf(x))}</b><span>${esc(sub)}</span></span>${badge}${scrub}${sel}</button>`;
+    const V = GP.visitor && !A.workshop ? GP.visitor : null;
+    const fav = V && V.isFav(x.id), fresh = V && !o.noNew && V.isNew(x.id);
+    const marks = V ? `<span class="fav" aria-hidden="true">${ICON.heartOn}</span>${fresh ? `<span class="new-pill">New</span>` : ""}` : "";
+    return `<button class="tile${stack ? " burst" : ""}${A.sel.has(x.id) ? " sel" : ""}${fav ? " is-fav" : ""}" data-id="${esc(x.id)}" style="--ar:${x.ar.toFixed(3)}" aria-label="${esc(titleOf(x) + ", " + fmtDate(x.t) + (fav ? ", in your favourites" : ""))}">${lq}<img src="${esc(src(x, w))}" alt="" loading="lazy" decoding="async" draggable="false"><span class="cap"><b>${esc(titleOf(x))}</b><span>${esc(sub)}</span></span>${badge}${scrub}${sel}${marks}</button>`;
   }
   function flow(list, o = {}) {
     const k = regCtx(list);
@@ -132,7 +142,7 @@
   function pageUrl(kind, key) {
     const a = A.adapter;
     if (a && a.pageUrl) { const u = a.pageUrl(kind, key); if (u !== undefined) return u; }
-    return location.origin + location.pathname + hashFor([kind === "outing" ? "outings" : "species", key]);
+    return location.origin + location.pathname + hashFor([kind === "outing" ? "outings" : kind === "room" ? "rooms" : "species", key]);
   }
   function shareBtn(url, title) {
     return url ? `<button class="btn ghost share-page" data-act="share-page" data-url="${esc(url)}" data-title="${esc(title)}">${ICON.share} Share</button>` : "";
@@ -170,10 +180,12 @@
     tip.style.left = Math.min(window.innerWidth - 12, Math.max(12, x)) + "px";
     tip.style.top = y - 12 + "px";
     tip.classList.add("on");
+    A.tipOn = true;
   }
 
   /* ---------- shell ---------- */
-  const NAV = [["", "Exhibition"], ["gallery", "Gallery"], ["outings", "Outings"], ["species", "Species"], ["journal", "Journal"]];
+  // The logo is the way home; registered views (Exhibitions, Universe, Quiz) slot in beside these.
+  const NAV = [["gallery", "Gallery"], ["species", "Species"], ["outings", "Outings"], ["journal", "Journal"]];
   function shell() {
     const s = A.site;
     // Views that name a neighbour (navAfter) sit beside it, in the order they registered.
@@ -192,14 +204,16 @@
   <nav class="gp-nav" aria-label="Sections">${nav.map(([id, l]) => `<a href="#/${id}" data-nav="${id}">${esc(l)}</a>`).join("")}</nav>
   <div class="gp-tools">
     <button class="icon-btn" data-act="search" title="Search (/)" aria-label="Search">${ICON.search}</button>
-    <button class="icon-btn" data-act="exhibit" title="Exhibition mode" aria-label="Start exhibition mode">${ICON.play}</button>
+    <button class="icon-btn" data-act="surprise" title="Surprise me (R)" aria-label="Show a random photograph">${ICON.shuffle}</button>
+    <button class="icon-btn" data-act="exhibit" title="Play an exhibition (E)" aria-label="Play an exhibition">${ICON.play}</button>
     ${GP.calls && GP.calls.available() ? GP.calls.button() : ""}
     <button class="icon-btn" data-act="theme" title="Light or dark" aria-label="Switch light or dark">${ICON.moon}</button>
     <button class="icon-btn" data-act="keys" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">${ICON.keys}</button>
   </div>
 </div></header>
 <main id="gp-main" tabindex="-1"></main>
-<footer class="foot"><div class="wrap"><span>© ${new Date().getFullYear()} ${esc(s.title || "Georgiadis Photography")}. ${esc(s.footer || "Every photograph here is a Final from the Nikon archive.")}</span><span class="mono">${A.model.stats.photos ? `${fmtN(A.model.stats.photos)} photographs · updated ${esc(fmtShort(s.updated || A.model.stats.last))}` : ""}</span></div></footer>`;
+${footer(nav)}
+<button class="to-top icon-btn" data-act="top" aria-label="Back to top" title="Back to top">${ICON.up}</button>`;
     themeIcon();
     const head = $(".gp-head", A.root);
     if (head && "ResizeObserver" in window) {
@@ -207,6 +221,24 @@
       A.headRO = new ResizeObserver(() => document.documentElement.style.setProperty("--head-h", head.offsetHeight + "px"));
       A.headRO.observe(head);
     }
+  }
+  function footer(nav) {
+    const s = A.site, st = A.model.stats;
+    const hasCalls = GP.calls && GP.calls.available();
+    return `<footer class="foot"><div class="wrap foot-grid">
+  <div class="foot-about"><a class="gp-mark" href="#/"><b>${esc(s.title || "Georgiadis Photography")}</b><span>${esc(s.tagline || "Wildlife of Central Florida")}</span></a>
+    <p>${esc(s.footer || `A field archive of ${plural(st.species, "species", "species")} from ${plural(st.outings, "outing")}. Every photograph here is a Final from the Nikon archive.`)}</p></div>
+  <nav class="foot-col" aria-label="Explore"><h3 class="sc">Explore</h3>${[["", "Home"]].concat(nav).map(([id, l]) => `<a href="#/${id}">${esc(l)}</a>`).join("")}</nav>
+  <div class="foot-col"><h3 class="sc">Play &amp; listen</h3>
+    ${A.views.some((v) => v.id === "quiz") ? `<a href="#/quiz?daily=1">Today’s challenge</a>` : ""}
+    <button class="link" data-act="surprise">Surprise me</button>
+    ${GP.visitor ? `<a href="#/rooms/favourites">Your favourites</a>` : ""}
+    ${hasCalls ? `<a href="#/species?view=calls">Bird calls</a>` : ""}
+    <button class="link" data-act="exhibit">Play an exhibition</button></div>
+  <div class="foot-col"><h3 class="sc">The archive</h3>
+    <p class="mono">${st.photos ? `${fmtN(st.photos)} photographs<br>${fmtN(st.species)} species · ${fmtN(st.outings)} outings<br>Updated ${esc(fmtDate(s.updated || st.last))}` : ""}</p>
+    ${hasCalls ? `<p class="foot-small">Bird calls are recordings by iNaturalist contributors, shared under Creative Commons licences and credited beside each one.</p>` : ""}</div>
+</div><div class="wrap foot-base"><span>© ${new Date().getFullYear()} ${esc(s.title || "Georgiadis Photography")}</span><span>Press <kbd>?</kbd> for keyboard shortcuts</span></div></footer>`;
   }
   function themeIcon() {
     const b = $('[data-act="theme"]', A.root);
@@ -222,8 +254,10 @@
   function toggleTheme() {
     const next = currentTheme() === "dark" ? "light" : "dark";
     const apply = () => { document.documentElement.setAttribute("data-theme", next); store.set("gp-theme", next); themeIcon(); };
-    if (document.startViewTransition && !reduced()) document.startViewTransition(apply); else apply();
+    if (document.startViewTransition && !reduced()) quiet(document.startViewTransition(apply)); else apply();
   }
+  // A transition the browser abandons (the window resized, say) still applies its change; nothing to report.
+  function quiet(vt) { for (const k of ["ready", "finished", "updateCallbackDone"]) if (vt && vt[k]) vt[k].catch(() => {}); }
 
   /* ---------- router ---------- */
   function parseHash() {
@@ -243,14 +277,28 @@
     const key = keyOf(r);
     const p = r.q.get("p");
     if (key === A.lastKey) { // only the open photo changed (back/forward through the viewer)
+      A.traverse = false;
       if (p && GP.viewer) { if (!GP.viewer.isOpen() || GP.viewer.current() !== p) openById(p); }
       else if (GP.viewer && GP.viewer.isOpen()) GP.viewer.close({ fromRoute: true });
       return;
     }
+    if (A.lastKey) A.scrollMem.set(A.lastKey, window.scrollY);
+    const back = A.traverse;
+    A.traverse = false;
     A.lastKey = key;
     if (GP.viewer && GP.viewer.isOpen()) GP.viewer.close({ fromRoute: true, instant: true });
-    render(r);
-    if (p) openById(p);
+    const go = () => {
+      // Back and Forward return to where you were on the page; new pages start at the top.
+      const y = back ? A.scrollMem.get(key) : null;
+      if (y != null) A.keepScroll = true;
+      render(r);
+      if (y != null) { window.scrollTo(0, y); requestAnimationFrame(() => window.scrollTo(0, y)); }
+      if (p) openById(p);
+    };
+    // A soft cross-fade between pages, where the browser supports it.
+    if (A.rendered && !p && document.startViewTransition && !reduced() && !document.hidden) quiet(document.startViewTransition(go));
+    else go();
+    A.rendered = true;
   }
   function setQuery(fn, push = false) {
     const r = parseHash();
@@ -264,6 +312,7 @@
 
   function render(r) {
     clearTimers();
+    tipFor(null);
     // Listeners a view adds to the page live only until the next view replaces it.
     if (A.viewAC) A.viewAC.abort();
     A.viewAC = new AbortController();
@@ -272,20 +321,19 @@
     const main = $("#gp-main");
     const [v, a, b] = r.parts;
     $$(".gp-nav a").forEach((n) => n.toggleAttribute("aria-current", false));
-    const navEl = $(`.gp-nav a[data-nav="${v || ""}"]`) || (v === "rooms" ? $('.gp-nav a[data-nav=""]') : null);
+    const navEl = $(`.gp-nav a[data-nav="${v || ""}"]`);
     if (navEl) navEl.setAttribute("aria-current", "page");
+    document.documentElement.dataset.view = v || "home";
     let html = "", after = null, title = "", full = false;
-    const ext = A.views.find((x) => x.id === v);
+    const ext = A.views.find((x) => x.id === (v || ""));
     try {
-      if (ext) { const res = ext.render({ parts: r.parts, q: r.q, model: A.model, h: helpers, signal }); html = typeof res === "string" ? res : res.html; after = res.after; title = res.title || ext.label; full = !!res.full; }
-      else if (!v) ({ html, after, title } = viewHome());
+      if (ext) { const res = ext.render({ parts: r.parts, q: r.q, model: A.model, h: helpers, signal }); html = typeof res === "string" ? res : res.html; after = res.after; title = res.title != null ? res.title : ext.label; full = !!res.full; }
       else if (v === "gallery") ({ html, after, title } = viewGallery(r.q));
-      else if (v === "rooms" && a) ({ html, after, title } = viewRoom(a));
       else if (v === "outings" && a) ({ html, after, title } = viewOuting(a));
       else if (v === "outings") ({ html, after, title } = viewOutings());
       else if (v === "species" && a) ({ html, after, title } = viewSpecies(a));
       else if (v === "species") ({ html, after, title } = viewSpeciesIndex(r.q));
-      else if (v === "journal") ({ html, after, title } = viewJournal());
+      else if (v === "journal") ({ html, after, title } = viewJournal(r.q));
       else if (v === "photo" && a) { location.replace(hashFor(["gallery"], new URLSearchParams({ p: a }))); return; }
       else ({ html, after, title } = viewMissing());
     } catch (e) {
@@ -327,64 +375,6 @@
     requestAnimationFrame(step);
   }
 
-  /* ---------- home: the exhibition ---------- */
-  function viewHome() {
-    const m = A.model, s = A.site, st = m.stats;
-    const open = m.opening.length ? m.opening : m.heroes.slice(0, 5);
-    const y0 = (st.first || "").slice(0, 4), y1 = (st.last || "").slice(0, 4);
-    const slides = open.map((x, i) => `<div class="slide${i ? "" : " on"}" data-i="${i}"><img src="${esc(src(x, Math.max(window.innerWidth, 1200) * dpr()))}" alt="${esc(titleOf(x))}" style="object-position:${(x.fp[0] * 100).toFixed(1)}% ${(x.fp[1] * 100).toFixed(1)}%;--fx:${(x.fp[0] * 100).toFixed(1)}%;--fy:${(x.fp[1] * 100).toFixed(1)}%"${i ? ' loading="lazy"' : ' fetchpriority="high"'} data-id="${esc(x.id)}"></div>`).join("");
-    const now = (x) => `<em>${esc(titleOf(x))}</em><span>${esc(fmtShort(x.t))}${x.light ? " · " + esc(x.light) : ""}</span>`;
-    const rooms = m.rooms.slice(0, 7).map((r) => `<a class="room-card reveal" href="#/rooms/${esc(r.id)}"><div class="cv">${cover(r.cover, 1200, "", r.title)}</div><div><h3>${esc(r.title)}</h3><p>${esc(r.sub)}</p></div><div class="meta">${plural(r.photos.length, "photograph")}</div></a>`).join("");
-    const latest = m.outings.slice(-3).reverse();
-    const otd = onThisDay();
-    const spot = spotlight();
-    const html = `
-<section class="hero" aria-label="Opening sequence">${slides}
-  <div class="hero-copy"><div class="wrap">
-    <div class="kicker">${esc(s.kicker || `Wildlife of Central Florida · ${y0 === y1 ? y0 : y0 + "–" + y1}`)}</div>
-    <h1>${esc(s.title || "Georgiadis Photography")}</h1>
-    <p>${esc(s.intro || `Herons, hawks, otters and alligators, photographed on ${fmtN(st.outings)} outings into Florida's wetlands and woods. ${fmtN(st.photos)} finished photographs of ${fmtN(st.species)} species.`)}</p>
-    <div class="now" aria-live="polite"><span class="dots">${open.map((x, i) => `<button aria-label="Show ${esc(titleOf(x))}" data-slide="${i}"${i ? "" : ' class="on"'}></button>`).join("")}</span><span class="now-t">${open[0] ? now(open[0]) : ""}</span></div>
-    <div class="cta"><a class="btn primary" href="#/gallery">Enter the gallery ${ICON.arrow}</a><button class="btn" data-act="exhibit">${ICON.play} Exhibition mode</button></div>
-  </div></div>
-</section>
-<div class="wrap page">
-  <div class="stats-band reveal">
-    <div><b data-count="${st.photos}">${fmtN(st.photos)}</b><span>Photographs</span></div>
-    <div><b data-count="${st.species}">${fmtN(st.species)}</b><span>Species</span></div>
-    <div><b data-count="${st.outings}">${fmtN(st.outings)}</b><span>Outings</span></div>
-    <div><b data-count="${st.families}">${fmtN(st.families)}</b><span>Families</span></div>
-  </div>
-  <section><div class="sec-h"><h2>Rooms</h2><span class="meta">Themed walls drawn from the archive</span></div><div class="rooms">${rooms}</div>
-    ${m.rooms.length > 7 ? `<div class="chips" style="margin-top:22px">${m.rooms.slice(7).map((r) => `<a class="chip" href="#/rooms/${esc(r.id)}">${esc(r.title)} <span class="n">${r.photos.length}</span></a>`).join("")}</div>` : ""}</section>
-  ${spot}
-  <section class="sec"><div class="sec-h"><h2>Latest outings</h2><a class="meta" href="#/outings">All ${fmtN(st.outings)} outings →</a></div><div class="chapter-list">${latest.map(chapterRow).join("")}</div></section>
-  ${otd ? `<section class="sec"><div class="sec-h"><h2>${esc(otd.title)}</h2><span class="meta">${esc(otd.sub)}</span></div>${flow(otd.photos.slice(0, 12))}</section>` : ""}
-</div>`;
-    const after = (main) => {
-      const hero = $(".hero", main);
-      if (!hero || open.length < 2) return;
-      let i = 0;
-      const go = (n) => {
-        i = (n + open.length) % open.length;
-        $$(".slide", hero).forEach((s, k) => s.classList.toggle("on", k === i));
-        $$(".dots button", hero).forEach((b, k) => b.classList.toggle("on", k === i));
-        $(".now-t", hero).innerHTML = now(open[i]);
-        const nx = $$(".slide img", hero)[(i + 1) % open.length];
-        if (nx) nx.loading = "eager";
-      };
-      hero.addEventListener("click", (e) => {
-        const d = e.target.closest("[data-slide]");
-        if (d) { go(+d.dataset.slide); restart(); return; }
-        const img = e.target.closest(".slide img");
-        if (img && !e.target.closest(".hero-copy")) openList(open, i, img);
-      });
-      let t;
-      const restart = () => { clearInterval(t); A.timers = A.timers.filter((x) => x !== t); t = setInterval(() => { if (!document.hidden && !(GP.viewer && GP.viewer.isOpen())) go(i + 1); }, 7000); A.timers.push(t); };
-      restart();
-    };
-    return { html, after, title: "" };
-  }
   function onThisDay() {
     const m = A.model, today = new Date();
     const y = today.getFullYear(), mo = today.getMonth() + 1, d = today.getDate();
@@ -397,15 +387,6 @@
     const ago = y - ys[ys.length - 1];
     return { title: "On this day", sub: `This week ${ago === 1 ? "last year" : ago + " years ago"} · ${fmtShort(near[0].t)}`, photos: near };
   }
-  function spotlight() {
-    const m = A.model;
-    const pool = m.life.filter((s) => s.note && s.best && s.photos.length >= 3);
-    if (!pool.length) return "";
-    const day = Math.floor(Date.now() / 864e5);
-    const s = pool[day % pool.length];
-    return `<section class="sec spot reveal"><div class="sp-head"><div><div class="kicker">Species of the day · ${esc(s.famName || "")}</div><h2 class="display" style="font-size:clamp(36px,4.5vw,64px);margin:6px 0 4px;line-height:1">${esc(s.name)}</h2><div class="binomial" style="font-size:20px">${esc(s.bin)}</div><p class="lede" style="margin-top:16px">${esc(s.note)}</p><a class="btn" href="#/species/${esc(s.slug)}" style="margin-top:8px">${plural(s.photos.length, "photograph")} ${ICON.arrow}</a></div><button class="sp-hero" data-open="${esc(s.best.id)}" aria-label="Open ${esc(s.name)}">${cover(s.best, 1100, "", s.name)}</button></div></section>`;
-  }
-
   /* ---------- gallery ---------- */
   const GROUPS = [["", "Everything"], ["bird", "Birds"], ["mammal", "Mammals"], ["reptile", "Reptiles"], ["small", "Small lives"], ["scene", "Scenes"]];
   const SORTS = [["new", "Newest first"], ["old", "Oldest first"], ["best", "Highest rated"], ["colour", "By colour"]];
@@ -418,8 +399,9 @@
   function galleryList(q) {
     const m = A.model, all = q.get("all") === "1";
     const query = q.get("q") || "", g = q.get("g") || "", rmin = +(q.get("r") || 0), sort = q.get("sort") || (query ? "best" : "new");
-    const sq = m.search(query);
+    const sq = m.search(query), fresh = q.get("new") === "1" && GP.visitor;
     let list = (all || !sq.empty ? m.photos : m.heroes).filter((x) => {
+      if (fresh && !GP.visitor.isNew(x.id) && !(x.burst && x.burst.frames.some((f) => GP.visitor.isNew(f.id)))) return false;
       if (g === "small" ? !["insect", "other"].includes(x.group) : g && x.group !== g) return false;
       if (rmin && x.rating < rmin) return false;
       return sq.test(x);
@@ -434,28 +416,36 @@
     else if (sort === "best") list.sort((a, b) => b.score - a.score);
     else if (sort === "colour") list.sort((a, b) => hueKey(a) - hueKey(b));
     else list.sort((a, b) => -byT(a, b));
-    return { list, sq, sort, all, g, rmin, query };
+    return { list, sq, sort, all, g, rmin, query, fresh: !!fresh };
   }
   function viewGallery(q) {
-    const { list, sq, sort, all, g, rmin, query } = galleryList(q);
+    const { list, sq, sort, all, g, rmin, query, fresh } = galleryList(q);
     const html = `
 <div class="toolbar"><div class="wrap">
-  <label class="search">${ICON.search}<span class="visually-hidden">Search</span><input id="gp-q" type="search" autocomplete="off" spellcheck="false" placeholder="Try “herons in flight”, “golden hour”, “otters”, “5 stars October”" value="${esc(query)}"></label>
+  <label class="search">${ICON.search}<span class="visually-hidden">Search</span><input id="gp-q" type="search" autocomplete="off" spellcheck="false" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="gp-sugg" placeholder="Try “herons in flight”, “golden hour”, “otters”, “5 stars October”" value="${esc(query)}"><div class="sugg" id="gp-sugg" role="listbox" hidden></div></label>
   <div class="facet-row" role="group" aria-label="Filters">
     ${GROUPS.map(([v, l]) => chip(esc(l), `data-g="${v}"`, g === v)).join("")}
     <span class="lbl">Rating</span>${[0, 3, 4, 5].map((n) => chip(n ? `★ ${n}${n < 5 ? "+" : ""}` : "Any", `data-r="${n}"`, rmin === n)).join("")}
     <span class="lbl">Order</span><select id="gp-sort" aria-label="Order">${SORTS.map(([v, l]) => `<option value="${v}"${sort === v ? " selected" : ""}>${l}</option>`).join("")}</select>
     ${chip("Every frame", 'data-all="1"', all)}
+    <span class="facet-tools"><span class="dens" role="group" aria-label="Photograph size">${[["s", "Small"], ["m", "Medium"], ["l", "Large"]].map(([d, l]) => `<button class="dens-b" data-dens="${d}" aria-pressed="${density() === d}" title="${l} photographs"><i></i></button>`).join("")}</span>
+      <button class="chip" data-gal="surprise" title="A random photograph (R)">${ICON.shuffle} Surprise me</button>
+      <button class="chip" data-gal="play" title="Play these as an exhibition">${ICON.play} Play these</button></span>
   </div>
 </div></div>
-<div class="wrap page" style="padding-top:0"><div id="gp-results">${galleryResults(list, sq, sort, all, query)}</div></div>`;
+<div class="wrap page" style="padding-top:0">${fresh ? `<div class="gal-new"><span><b>New since your last visit.</b> ${plural(list.length, "photograph")} arrived since ${GP.visitor.previousVisit ? esc(fmtDate(GP.visitor.previousVisit)) : "you were last here"}.</span><a class="btn ghost" href="#/gallery">Show everything</a></div>` : ""}<div id="gp-results">${galleryResults(list, sq, sort, all, query)}</div></div>`;
     const after = (main, signal) => {
       const input = $("#gp-q", main);
       let t;
       input.addEventListener("input", () => { clearTimeout(t); t = setTimeout(() => updateGallery((qq) => { if (input.value.trim()) qq.set("q", input.value.trim()); else qq.delete("q"); }), 160); });
       input.addEventListener("keydown", (e) => { if (e.key === "Escape" && input.value) { input.value = ""; updateGallery((qq) => qq.delete("q")); e.stopPropagation(); } });
       $("#gp-sort", main).addEventListener("change", (e) => updateGallery((qq) => qq.set("sort", e.target.value)));
+      suggestions(input, signal, () => updateGallery((qq) => { if (input.value.trim()) qq.set("q", input.value.trim()); else qq.delete("q"); }));
       main.addEventListener("click", (e) => {
+        const d = e.target.closest("[data-dens]");
+        if (d) { setDensity(d.dataset.dens); $$("[data-dens]", main).forEach((b) => b.setAttribute("aria-pressed", String(b === d))); return; }
+        const ga = e.target.closest("[data-gal]");
+        if (ga) { if (ga.dataset.gal === "surprise") surprise(); else { const l = galleryList(parseHash().q).list; if (l.length) GP.exhibit(l, { title: (parseHash().q.get("q") ? `“${parseHash().q.get("q")}”` : "The gallery") }); } return; }
         const c = e.target.closest(".facet-row .chip, .understood .chip");
         if (!c) return;
         if (c.dataset.g != null) updateGallery((qq) => (c.dataset.g ? qq.set("g", c.dataset.g) : qq.delete("g")));
@@ -478,6 +468,83 @@
       }, { signal });
     };
     return { html, after, title: "Gallery" };
+  }
+  /* ---------- density and search suggestions ---------- */
+  function density() { const d = store.get("gp-density"); return d === "s" || d === "l" ? d : "m"; }
+  function setDensity(d) {
+    store.set("gp-density", d);
+    document.documentElement.classList.remove("dens-s", "dens-m", "dens-l");
+    document.documentElement.classList.add("dens-" + d);
+    // tiles are already laid out by flex; new sources at the new size come with the next render
+  }
+  let vocab = null;
+  function vocabulary() {
+    if (vocab && vocab.m === A.model) return vocab.list;
+    const m = A.model, out = [];
+    for (const sp of m.species) out.push({ label: sp.name, kind: sp.bin || "Species", n: sp.photos.length });
+    for (const c of m.tree.values()) for (const o of c.orders.values()) for (const f of o.families.values()) if (f.common && f.common !== f.name) out.push({ label: f.common, kind: "Family", n: f.species.reduce((k, x) => k + x.photos.length, 0) });
+    for (const [b] of M.BEHAVIOURS) out.push({ label: b === "Courtship & young" ? "young" : b.toLowerCase(), kind: "Behaviour" });
+    for (const l of ["golden hour", "blue hour", "morning", "midday", "afternoon", "night"]) out.push({ label: l, kind: "Light" });
+    for (const c of ["red", "orange", "yellow", "green", "teal", "blue", "purple", "pink", "brown", "white", "black", "grey"]) out.push({ label: c, kind: "Colour" });
+    for (const mo of MONTHS) out.push({ label: mo, kind: "Month" });
+    for (const [g, l] of [["bird", "birds"], ["mammal", "mammals"], ["reptile", "reptiles"], ["insect", "insects"]]) out.push({ label: l, kind: "Group", g });
+    for (const n of [5, 4]) out.push({ label: `${n} stars`, kind: "Rating" });
+    vocab = { m, list: out };
+    return out;
+  }
+  function suggestions(input, signal, apply) {
+    const box = $("#gp-sugg");
+    if (!box) return;
+    let items = [], act = -1;
+    const close = () => { box.hidden = true; input.setAttribute("aria-expanded", "false"); act = -1; };
+    const paint = () => box.querySelectorAll("[role=option]").forEach((b, i) => { b.classList.toggle("on", i === act); b.setAttribute("aria-selected", String(i === act)); });
+    const pick = (i) => {
+      const it = items[i];
+      if (!it) return;
+      const words = input.value.replace(/\s+$/, "").split(/\s+/);
+      // replace the words the suggestion was matched from
+      words.splice(words.length - it.take, it.take, it.label.toLowerCase());
+      input.value = words.join(" ").replace(/^\s+/, "") + " ";
+      close(); input.focus(); apply();
+    };
+    const update = () => {
+      const v = input.value;
+      if (!v.trim() || /\s$/.test(v)) { close(); return; }
+      const words = v.trim().toLowerCase().split(/\s+/);
+      const found = new Map();
+      // a term already typed in full ("golden hour") needs no suggestions; a single word that is
+      // a term on its own ("red") still offers the longer ones it starts ("red-winged blackbird")
+      const labels = new Set(vocabulary().map((e) => e.label.toLowerCase()));
+      let whole = 0;
+      for (let take = Math.min(3, words.length); take >= 1 && !whole; take--) if (labels.has(words.slice(-take).join(" "))) whole = take;
+      if (whole > 1) { close(); return; }
+      for (let take = Math.min(3, words.length); take >= 1; take--) {
+        const frag = words.slice(-take).join(" ");
+        if (frag.length < 2) continue;
+        for (const e of vocabulary()) {
+          const l = e.label.toLowerCase();
+          if (found.has(l) || l === frag) continue;
+          const at = l.indexOf(frag);
+          if (whole && (take > 1 || at !== 0)) continue;
+          if (at === 0 || (at > 0 && l[at - 1] === " ")) found.set(l, { ...e, take, rank: (at === 0 ? 0 : 1) + (take > 1 ? -0.5 : 0) - Math.min(1, (e.n || 0) / 200) });
+        }
+      }
+      items = [...found.values()].sort((a, b) => a.rank - b.rank).slice(0, 8);
+      if (!items.length) { close(); return; }
+      box.innerHTML = items.map((e, i) => `<button type="button" role="option" id="gp-sugg-${i}" data-i="${i}" aria-selected="false"><b>${esc(e.label)}</b><span>${esc(e.kind)}${e.n ? " · " + fmtN(e.n) : ""}</span></button>`).join("");
+      box.hidden = false; input.setAttribute("aria-expanded", "true"); act = -1;
+    };
+    input.addEventListener("input", update, { signal });
+    input.addEventListener("keydown", (e) => {
+      if (box.hidden) return;
+      if (e.key === "ArrowDown") { act = Math.min(items.length - 1, act + 1); paint(); e.preventDefault(); }
+      else if (e.key === "ArrowUp") { act = Math.max(-1, act - 1); paint(); e.preventDefault(); }
+      else if ((e.key === "Enter" || e.key === "Tab") && act >= 0) { pick(act); e.preventDefault(); }
+      else if (e.key === "Escape") { close(); e.stopPropagation(); }
+      input.setAttribute("aria-activedescendant", act >= 0 ? "gp-sugg-" + act : "");
+    }, { signal });
+    box.addEventListener("pointerdown", (e) => { const b = e.target.closest("[data-i]"); if (b) { e.preventDefault(); pick(+b.dataset.i); } }, { signal });
+    input.addEventListener("blur", () => setTimeout(close, 120), { signal });
   }
   function galleryResults(list, sq, sort, all, query) {
     const understood = sq.terms.length ? `<div class="understood chips" aria-label="Understood as">${sq.terms.map((t, i) => `<button class="chip" data-drop="${i}" title="Remove" aria-pressed="true">${esc(t.label)} ×</button>`).join("")}</div>` : "";
@@ -529,31 +596,6 @@
     }
   }
 
-  /* ---------- rooms ---------- */
-  function viewRoom(id) {
-    const r = A.model.rooms.find((x) => x.id === id);
-    if (!r) return viewMissing();
-    const wall = r.photos.slice(0, 24), rest = r.photos.slice(24);
-    const k = regCtx(r.photos);
-    const others = A.model.rooms.filter((x) => x !== r);
-    const html = `<div class="wrap page" style="padding-bottom:20px">${pageHead(`Room · ${plural(r.photos.length, "photograph")}`, esc(r.title), esc(r.sub))}</div>
-<section class="wall" aria-label="${esc(r.title)}"><div class="wall-track" data-ctx="${k}" tabindex="0">${wall.map((x) => `<div class="wall-item"><figure class="tile-like" data-id="${esc(x.id)}" style="--ar:${x.ar.toFixed(3)}">${cover(x, 1600, "", titleOf(x))}</figure>${specimenTag(x, { short: true })}</div>`).join("")}</div>
-<div class="wall-nav"><button class="icon-btn" data-wall="-1" aria-label="Previous">${ICON.left}</button><span class="sc wall-pos">1 / ${wall.length}</span><button class="icon-btn" data-wall="1" aria-label="Next">${ICON.right}</button></div></section>
-<div class="wrap page">${rest.length ? `<div class="sec-h"><h2>More in this room</h2><span class="meta">${plural(rest.length, "photograph")}</span></div>${flow(rest)}` : ""}
-<hr class="rule"><div class="sec-h"><h2>Other rooms</h2></div><div class="chips">${others.map((o) => `<a class="chip" href="#/rooms/${esc(o.id)}">${esc(o.title)} <span class="n">${o.photos.length}</span></a>`).join("")}</div></div>`;
-    const after = (main, signal) => {
-      const track = $(".wall-track", main), pos = $(".wall-pos", main);
-      const items = $$(".wall-item", track);
-      const at = () => { const c = track.scrollLeft + track.clientWidth / 2; let best = 0, bd = 1e9; items.forEach((it, i) => { const d = Math.abs(it.offsetLeft + it.offsetWidth / 2 - c); if (d < bd) { bd = d; best = i; } }); return best; };
-      const go = (d) => { const i = Math.max(0, Math.min(items.length - 1, at() + d)); const it = items[i]; track.scrollTo({ left: it.offsetLeft - (track.clientWidth - it.offsetWidth) / 2, behavior: reduced() ? "auto" : "smooth" }); };
-      main.addEventListener("click", (e) => { const b = e.target.closest("[data-wall]"); if (b) go(+b.dataset.wall); }, { signal });
-      track.addEventListener("scroll", () => { pos.textContent = `${at() + 1} / ${items.length}`; }, { passive: true });
-      track.addEventListener("keydown", (e) => { if (e.key === "ArrowRight") { go(1); e.preventDefault(); } if (e.key === "ArrowLeft") { go(-1); e.preventDefault(); } });
-      track.addEventListener("wheel", (e) => { if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && !e.shiftKey) { track.scrollLeft += e.deltaY; e.preventDefault(); } }, { passive: false });
-    };
-    return { html, after, title: r.title };
-  }
-
   /* ---------- outings ---------- */
   function viewOutings() {
     const m = A.model, list = m.outings.slice().reverse();
@@ -572,14 +614,30 @@
     const i = m.outings.indexOf(o), prev = m.outings[i - 1], next = m.outings[i + 1];
     const list = o.photos.filter((x) => x.isHero).sort((a, b) => a.t.localeCompare(b.t));
     const who = o.companions.length > 1 ? ` · with ${o.companions.slice(1).join(", ")}` : "";
+    const chorus = o.species.map((e) => m.speciesByKey.get(e.key)).filter((sp) => sp && sp.call).map((sp) => sp.slug);
     const html = `<section class="chapter-hero">${o.cover ? `<img src="${esc(src(o.cover, Math.max(1400, window.innerWidth) * dpr()))}" alt="" style="object-position:${(o.cover.fp[0] * 100).toFixed(1)}% ${(o.cover.fp[1] * 100).toFixed(1)}%" data-open="${esc(o.cover.id)}">` : ""}<div class="wrap"><div class="sc">Chapter ${o.no} of ${m.outings.length} · ${esc(o.type)}${esc(who)}</div><h1>${esc(fmtDate(o.date))}</h1><div class="sc">${esc(weekday(o.date))} · ${plural(o.photos.length, "frame")} · ${plural(o.species.length, "species", "species")}</div></div></section>
 <div class="wrap page">
-  <div class="sp-head" style="align-items:start;margin-top:8px"><div>${o.note ? `<p class="lede">${esc(o.note)}</p>` : `<p class="lede">${esc(o.title)}</p>`}${shareBtn(pageUrl("outing", o.id), `${fmtDate(o.date)} · ${A.site.title || "Georgiadis Photography"}`)}</div>
+  <div class="sp-head" style="align-items:start;margin-top:8px"><div>${o.note ? `<p class="lede">${esc(o.note)}</p>` : `<p class="lede">${esc(o.title)}</p>`}
+    <div class="sp-acts"><button class="btn" data-out="play">${ICON.play} Play this outing</button>${chorus.length ? `<button class="btn" data-out="chorus" aria-pressed="false">${ICON.play} Hear the day <span class="sc">${plural(chorus.length, "call")}</span></button>` : ""}${shareBtn(pageUrl("outing", o.id), `${fmtDate(o.date)} · ${A.site.title || "Georgiadis Photography"}`)}</div></div>
   <div><div class="sc" style="margin-bottom:10px">Species seen</div><div class="chips">${o.species.map((s) => { const sp = m.speciesByKey.get(s.key); return sp ? `<a class="chip" href="#/species/${esc(sp.slug)}">${esc(sp.name)} <span class="n">${s.n}</span></a>` : ""; }).join("")}</div></div></div>
+  ${dayLine(list)}
   ${flow(list)}
   <nav class="result-line" style="margin-top:48px" aria-label="Other chapters">${prev ? `<a class="btn" href="#/outings/${esc(prev.id)}">${ICON.left} ${esc(fmtShort(prev.date))}</a>` : "<span></span>"}${next ? `<a class="btn" href="#/outings/${esc(next.id)}">${esc(fmtShort(next.date))} ${ICON.right}</a>` : ""}</nav>
 </div>`;
     const after = (main, signal) => {
+      main.addEventListener("click", (e) => {
+        if (e.target.closest('[data-out="play"]')) { GP.exhibit(list, { title: fmtDate(o.date) }); return; }
+        const ch = e.target.closest('[data-out="chorus"]');
+        if (ch && GP.calls) GP.calls.chorus(chorus, ch);
+      }, { signal });
+      signal.addEventListener("abort", () => { if (GP.calls && GP.calls.stopChorus) GP.calls.stopChorus(); });
+      const day = $(".dl-pics", main);
+      if (day) {
+        packDay(day);
+        const ro = new ResizeObserver(() => packDay(day));
+        ro.observe(day);
+        signal.addEventListener("abort", () => ro.disconnect());
+      }
       const img = $(".chapter-hero img", main);
       if (!img || reduced()) return;
       const onScroll = () => { if (!img.isConnected) { window.removeEventListener("scroll", onScroll); return; } img.style.transform = `translateY(${Math.min(120, window.scrollY * 0.25)}px)`; };
@@ -588,17 +646,70 @@
     return { html, after, title: fmtDate(o.date) };
   }
 
+  // Lays the day line's thumbnails into three rows without overlaps, for the width it has. A frame
+  // with no room left hides, and the thumbnail before it says how many it stands for; they all
+  // stay in the viewer's sequence.
+  function packDay(box) {
+    const W = box.clientWidth, gap = 40, last = [-1e9, -1e9, -1e9];
+    if (!W) return;
+    let shown = null;
+    for (const b of box.children) {
+      const x = (parseFloat(b.style.left) / 100) * W;
+      const r = last.findIndex((l) => x - l >= gap);
+      b.hidden = r < 0;
+      if (r < 0) { if (shown) shown.dataset.more = +(shown.dataset.more || 0) + 1; continue; }
+      last[r] = x;
+      b.style.setProperty("--row", r);
+      delete b.dataset.more;
+      shown = b;
+    }
+  }
+
+  // The outing as a day: each frame placed at the minute it was taken, against that day's light.
+  function dayLine(list) {
+    const timed = list.filter((x) => x.hasTime && x.mins != null).sort((a, b) => a.mins - b.mins);
+    if (timed.length < 3) return "";
+    const sun = timed[0].sun || { rise: 420, set: 1170 };
+    let t0 = Math.max(0, timed[0].mins - 25), t1 = Math.min(1440, timed[timed.length - 1].mins + 25);
+    if (t1 - t0 < 120) { const c = (t0 + t1) / 2; t0 = Math.max(0, c - 60); t1 = Math.min(1440, c + 60); }
+    const pct = (mn) => (((mn - t0) / (t1 - t0)) * 100).toFixed(2);
+    const stops = [[sun.rise - 40, "var(--dl-night)"], [sun.rise, "var(--dl-blue)"], [sun.rise + 60, "var(--dl-gold)"], [sun.rise + 150, "var(--dl-day)"], [sun.set - 150, "var(--dl-day)"], [sun.set - 60, "var(--dl-gold)"], [sun.set, "var(--dl-blue)"], [sun.set + 40, "var(--dl-night)"]];
+    const grad = `linear-gradient(90deg, ${stops.map(([mn, c]) => `${c} ${pct(mn)}%`).join(", ")})`;
+    const hh = (mn) => `${String(Math.floor(mn / 60)).padStart(2, "0")}:${String(Math.round(mn % 60)).padStart(2, "0")}`;
+    const hours = [];
+    for (let h = Math.ceil(t0 / 60); h * 60 <= t1; h += (t1 - t0) > 480 ? 2 : 1) hours.push(h * 60);
+    const k = regCtx(timed);
+    // rows are packed to the real width once the line is on the page (packDay)
+    const thumbs = timed.map((x) => {
+      const p = +pct(x.mins);
+      return `<button class="dl-pic" data-open="${esc(x.id)}" style="left:${p}%;--row:0" data-tip="${esc(titleOf(x))}" data-tip-v="${hh(x.mins)}${x.light ? " · " + esc(x.light) : ""}" aria-label="${esc(titleOf(x) + " at " + hh(x.mins))}">${cover(x, 120)}</button>`;
+    }).join("");
+    const mark = (mn, l) => (mn > t0 && mn < t1 ? `<span class="dl-sun" style="left:${pct(mn)}%">${l} ${hh(mn)}</span>` : "");
+    return `<section class="dl" aria-label="The day, frame by frame" data-ctx="${k}"><div class="sec-h"><h2>The day</h2><span class="meta">${hh(timed[0].mins)} – ${hh(timed[timed.length - 1].mins)} · ${plural(timed.length, "frame")} placed by the minute</span></div>
+  <div class="dl-track"><div class="dl-pics">${thumbs}</div><div class="dl-sky" style="background:${grad}">${timed.map((x) => `<i style="left:${pct(x.mins)}%"></i>`).join("")}</div>
+  <div class="dl-axis">${hours.map((mn) => `<span style="left:${pct(mn)}%">${hh(mn)}</span>`).join("")}${mark(sun.rise, "Sunrise")}${mark(sun.set, "Sunset")}</div></div></section>`;
+  }
+
   /* ---------- species ---------- */
   const MILESTONES = [10, 25, 50, 75, 100, 150, 200, 250, 300, 400, 500];
   function viewSpeciesIndex(q) {
     const m = A.model, cab = !!GP.cabinet, mode = q.get("view") || (cab ? "cabinet" : "family");
-    const tabs = (cab ? [["cabinet", "Cabinet"]] : []).concat([["family", "By family"], ["life", "Life list"], ["az", "A–Z"]]);
+    const callN = GP.calls ? m.species.filter((x) => x.call).length : 0;
+    const tabs = (cab ? [["cabinet", "Cabinet"]] : []).concat([["family", "By family"], ["life", "Life list"], ["az", "A–Z"]], callN ? [["calls", "Calls"]] : []);
     const head = pageHead("Field guide", "Species", `${plural(m.life.length, "species", "species")} on the life list across ${plural(m.stats.families, "family", "families")}, plus ${fmtN(m.species.length - m.life.length)} more photographed as captive animals or not identified to species.`,
       `<div class="chips" role="tablist">${tabs.map(([v, l], i) => `<a class="chip" role="tab" href="#/species${i ? `?view=${v}` : ""}" aria-pressed="${mode === v}">${l}</a>`).join("")}</div>`);
     let body = "", after = null;
     const wild = m.species.filter((s) => s.lifeNo);
     const rest = m.species.filter((s) => !s.lifeNo);
-    if (mode === "cabinet" && cab) {
+    if (mode === "calls" && callN) {
+      const list = m.species.filter((x) => x.call && x.best).sort((a, b) => (a.lifeNo || 999) - (b.lifeNo || 999) || a.name.localeCompare(b.name));
+      body = `<div class="board-head"><p class="lede">${plural(list.length, "species", "species")} with a recorded call. Each is a short, cleaned-up clip from a recording shared on iNaturalist, credited beside it.</p><button class="btn primary" data-board="all" aria-pressed="false">${ICON.play} Play them all</button></div>
+<div class="board">${list.map((x) => `<article class="board-card"><a class="board-pic" href="#/species/${esc(x.slug)}">${cover(x.best, 420, "", x.name)}</a><div class="board-t"><h3><a href="#/species/${esc(x.slug)}">${esc(x.name)}</a></h3><i class="binomial">${esc(x.bin || "")}</i>${GP.calls.player(x, true)}</div></article>`).join("")}</div>`;
+      after = (main, signal) => {
+        main.addEventListener("click", (e) => { const b = e.target.closest('[data-board="all"]'); if (b) GP.calls.chorus(list.map((x) => x.slug), b); }, { signal });
+        signal.addEventListener("abort", () => GP.calls.stopChorus && GP.calls.stopChorus());
+      };
+    } else if (mode === "cabinet" && cab) {
       body = GP.cabinet.html(m, helpers);
       after = (main, signal) => GP.cabinet.mount(main, signal, m, helpers);
     } else if (mode === "life") {
@@ -618,7 +729,7 @@
         for (const { f, sp } of shown) body += `<div class="family-h"><h2>${esc(f.common)}</h2><span class="binomial">${esc(f.name)}</span><span class="n">${plural(sp.length, "species", "species")}</span></div><div class="sp-grid">${sp.sort((a, b) => b.photos.length - a.photos.length).map(spCard).join("")}</div>`;
       }
     }
-    if (mode !== "life" && mode !== "cabinet" && rest.length) body += `<div class="family-h" style="margin-top:72px"><h2>Also photographed</h2><span class="n">Captive, domestic, or not identified to species</span></div><div class="sp-grid">${rest.sort((a, b) => b.photos.length - a.photos.length).map(spCard).join("")}</div>`;
+    if (mode !== "life" && mode !== "cabinet" && mode !== "calls" && rest.length) body += `<div class="family-h" style="margin-top:72px"><h2>Also photographed</h2><span class="n">Captive, domestic, or not identified to species</span></div><div class="sp-grid">${rest.sort((a, b) => b.photos.length - a.photos.length).map(spCard).join("")}</div>`;
     return { html: `<div class="wrap page">${head}${body}</div>`, after, title: "Species" };
   }
   function viewSpecies(slug) {
@@ -627,6 +738,14 @@
     const months = s.months, mx = Math.max(...months);
     const related = m.species.filter((x) => x !== s && x.family && x.family === s.family && x.lifeNo).slice(0, 8);
     const outs = [...s.outings].map((id) => m.outingById.get(id)).filter(Boolean).sort((a, b) => a.date.localeCompare(b.date));
+    // neighbours on the life list (or alphabetically for species not on it), so the guide reads on
+    const seq = s.lifeNo ? m.life : m.species.filter((x) => !x.lifeNo);
+    const si = seq.indexOf(s), prevS = seq[si - 1], nextS = seq[si + 1];
+    const pn = (x, dir) => x ? `<a class="sp-pn-a ${dir}" href="#/species/${esc(x.slug)}">${cover(x.best, 320)}<span><span class="sc">${dir === "prev" ? "Previous" : "Next"}${x.lifeNo ? ` · No. ${x.lifeNo}` : ""}</span><b>${esc(x.name)}</b>${x.bin ? `<i>${esc(x.bin)}</i>` : ""}</span></a>` : "<span></span>";
+    const lightRows = ["Blue hour", "Golden hour", "Morning", "Midday", "Afternoon", "Night"].map((l) => [l, s.photos.filter((x) => x.light === l).length, hashFor(["gallery"], new URLSearchParams({ q: s.name.toLowerCase() + " " + l.toLowerCase() }))]).filter((r) => r[1]);
+    const together = new Map();
+    for (const id of s.outings) { const o = m.outingById.get(id); if (o) for (const e of o.species) if (e.key !== s.key) together.set(e.key, (together.get(e.key) || 0) + 1); }
+    const withRows = [...together].map(([k, n]) => ({ sp: m.speciesByKey.get(k), n })).filter((e) => e.sp && e.sp.best && e.sp.lifeNo).sort((a, b) => b.n - a.n || b.sp.photos.length - a.sp.photos.length).slice(0, 8);
     const flag = s.captive ? "Photographed in captivity." : s.domestic ? "A domestic animal." : s.review ? "Rare or out of range in Florida: this identification deserves a second look." : s.uncertain ? "Identification uncertain." : "";
     const html = `<div class="wrap page">
   <div class="sp-head reveal"><div>
@@ -635,7 +754,7 @@
     ${s.note ? `<p class="lede" style="margin-top:20px">${esc(s.note)}</p>` : ""}
     ${flag ? `<p class="sc" style="margin-top:12px;color:var(--warn)">${esc(flag)}</p>` : ""}
     ${GP.calls ? GP.calls.player(s) : ""}
-    ${shareBtn(pageUrl("species", s.slug), `${s.name} · ${A.site.title || "Georgiadis Photography"}`)}
+    <div class="sp-acts"><button class="btn" data-sp="play">${ICON.play} Play as an exhibition</button>${shareBtn(pageUrl("species", s.slug), `${s.name} · ${A.site.title || "Georgiadis Photography"}`)}</div>
   </div><button class="sp-hero" data-open="${esc(s.best.id)}" aria-label="Open the best photograph">${cover(s.best, 1400, "", s.name)}</button></div>
   <div class="stats-band" style="margin-bottom:36px">
     <div><b>${fmtN(s.photos.length)}</b><span>Photographs</span></div>
@@ -648,11 +767,16 @@
     <div class="j-card"><h2>Doing</h2>${s.behaviourList.length ? `<div class="chips">${s.behaviourList.slice(0, 8).map(([b, n]) => `<a class="chip" href="${hashFor(["gallery"], new URLSearchParams({ q: s.name + " " + b.toLowerCase() }))}">${esc(b)} <span class="n">${n}</span></a>`).join("")}</div>` : `<p>No behaviour noted yet.</p>`}
       <div class="sc" style="margin-top:8px">Seen on</div><div class="chips">${outs.map((o) => `<a class="chip" href="#/outings/${esc(o.id)}">${esc(fmtShort(o.date))}</a>`).join("")}</div></div>
   </div>
+  ${lightRows.length > 1 ? `<div class="j-grid" style="margin-top:28px"><div class="j-card"><h2>Light</h2><p>When in the day it was photographed.</p>${hbars(lightRows, "Photographs by light")}</div>${withRows.length ? `<div class="j-card"><h2>Seen with</h2><p>Species photographed on the same outings.</p><div class="sp-with">${withRows.map(({ sp, n }) => `<a href="#/species/${esc(sp.slug)}">${cover(sp.best, 160)}<span><b>${esc(sp.name)}</b><i>${plural(n, "outing")} together</i></span></a>`).join("")}</div></div>` : ""}</div>` : ""}
   <div class="sec-h" style="margin-top:48px"><h2>Photographs</h2><span class="meta">Best first · bursts stacked</span></div>
   ${flow(s.heroes)}
   ${related.length ? `<div class="family-h" style="margin-top:64px"><h2>More ${esc(s.famName || "relatives")}</h2></div><div class="sp-grid">${related.map(spCard).join("")}</div>` : ""}
+  <nav class="sp-pn" aria-label="Neighbouring species">${pn(prevS, "prev")}${pn(nextS, "next")}</nav>
 </div>`;
-    const after = () => { if (GP.calls) GP.calls.onSpeciesPage(s); };
+    const after = (main, signal) => {
+      if (GP.calls) GP.calls.onSpeciesPage(s);
+      main.addEventListener("click", (e) => { if (e.target.closest('[data-sp="play"]')) GP.exhibit(s.heroes, { title: s.name }); }, { signal });
+    };
     return { html, after, title: s.name };
   }
 
@@ -699,7 +823,32 @@
     s += `<text x="${cx}" y="${cy - 4}" text-anchor="middle" class="lbl-sp">daylight</text><text x="${cx}" y="${cy + 12}" text-anchor="middle">${hh(sun.rise)}–${hh(sun.set)}</text>`;
     return `<svg class="viz" viewBox="0 0 320 320" style="max-width:360px;margin:auto" role="img" aria-label="Photographs by hour of the day">${s}</svg>`;
   }
-  function viewJournal() {
+  // Superlatives from the archive, each with the photograph that holds the record.
+  function records(m) {
+    const ph = m.photos.filter((x) => x.isHero || x.burst);
+    const out = [];
+    const rich = m.outings.slice().sort((a, b) => b.species.length - a.species.length)[0];
+    if (rich) out.push({ n: rich.species.length, l: "species on one outing", d: fmtDate(rich.date), x: rich.cover, href: `#/outings/${rich.id}` });
+    const busy = m.outings.slice().sort((a, b) => b.photos.length - a.photos.length)[0];
+    if (busy && busy !== rich) out.push({ n: busy.photos.length, l: "frames in a single outing", d: fmtDate(busy.date), x: busy.cover, href: `#/outings/${busy.id}` });
+    // daylight frames only: a camera clock left on the wrong time zone shouldn't set a record
+    const timed = ph.filter((x) => x.hasTime && x.mins != null && x.group !== "scene" && x.light && x.light !== "Night");
+    if (timed.length) {
+      const early = timed.reduce((a, b) => (b.mins < a.mins ? b : a)), late = timed.reduce((a, b) => (b.mins > a.mins ? b : a));
+      out.push({ n: fmtTime(early), l: "earliest frame of the day", d: `${titleOf(early)} · ${fmtShort(early.t)}`, x: early, open: early.id });
+      out.push({ n: fmtTime(late), l: "latest frame of the day", d: `${titleOf(late)} · ${fmtShort(late.t)}`, x: late, open: late.id });
+    }
+    const burst = m.photos.filter((x) => x.burst).sort((a, b) => b.burst.size - a.burst.size)[0];
+    if (burst && burst.burst.size > 3) { const hx = burst.burst.frames.find((f) => f.isHero) || burst; out.push({ n: burst.burst.size, l: "frames in one burst", d: `${titleOf(hx)} · ${fmtShort(hx.t)}`, x: hx, open: hx.id }); }
+    const top = m.life.slice().sort((a, b) => b.photos.length - a.photos.length)[0];
+    if (top) out.push({ n: top.photos.length, l: `photographs of the ${top.name}`, d: "the most photographed species", x: top.best, href: `#/species/${top.slug}` });
+    const newest = m.life[m.life.length - 1];
+    if (newest) out.push({ n: `No. ${newest.lifeNo}`, l: "newest on the life list", d: `${newest.name} · ${fmtShort(newest.first)}`, x: newest.best, href: `#/species/${newest.slug}` });
+    const reach = ph.filter((x) => x.exif.fl).sort((a, b) => b.exif.fl - a.exif.fl)[0];
+    if (reach) out.push({ n: `${Math.round(reach.exif.fl)} mm`, l: "the longest reach", d: `${titleOf(reach)} · ${fmtShort(reach.t)}`, x: reach, open: reach.id });
+    return out.filter((r) => r.x);
+  }
+  function viewJournal(q) {
     const m = A.model, ph = m.photos;
     // months across the archive
     const keys = [];
@@ -724,6 +873,7 @@
     for (const x of ph) if (x.exif.fl) fl[Math.min(11, Math.floor(x.exif.fl / 25))].v++;
     const flRows = fl.map((b) => ({ v: b.v, label: String(b.lo), tip: `${b.lo}–${b.lo + 24} mm`, tipV: plural(b.v, "photograph") }));
     const otd = onThisDay();
+    const recs = records(m);
     // years
     const years = [...new Set(ph.map((x) => x.year).filter(Boolean))].sort((a, b) => b - a);
     const yearCards = years.map((y) => {
@@ -741,12 +891,17 @@
   <section class="j-card reveal"><h2>Hours of light</h2><p>Photographs by hour on the camera clock; the inner arc marks typical daylight.</p>${dial(hours, avgSun)}${table(["Hour", "Photographs"], hours.map((v, i) => [`${String(i).padStart(2, "0")}:00`, v]))}</section>
   <section class="j-card reveal"><h2>Light</h2><p>Each frame placed against that day's sunrise and sunset.</p>${hbars(lights, "Photographs by light")}<h2 style="margin-top:18px">Behaviour</h2>${hbars(beh, "Photographs by behaviour")}</section>
   ${otd ? `<section class="j-card wide reveal"><h2>${esc(otd.title)}</h2><p>${esc(otd.sub)}</p>${flow(otd.photos.slice(0, 10))}</section>` : ""}
+  <section class="j-card wide reveal"><h2>Records</h2><p>The archive's superlatives, and the photographs that hold them.</p><div class="recs" data-ctx="${regCtx(recs.filter((r) => r.open).map((r) => r.x))}">${recs.map((r) => `<${r.href ? `a href="${esc(r.href)}"` : `button data-open="${esc(r.open)}"`} class="rec">${cover(r.x, 480)}<span class="rec-t"><b>${esc(String(r.n))}</b><span>${esc(r.l)}</span><span class="sc">${esc(r.d)}</span></span></${r.href ? "a" : "button"}>`).join("")}</div></section>
   <section class="j-card wide reveal"><h2>Years</h2>${yearCards}</section>
   <section class="j-card wide reveal tl-card"><h2>Tree of life</h2><p>${GP.treeOfLife ? "Every species on the life list, by class, order and family. The tree grows in the order they were first photographed; hover a leaf to trace it back to the root." : "Every species in the archive, by class, order and family."}</p>${GP.treeOfLife ? GP.treeOfLife.html(m, helpers) + `<details class="tl-list"><summary class="chip">Every species as a list, including captive and unidentified</summary><div class="tree">${tree}</div></details>` : `<div class="tree">${tree}</div>`}</section>
   <section class="j-card reveal"><h2>Field kit</h2><p>Lenses used, by photograph.</p>${hbars([...lens].sort((a, b) => b[1] - a[1]), "Photographs by lens")}</section>
   <section class="j-card reveal"><h2>Reach</h2><p>Focal length in millimetres. Most of the archive lives at the long end.</p>${svgBars(flRows, { w: Math.max(320, Math.min(820, innerWidth > 900 ? (A.root.clientWidth - 76) / 2 : innerWidth - 48)), h: 200, aria: "Photographs by focal length" })}${table(["Focal length", "Photographs"], flRows.map((r) => [r.tip, r.v]))}</section>
 </div></div>`;
-    const after = GP.treeOfLife ? (main, signal) => GP.treeOfLife.mount(main, signal, m, helpers) : null;
+    const after = (main, signal) => {
+      if (GP.treeOfLife) GP.treeOfLife.mount(main, signal, m, helpers);
+      // arriving from "Watch the life list grow": go straight to the tree
+      if (q && q.get("tree")) requestAnimationFrame(() => { const t = $(".tl-card", main); if (t) window.scrollTo(0, t.getBoundingClientRect().top + scrollY - (parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--head-h")) || 64) - 8); });
+    };
     return { html, after, title: "Journal" };
   }
 
@@ -773,7 +928,18 @@
       else if (a === "search") goSearch();
       else if (a === "keys") showKeys();
       else if (a === "sound" && GP.calls) GP.calls.toggle();
+      else if (a === "surprise") surprise();
+      else if (a === "top") window.scrollTo({ top: 0, behavior: reduced() ? "auto" : "smooth" });
       else if (a === "share-page") sharePage(act.dataset.url, act.dataset.title);
+      return;
+    }
+    // a link to the page already showing starts it afresh (the browser would do nothing)
+    const same = e.target.closest('a[href^="#/"]');
+    if (same && !e.metaKey && !e.ctrlKey && !e.shiftKey && same.getAttribute("href") === location.hash && A.root.contains(same)) {
+      e.preventDefault();
+      A.lastKey = "";
+      route();
+      window.scrollTo(0, 0);
       return;
     }
     const opener = e.target.closest("[data-open]");
@@ -820,25 +986,39 @@
     if (!A.r || A.r.parts[0] !== "gallery") location.hash = "#/gallery";
     setTimeout(() => { const q = $("#gp-q"); if (q) { q.focus(); q.select(); } }, 30);
   }
-  function exhibit(list) {
-    if (!GP.exhibit) return;
+  // A random strong photograph, with more of the same waiting behind it.
+  function surprise() {
     const m = A.model;
-    const pick = list || (() => {
-      const r = A.r && A.r.parts[0] === "rooms" ? m.rooms.find((x) => x.id === A.r.parts[1]) : null;
-      if (r) return r.photos;
-      const sp = A.r && A.r.parts[0] === "species" && A.r.parts[1] ? m.speciesBySlug.get(A.r.parts[1]) : null;
-      if (sp) return sp.heroes;
-      const pool = m.heroes.filter((x) => x.rating >= 4 && x.group !== "scene" && !x.unsure);
-      for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
-      return pool.slice(0, 60);
-    })();
-    GP.exhibit(pick);
+    const pool = m.heroes.filter((x) => x.rating >= 3 && !x.unsure);
+    const src = pool.length > 10 ? pool : m.heroes.slice();
+    for (let i = src.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [src[i], src[j]] = [src[j], src[i]]; }
+    const list = src.slice(0, 40);
+    if (list.length) openList(list, 0, null);
+  }
+  // The exhibition that fits the page you're on: its room, species, outing or search; otherwise the best of the archive.
+  function exhibit(list, title) {
+    if (!GP.exhibit) return;
+    const m = A.model, r = A.r || { parts: [], q: new URLSearchParams() };
+    if (list) { GP.exhibit(list, { title: title || "The archive" }); return; }
+    const [v, a] = r.parts;
+    if (v === "rooms" && a) {
+      const room = a === "favourites" && GP.visitor ? { title: "Your favourites", photos: GP.visitor.favPhotos() } : m.rooms.find((x) => x.id === a);
+      if (room && room.photos.length) { GP.exhibit(room.photos, { title: room.title }); return; }
+    }
+    if (v === "species" && a) { const sp = m.speciesBySlug.get(a); if (sp) { GP.exhibit(sp.heroes, { title: sp.name }); return; } }
+    if (v === "outings" && a) { const o = m.outingById.get(a); if (o) { GP.exhibit(o.photos.filter((x) => x.isHero).sort((p, q) => p.t.localeCompare(q.t)), { title: fmtDate(o.date) }); return; } }
+    if (v === "gallery" && (r.q.get("q") || r.q.get("g") || r.q.get("new"))) { const g = galleryList(r.q).list; if (g.length) { GP.exhibit(g, { title: r.q.get("q") ? `“${r.q.get("q")}”` : "The gallery" }); return; } }
+    const room = m.rooms.find((x) => x.id === "collection");
+    if (room && room.photos.length) { GP.exhibit(room.photos, { title: room.title }); return; }
+    const pool = m.heroes.filter((x) => x.rating >= 4 && x.group !== "scene" && !x.unsure);
+    for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+    GP.exhibit(pool.slice(0, 60), { title: "The archive" });
   }
   function showKeys() {
     let d = $("#gp-keys");
     if (!d) {
       d = document.createElement("dialog"); d.id = "gp-keys"; d.className = "gp-keys";
-      const rows = [["/", "Search"], ["← →", "Previous or next photograph"], ["↑ ↓", "Frames within a burst"], ["I", "Specimen label"], ["Z", "Zoom to full resolution"], ["0", "Fit to screen"], ["F", "Full screen"], ["D", "Download the original"], ["Shift", "Hold over a photograph for a loupe; scroll to change its power"], ["C", "Play the bird's call (in the viewer)"], ["E", "Exhibition mode"], ["T", "Light or dark"], ["Esc", "Close"]];
+      const rows = [["/", "Search"], ["← →", "Previous or next photograph"], ["↑ ↓", "Frames within a burst"], ["I", "Specimen label"], ["Z", "Zoom to full resolution"], ["0", "Fit to screen"], ["F", "Full screen"], ["D", "Download the original"], ["Shift", "Hold over a photograph for a loupe; scroll to change its power"], ["C", "Play the bird's call (in the viewer)"], ["L", "Add to or remove from your favourites (in the viewer)"], ["P", "Play the photographs from here as an exhibition (in the viewer)"], ["R", "Surprise me: a random photograph"], ["E", "Play an exhibition"], ["T", "Light or dark"], ["Esc", "Close"]];
       d.innerHTML = `<form method="dialog"><h2 class="display">Keyboard</h2><dl>${rows.map(([k, v]) => `<dt><kbd>${k}</kbd></dt><dd>${v}</dd>`).join("")}</dl><button class="btn">Close</button></form>`;
       document.body.appendChild(d);
     }
@@ -854,11 +1034,15 @@
     else if (e.key === "?") showKeys();
     else if (e.key === "e" || e.key === "E") exhibit();
     else if (e.key === "t" || e.key === "T") toggleTheme();
+    else if (e.key === "r" || e.key === "R") surprise();
   }
   let lastY = 0;
   function onScroll() {
     const y = window.scrollY, head = $(".gp-head");
     if (!head) return;
+    if (A.tipOn) { tipFor(null); A.tipOn = false; }
+    const tt = $(".to-top");
+    if (tt) tt.classList.toggle("on", y > innerHeight * 1.6);
     if (y > 160 && y > lastY + 6) head.classList.add("tucked");
     else if (y < lastY - 6 || y < 80) head.classList.remove("tucked");
     lastY = y;
@@ -875,6 +1059,7 @@
     A.model = M.build(o.raw, A.modelOpts);
     A.siteOverride = o.site || {};
     A.site = Object.assign({}, A.model.site, A.siteOverride);
+    document.documentElement.classList.add("dens-" + density());
     const t = store.get("gp-theme");
     if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
     shell();
@@ -891,6 +1076,8 @@
       document.addEventListener("focusin", (e) => { const el = e.target.closest && e.target.closest("[data-tip]"); tipFor(el, null); });
       document.addEventListener("focusout", () => tipFor(null));
       window.addEventListener("hashchange", route);
+      window.addEventListener("popstate", () => { A.traverse = true; });
+      if ("scrollRestoration" in history) history.scrollRestoration = "manual";
       window.addEventListener("scroll", onScroll, { passive: true });
       matchMedia("(prefers-color-scheme: dark)").addEventListener("change", themeIcon);
     }
@@ -924,6 +1111,6 @@
     start, update, setSelecting, toast, helpers,
     get model() { return A.model; }, get site() { return A.site; }, get adapter() { return A.adapter; }, get workshop() { return A.workshop; },
     get selection() { return [...A.sel]; }, clearSelection() { A.sel.clear(); $$(".tile.sel").forEach((t) => t.classList.remove("sel")); },
-    setQuery, parseHash, hashFor, exhibit, toggleTheme, openById, route: () => { A.lastKey = ""; route(); },
+    setQuery, parseHash, hashFor, exhibit, toggleTheme, openById, openList, surprise, route: () => { A.lastKey = ""; route(); },
   };
 })(window.GP = window.GP || {});

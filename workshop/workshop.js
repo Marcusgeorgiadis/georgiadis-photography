@@ -94,7 +94,7 @@
     download: (x) => `https://drive.google.com/file/d/${encodeURIComponent(x.id)}/view`,
     // public links: the small preview pages the site build writes for each photograph, species and outing
     shareUrl: (x) => (W.site.url ? siteBase() + "p/" + encodeURIComponent(x.id) : null),
-    pageUrl: (kind, key) => (W.site.url ? siteBase() + (kind === "outing" ? "o/" : "s/") + encodeURIComponent(key) : null),
+    pageUrl: (kind, key) => (W.site.url ? siteBase() + (kind === "outing" ? "o/" : kind === "room" ? "r/" : "s/") + encodeURIComponent(key) : null),
   };
   // Originals the connector can return replace the preview while the viewer zooms in,
   // held only as temporary object URLs.
