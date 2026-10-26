@@ -7,7 +7,7 @@
   const NIKON_ID = "1lEhOfHPIO3-Kf4gl6-rhz9d-IwHL14rY";
   const DRIVE = "Google Drive";
   const CCR = "Claude Code Remote";
-  const TRIGGER_ID = "trig_01FBa6Tmgk62ZPBZ5GPNijZQ";
+  const TRIGGER_ID = "trig_01LJPueQUNJgbuv4DXhzvYsb";
   const FOLDER = "application/vnd.google-apps.folder";
   // The Drive connector hands this page files up to about 6 MB; larger Finals get cloud previews.
   const CONNECTOR_SAFE = 6 * 1000 * 1000;
