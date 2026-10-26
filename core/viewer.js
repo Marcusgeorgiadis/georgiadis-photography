@@ -102,6 +102,7 @@
     if (!V.open) return;
     V.open = false;
     clearTimeout(V.idleT);
+    document.dispatchEvent(new CustomEvent("gp:viewer-close"));
     const x = cur();
     const tok = (V.ctok = (V.ctok || 0) + 1);
     const done = () => {
@@ -206,6 +207,7 @@
     badge();
     renderInfo(x);
     preload();
+    document.dispatchEvent(new CustomEvent("gp:viewer-show", { detail: { x } }));
     const hh = GP.app.parseHash();
     if (hh.q.get("p") && hh.q.get("p") !== x.id) { hh.q.set("p", x.id); history.replaceState(history.state, "", GP.app.hashFor(hh.parts, hh.q)); }
   }
@@ -242,6 +244,7 @@
 <div class="kicker">${h.esc([x.famName, x.light].filter(Boolean).join(" · ") || "Photograph")}</div>
 <h2>${h.esc(h.titleOf(x))}</h2>${x.sci && x.common ? `<div class="binomial">${h.esc(x.sci)}${x.unsure ? " · probable" : ""}</div>` : ""}
 ${stars}
+${sp && sp.call && GP.calls ? GP.calls.player(sp, true) : ""}
 ${x.caption ? `<p>${h.esc(x.caption)}</p>` : ""}
 ${sp && sp.note ? `<p class="note">${h.esc(sp.note)}</p>` : ""}
 ${h.specimenTag(x)}

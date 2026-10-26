@@ -12,10 +12,14 @@
       };
     }
     const u = raw.urls || {};
+    // Shared links point at small pages (p/, s/, o/) whose previews show that exact photograph.
+    const base = location.origin + location.pathname.replace(/[^/]*$/, "");
     return {
       src: (x, w) => (x.pub ? fill(u.image, x.pub, w) : ""),
       full: (x) => (x.pub ? fill(u.full, x.pub, 0) : null),
       download: (x) => (x.pub && raw.site.downloads !== false ? fill(u.download, x.pub, 0) : null),
+      shareUrl: (x) => base + "p/" + encodeURIComponent(x.id),
+      pageUrl: (kind, key) => base + (kind === "outing" ? "o/" : "s/") + encodeURIComponent(key),
     };
   }
   function fail(msg) {

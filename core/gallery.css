@@ -87,6 +87,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 
 /* ---------- buttons, chips ---------- */
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 8px 16px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; font-weight: 600; font-size: 14px; text-decoration: none; white-space: nowrap; transition: transform var(--t-fast) var(--ease-out), border-color var(--t-fast), background var(--t-fast); }
+.btn svg { width: 17px; height: 17px; flex: none; }
 .btn:hover { border-color: var(--muted); }
 .btn:active { transform: scale(0.97); }
 .btn.primary { background: var(--ink); color: var(--bg); border-color: var(--ink); }

@@ -145,6 +145,7 @@
     const notesOut = (raw.notes && raw.notes.outings) || {};
     const pub = raw.publicIds || {};
     const site = raw.site || {};
+    const calls = raw.calls || {};
     const hidden = new Set(site.hidden || []);
     const synSci = (s) => {
       s = String(s || "").trim();
@@ -329,6 +330,8 @@
       s.heroes = s.photos.filter((x) => x.isHero);
       s.best = s.photos.find((x) => x.cover) || s.heroes.find((x) => x.ar >= 1.15) || s.photos[0];
       s.note = notesSp[s.bin] || notesSp[s.sci] || "";
+      const call = calls[s.bin] || calls[s.sci];
+      s.call = call && call.file ? call : null;
       s.wild = !s.captive && !s.domestic;
       // Species-level when it has a binomial, or when it's a name the photographer gave it themselves.
       s.own = s.photos.every((x) => x.mine);

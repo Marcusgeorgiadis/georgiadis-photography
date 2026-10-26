@@ -8,6 +8,10 @@ repository's notes and taxonomy, then writes:
   data/gallery.json   everything the site needs, minus private fields (critiques, GPS,
                       asset ids, hidden photos)
   index.html          from index.template.html, with link-preview tags filled in
+  p/ s/ o/            one small link-preview page per photograph, species and outing
+                      (tools/og_pages.js; needs Node)
+  audio/calls/        calls for species new since the last build (tools/fetch_calls.py;
+                      needs ffmpeg, skipped without it or with --no-calls)
 
   manifest --out FILE                          fetch Nikon/Public Gallery/manifest.json
   merge --db DIR --manifest FILE --out DIR     add Finals the Workshop hasn't indexed yet
@@ -148,6 +152,64 @@ def cmd_merge(a):
     print(json.dumps({"folders": len(folders), "addedFromManifest": added}))
 
 
+def read_calls(repo, taxonomy):
+    """Bird calls from data/calls.json (written by fetch_calls.py), keyed by binomial."""
+    calls = read_json(os.path.join(repo, "data", "calls.json")) or {}
+    keep = ("name", "file", "sono", "dur", "peaks", "by", "license", "licenseUrl", "source", "place", "date", "edited")
+    out = {}
+    for b, c in calls.items():
+        if c.get("none") or not c.get("file") or not os.path.exists(os.path.join(repo, c["file"])):
+            continue
+        out[b] = {k: c[k] for k in keep if c.get(k) not in (None, "")}
+    # a species filed under another name in the gallery still finds its call
+    for old, new in (taxonomy.get("synonyms") or {}).items():
+        if new in out and old not in out:
+            out[old] = out[new]
+    return out
+
+
+def fetch_new_calls(repo):
+    """Look up calls for species that are new since the last run (tools/fetch_calls.py).
+    Best effort: skipped without ffmpeg or its Python packages, and capped so a run stays short."""
+    import shutil, subprocess
+    if not shutil.which("ffmpeg"):
+        return {"skipped": "ffmpeg not installed"}
+    try:
+        import numpy, PIL, requests  # noqa: F401
+    except ImportError:
+        return {"skipped": "numpy, pillow or requests missing"}
+    path = os.path.join(repo, "data", "calls.json")
+    before = set((read_json(path) or {}).keys())
+    script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fetch_calls.py")
+    try:
+        p = subprocess.run([sys.executable, script, "--repo", repo, "--limit", "20"], capture_output=True, text=True, timeout=900)
+    except subprocess.TimeoutExpired:
+        p = None
+    calls = read_json(path) or {}
+    new = [b for b in calls if b not in before]
+    out = {"checked": len(new), "added": sum(1 for b in new if not calls[b].get("none"))}
+    if p is not None and p.returncode != 0:
+        out["error"] = (p.stderr or p.stdout).strip()[-300:]
+    return out
+
+
+def og_pages(repo, base):
+    """Link-preview pages (p/, s/, o/) from the same model the site runs; needs Node."""
+    import shutil, subprocess
+    node = shutil.which("node")
+    script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "og_pages.js")
+    if not node:
+        return {"error": "node not found; link-preview pages not updated"}
+    cmd = [node, script, "--repo", repo] + (["--base", base] if base else [])
+    p = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+    if p.returncode != 0:
+        return {"error": (p.stderr or p.stdout).strip()[-400:]}
+    try:
+        return json.loads(p.stdout.strip().splitlines()[-1])
+    except Exception:
+        return {"error": p.stdout[-400:]}
+
+
 def prune(d, keep):
     return {k: d[k] for k in keep if k in d and d[k] not in (None, "", [])}
 
@@ -228,6 +290,7 @@ def cmd_build(a):
         "heroIds": [i for i in (site.get("heroIds") or []) if i in live],
         "downloads": site.get("downloads", True),
         "updated": built[:10],
+        "url": site.get("url") or "",
     }
     data = {
         "version": 1, "built": built,
@@ -238,6 +301,7 @@ def cmd_build(a):
         "taxonomy": taxonomy,
         "publicIds": {k: v for k, v in public_ids.items() if k in live},
         "collections": collections,
+        "calls": read_calls(repo, taxonomy),
     }
     os.makedirs(os.path.join(repo, "data"), exist_ok=True)
     path = os.path.join(repo, "data", "gallery.json")
@@ -245,9 +309,16 @@ def cmd_build(a):
     old = open(path).read() if os.path.exists(path) else ""
     # Only the build stamp changing is not a change worth publishing.
     strip = lambda s: re.sub(r'"(built|updated)":"[^"]*"', "", s)
-    changed = strip(old) != strip(body)
-    if changed:
+    calls_run = None
+    if not a.dev and not a.no_calls:
+        # new species get their calls looked up once the gallery knows about them
         open(path, "w").write(body)
+        calls_run = fetch_new_calls(repo)
+        if calls_run.get("added"):
+            data["calls"] = read_calls(repo, taxonomy)
+            body = json.dumps(data, separators=(",", ":"), ensure_ascii=False, sort_keys=True)
+    changed = strip(old) != strip(body)
+    open(path, "w").write(body if changed or not old else old)
 
     # link previews: the strongest landscape frame with a public copy
     best = None
@@ -301,8 +372,11 @@ def cmd_build(a):
                     tally[c] = tally.get(c, 0) + 1
             outs.append({"fid": fid, "outing": f["outing"], "date": f["date"], "photos": len(f["photos"]), "species": [c for c, _ in sorted(tally.items(), key=lambda kv: -kv[1])][:8]})
         json.dump({"species": sp, "outings": outs}, open(a.report, "w"), indent=1)
+    pages = og_pages(repo, site.get("url") or a.base) if not a.dev else {"skipped": "dev build"}
+    if any((pages.get(k) or {}).get("written") or (pages.get(k) or {}).get("removed") for k in ("p", "s", "o")):
+        changed = True
     n = len(live)
-    print(json.dumps({"photos": n, "outings": len(out_folders), "missingPublicCopy": missing, "bytes": len(body.encode()), "changed": changed, "manifestComplete": (manifest or {}).get("complete"), "manifestError": (manifest or {}).get("error")}))
+    print(json.dumps({"calls": calls_run, "pages": pages, "photos": n, "outings": len(out_folders), "missingPublicCopy": missing, "bytes": len(body.encode()), "changed": changed, "manifestComplete": (manifest or {}).get("complete"), "manifestError": (manifest or {}).get("error")}))
 
 
 def main():
@@ -315,6 +389,8 @@ def main():
     b.add_argument("--report")
     b.add_argument("--urls", help="image address templates from `probe`")
     b.add_argument("--dev", action="store_true")
+    b.add_argument("--base", help="the site's public address, for link previews (default: meta/site url)")
+    b.add_argument("--no-calls", action="store_true", help="don't look up bird calls for new species")
     m = sub.add_parser("manifest")
     m.add_argument("--out", required=True)
     g = sub.add_parser("merge")

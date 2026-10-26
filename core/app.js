@@ -127,6 +127,26 @@
     return `<header class="page-head reveal">${kicker ? `<div class="kicker">${kicker}</div>` : ""}<h1>${h1}</h1>${p ? `<p>${p}</p>` : ""}${extra}</header>`;
   }
 
+  /* ---------- sharing pages ---------- */
+  // Links to a species or an outing; on the public site these are pages with their own link preview.
+  function pageUrl(kind, key) {
+    const a = A.adapter;
+    if (a && a.pageUrl) { const u = a.pageUrl(kind, key); if (u !== undefined) return u; }
+    return location.origin + location.pathname + hashFor([kind === "outing" ? "outings" : "species", key]);
+  }
+  function shareBtn(url, title) {
+    return url ? `<button class="btn ghost share-page" data-act="share-page" data-url="${esc(url)}" data-title="${esc(title)}">${ICON.share} Share</button>` : "";
+  }
+  function sharePage(url, title) {
+    if (!url) return;
+    const copy = () => {
+      if (navigator.clipboard) navigator.clipboard.writeText(url).then(() => toast("Link copied"), () => toast(url));
+      else toast(url);
+    };
+    if (navigator.share && matchMedia("(pointer: coarse)").matches) navigator.share({ title, url }).catch((e) => { if (!e || e.name !== "AbortError") copy(); });
+    else copy();
+  }
+
   /* ---------- toast + tooltip ---------- */
   let toastT;
   function toast(msg, action) {
@@ -156,7 +176,16 @@
   const NAV = [["", "Exhibition"], ["gallery", "Gallery"], ["outings", "Outings"], ["species", "Species"], ["journal", "Journal"]];
   function shell() {
     const s = A.site;
-    const nav = NAV.concat(A.views.filter((v) => v.nav !== false).map((v) => [v.id, v.label]));
+    // Views that name a neighbour (navAfter) sit beside it, in the order they registered.
+    const nav = NAV.slice(), after = new Map();
+    for (const v of A.views) {
+      if (v.nav === false) continue;
+      const at = v.navAfter == null ? -1 : nav.findIndex((n) => n[0] === v.navAfter);
+      if (at < 0) { nav.push([v.id, v.label]); continue; }
+      const k = (after.get(v.navAfter) || 0) + 1;
+      after.set(v.navAfter, k);
+      nav.splice(at + k, 0, [v.id, v.label]);
+    }
     A.root.innerHTML = `<a class="visually-hidden" href="#gp-main">Skip to content</a>
 <header class="gp-head"><div class="wrap">
   <a class="gp-mark" href="#/"><b>${esc(s.title || "Georgiadis Photography")}</b><span>${esc(s.tagline || "Wildlife of Central Florida")}</span></a>
@@ -164,6 +193,7 @@
   <div class="gp-tools">
     <button class="icon-btn" data-act="search" title="Search (/)" aria-label="Search">${ICON.search}</button>
     <button class="icon-btn" data-act="exhibit" title="Exhibition mode" aria-label="Start exhibition mode">${ICON.play}</button>
+    ${GP.calls && GP.calls.available() ? GP.calls.button() : ""}
     <button class="icon-btn" data-act="theme" title="Light or dark" aria-label="Switch light or dark">${ICON.moon}</button>
     <button class="icon-btn" data-act="keys" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">${ICON.keys}</button>
   </div>
@@ -171,6 +201,12 @@
 <main id="gp-main" tabindex="-1"></main>
 <footer class="foot"><div class="wrap"><span>© ${new Date().getFullYear()} ${esc(s.title || "Georgiadis Photography")}. ${esc(s.footer || "Every photograph here is a Final from the Nikon archive.")}</span><span class="mono">${A.model.stats.photos ? `${fmtN(A.model.stats.photos)} photographs · updated ${esc(fmtShort(s.updated || A.model.stats.last))}` : ""}</span></div></footer>`;
     themeIcon();
+    const head = $(".gp-head", A.root);
+    if (head && "ResizeObserver" in window) {
+      if (A.headRO) A.headRO.disconnect();
+      A.headRO = new ResizeObserver(() => document.documentElement.style.setProperty("--head-h", head.offsetHeight + "px"));
+      A.headRO.observe(head);
+    }
   }
   function themeIcon() {
     const b = $('[data-act="theme"]', A.root);
@@ -238,10 +274,10 @@
     $$(".gp-nav a").forEach((n) => n.toggleAttribute("aria-current", false));
     const navEl = $(`.gp-nav a[data-nav="${v || ""}"]`) || (v === "rooms" ? $('.gp-nav a[data-nav=""]') : null);
     if (navEl) navEl.setAttribute("aria-current", "page");
-    let html = "", after = null, title = "";
+    let html = "", after = null, title = "", full = false;
     const ext = A.views.find((x) => x.id === v);
     try {
-      if (ext) { const res = ext.render({ parts: r.parts, q: r.q, model: A.model, h: helpers }); html = typeof res === "string" ? res : res.html; after = res.after; title = ext.label; }
+      if (ext) { const res = ext.render({ parts: r.parts, q: r.q, model: A.model, h: helpers, signal }); html = typeof res === "string" ? res : res.html; after = res.after; title = res.title || ext.label; full = !!res.full; }
       else if (!v) ({ html, after, title } = viewHome());
       else if (v === "gallery") ({ html, after, title } = viewGallery(r.q));
       else if (v === "rooms" && a) ({ html, after, title } = viewRoom(a));
@@ -258,11 +294,12 @@
     }
     void b;
     main.innerHTML = html;
+    document.documentElement.classList.toggle("gp-full", full);
     document.title = (title ? title + " · " : "") + (A.site.title || "Georgiadis Photography");
     if (!A.keepScroll) window.scrollTo(0, 0);
     A.keepScroll = false;
     markLoaded(main);
-    if (after) after(main, signal);
+    if (after) try { after(main, signal); } catch (e) { console.error(e); }
     observeReveal(main);
   }
   function markLoaded(root) {
@@ -537,7 +574,7 @@
     const who = o.companions.length > 1 ? ` · with ${o.companions.slice(1).join(", ")}` : "";
     const html = `<section class="chapter-hero">${o.cover ? `<img src="${esc(src(o.cover, Math.max(1400, window.innerWidth) * dpr()))}" alt="" style="object-position:${(o.cover.fp[0] * 100).toFixed(1)}% ${(o.cover.fp[1] * 100).toFixed(1)}%" data-open="${esc(o.cover.id)}">` : ""}<div class="wrap"><div class="sc">Chapter ${o.no} of ${m.outings.length} · ${esc(o.type)}${esc(who)}</div><h1>${esc(fmtDate(o.date))}</h1><div class="sc">${esc(weekday(o.date))} · ${plural(o.photos.length, "frame")} · ${plural(o.species.length, "species", "species")}</div></div></section>
 <div class="wrap page">
-  <div class="sp-head" style="align-items:start;margin-top:8px"><div>${o.note ? `<p class="lede">${esc(o.note)}</p>` : `<p class="lede">${esc(o.title)}</p>`}</div>
+  <div class="sp-head" style="align-items:start;margin-top:8px"><div>${o.note ? `<p class="lede">${esc(o.note)}</p>` : `<p class="lede">${esc(o.title)}</p>`}${shareBtn(pageUrl("outing", o.id), `${fmtDate(o.date)} · ${A.site.title || "Georgiadis Photography"}`)}</div>
   <div><div class="sc" style="margin-bottom:10px">Species seen</div><div class="chips">${o.species.map((s) => { const sp = m.speciesByKey.get(s.key); return sp ? `<a class="chip" href="#/species/${esc(sp.slug)}">${esc(sp.name)} <span class="n">${s.n}</span></a>` : ""; }).join("")}</div></div></div>
   ${flow(list)}
   <nav class="result-line" style="margin-top:48px" aria-label="Other chapters">${prev ? `<a class="btn" href="#/outings/${esc(prev.id)}">${ICON.left} ${esc(fmtShort(prev.date))}</a>` : "<span></span>"}${next ? `<a class="btn" href="#/outings/${esc(next.id)}">${esc(fmtShort(next.date))} ${ICON.right}</a>` : ""}</nav>
@@ -554,14 +591,17 @@
   /* ---------- species ---------- */
   const MILESTONES = [10, 25, 50, 75, 100, 150, 200, 250, 300, 400, 500];
   function viewSpeciesIndex(q) {
-    const m = A.model, mode = q.get("view") || "family";
-    const tabs = [["family", "By family"], ["life", "Life list"], ["az", "A–Z"]];
+    const m = A.model, cab = !!GP.cabinet, mode = q.get("view") || (cab ? "cabinet" : "family");
+    const tabs = (cab ? [["cabinet", "Cabinet"]] : []).concat([["family", "By family"], ["life", "Life list"], ["az", "A–Z"]]);
     const head = pageHead("Field guide", "Species", `${plural(m.life.length, "species", "species")} on the life list across ${plural(m.stats.families, "family", "families")}, plus ${fmtN(m.species.length - m.life.length)} more photographed as captive animals or not identified to species.`,
-      `<div class="chips" role="tablist">${tabs.map(([v, l]) => `<a class="chip" role="tab" href="#/species?view=${v}" aria-pressed="${mode === v}">${l}</a>`).join("")}</div>`);
-    let body = "";
+      `<div class="chips" role="tablist">${tabs.map(([v, l], i) => `<a class="chip" role="tab" href="#/species${i ? `?view=${v}` : ""}" aria-pressed="${mode === v}">${l}</a>`).join("")}</div>`);
+    let body = "", after = null;
     const wild = m.species.filter((s) => s.lifeNo);
     const rest = m.species.filter((s) => !s.lifeNo);
-    if (mode === "life") {
+    if (mode === "cabinet" && cab) {
+      body = GP.cabinet.html(m, helpers);
+      after = (main, signal) => GP.cabinet.mount(main, signal, m, helpers);
+    } else if (mode === "life") {
       const n = m.life.length;
       const ms = MILESTONES.filter((v, i) => v <= n || MILESTONES[i - 1] < n || i === 0).slice(0, 8);
       body = `<div class="milestones" style="margin-bottom:30px">${ms.map((v) => { const s = m.life[v - 1]; return `<div class="milestone${s ? " got" : ""}"><b>${v}</b>${s ? `${esc(s.name)} · ${esc(fmtShort(s.first))}` : `${v - n} to go`}</div>`; }).join("")}</div>
@@ -578,8 +618,8 @@
         for (const { f, sp } of shown) body += `<div class="family-h"><h2>${esc(f.common)}</h2><span class="binomial">${esc(f.name)}</span><span class="n">${plural(sp.length, "species", "species")}</span></div><div class="sp-grid">${sp.sort((a, b) => b.photos.length - a.photos.length).map(spCard).join("")}</div>`;
       }
     }
-    if (mode !== "life" && rest.length) body += `<div class="family-h" style="margin-top:72px"><h2>Also photographed</h2><span class="n">Captive, domestic, or not identified to species</span></div><div class="sp-grid">${rest.sort((a, b) => b.photos.length - a.photos.length).map(spCard).join("")}</div>`;
-    return { html: `<div class="wrap page">${head}${body}</div>`, title: "Species" };
+    if (mode !== "life" && mode !== "cabinet" && rest.length) body += `<div class="family-h" style="margin-top:72px"><h2>Also photographed</h2><span class="n">Captive, domestic, or not identified to species</span></div><div class="sp-grid">${rest.sort((a, b) => b.photos.length - a.photos.length).map(spCard).join("")}</div>`;
+    return { html: `<div class="wrap page">${head}${body}</div>`, after, title: "Species" };
   }
   function viewSpecies(slug) {
     const m = A.model, s = m.speciesBySlug.get(slug);
@@ -594,6 +634,8 @@
     <h1>${esc(s.name)}</h1>${s.bin ? `<div class="binomial">${esc(s.bin)}</div>` : ""}
     ${s.note ? `<p class="lede" style="margin-top:20px">${esc(s.note)}</p>` : ""}
     ${flag ? `<p class="sc" style="margin-top:12px;color:var(--warn)">${esc(flag)}</p>` : ""}
+    ${GP.calls ? GP.calls.player(s) : ""}
+    ${shareBtn(pageUrl("species", s.slug), `${s.name} · ${A.site.title || "Georgiadis Photography"}`)}
   </div><button class="sp-hero" data-open="${esc(s.best.id)}" aria-label="Open the best photograph">${cover(s.best, 1400, "", s.name)}</button></div>
   <div class="stats-band" style="margin-bottom:36px">
     <div><b>${fmtN(s.photos.length)}</b><span>Photographs</span></div>
@@ -610,7 +652,8 @@
   ${flow(s.heroes)}
   ${related.length ? `<div class="family-h" style="margin-top:64px"><h2>More ${esc(s.famName || "relatives")}</h2></div><div class="sp-grid">${related.map(spCard).join("")}</div>` : ""}
 </div>`;
-    return { html, title: s.name };
+    const after = () => { if (GP.calls) GP.calls.onSpeciesPage(s); };
+    return { html, after, title: s.name };
   }
 
   /* ---------- journal ---------- */
@@ -699,11 +742,12 @@
   <section class="j-card reveal"><h2>Light</h2><p>Each frame placed against that day's sunrise and sunset.</p>${hbars(lights, "Photographs by light")}<h2 style="margin-top:18px">Behaviour</h2>${hbars(beh, "Photographs by behaviour")}</section>
   ${otd ? `<section class="j-card wide reveal"><h2>${esc(otd.title)}</h2><p>${esc(otd.sub)}</p>${flow(otd.photos.slice(0, 10))}</section>` : ""}
   <section class="j-card wide reveal"><h2>Years</h2>${yearCards}</section>
-  <section class="j-card wide reveal"><h2>Tree of life</h2><p>Every species in the archive, by class, order and family.</p><div class="tree">${tree}</div></section>
+  <section class="j-card wide reveal tl-card"><h2>Tree of life</h2><p>${GP.treeOfLife ? "Every species on the life list, by class, order and family. The tree grows in the order they were first photographed; hover a leaf to trace it back to the root." : "Every species in the archive, by class, order and family."}</p>${GP.treeOfLife ? GP.treeOfLife.html(m, helpers) + `<details class="tl-list"><summary class="chip">Every species as a list, including captive and unidentified</summary><div class="tree">${tree}</div></details>` : `<div class="tree">${tree}</div>`}</section>
   <section class="j-card reveal"><h2>Field kit</h2><p>Lenses used, by photograph.</p>${hbars([...lens].sort((a, b) => b[1] - a[1]), "Photographs by lens")}</section>
   <section class="j-card reveal"><h2>Reach</h2><p>Focal length in millimetres. Most of the archive lives at the long end.</p>${svgBars(flRows, { w: Math.max(320, Math.min(820, innerWidth > 900 ? (A.root.clientWidth - 76) / 2 : innerWidth - 48)), h: 200, aria: "Photographs by focal length" })}${table(["Focal length", "Photographs"], flRows.map((r) => [r.tip, r.v]))}</section>
 </div></div>`;
-    return { html, title: "Journal" };
+    const after = GP.treeOfLife ? (main, signal) => GP.treeOfLife.mount(main, signal, m, helpers) : null;
+    return { html, after, title: "Journal" };
   }
 
   function viewMissing() {
@@ -728,6 +772,8 @@
       else if (a === "exhibit") exhibit();
       else if (a === "search") goSearch();
       else if (a === "keys") showKeys();
+      else if (a === "sound" && GP.calls) GP.calls.toggle();
+      else if (a === "share-page") sharePage(act.dataset.url, act.dataset.title);
       return;
     }
     const opener = e.target.closest("[data-open]");
@@ -792,7 +838,7 @@
     let d = $("#gp-keys");
     if (!d) {
       d = document.createElement("dialog"); d.id = "gp-keys"; d.className = "gp-keys";
-      const rows = [["/", "Search"], ["← →", "Previous or next photograph"], ["↑ ↓", "Frames within a burst"], ["I", "Specimen label"], ["Z", "Zoom to full resolution"], ["0", "Fit to screen"], ["F", "Full screen"], ["D", "Download the original"], ["E", "Exhibition mode"], ["T", "Light or dark"], ["Esc", "Close"]];
+      const rows = [["/", "Search"], ["← →", "Previous or next photograph"], ["↑ ↓", "Frames within a burst"], ["I", "Specimen label"], ["Z", "Zoom to full resolution"], ["0", "Fit to screen"], ["F", "Full screen"], ["D", "Download the original"], ["Shift", "Hold over a photograph for a loupe; scroll to change its power"], ["C", "Play the bird's call (in the viewer)"], ["E", "Exhibition mode"], ["T", "Light or dark"], ["Esc", "Close"]];
       d.innerHTML = `<form method="dialog"><h2 class="display">Keyboard</h2><dl>${rows.map(([k, v]) => `<dt><kbd>${k}</kbd></dt><dd>${v}</dd>`).join("")}</dl><button class="btn">Close</button></form>`;
       document.body.appendChild(d);
     }
@@ -823,7 +869,7 @@
     A.root = o.root || document.body;
     A.adapter = o.adapter;
     A.workshop = o.workshop || null;
-    A.views = (o.views || []).slice();
+    A.views = (o.views || []).concat(GP.views || []);
     A.modelOpts = o.model || {};
     A.raw = o.raw;
     A.model = M.build(o.raw, A.modelOpts);
@@ -873,7 +919,7 @@
     update();
   }
 
-  const helpers = { esc, tile, flow, cover, chip, spCard, chapterRow, pageHead, specimenTag, fmtDate, fmtShort, fmtTime, fmtN, plural, titleOf, exposure, src, ICON, regCtx, toast, hbars, table, svgBars };
+  const helpers = { esc, tile, flow, cover, chip, spCard, chapterRow, pageHead, specimenTag, fmtDate, fmtShort, fmtTime, fmtN, plural, titleOf, exposure, src, ICON, regCtx, toast, hbars, table, svgBars, pageUrl, shareBtn, sharePage };
   GP.app = {
     start, update, setSelecting, toast, helpers,
     get model() { return A.model; }, get site() { return A.site; }, get adapter() { return A.adapter; }, get workshop() { return A.workshop; },
