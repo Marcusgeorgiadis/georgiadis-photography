@@ -1,0 +1,411 @@
+{
+ "version": 1,
+ "synonyms": {
+  "Porphyrio martinicus": "Porphyrio martinica",
+  "Phalacrocorax auritus": "Nannopterum auritum",
+  "Picoides pubescens": "Dryobates pubescens",
+  "Threskiornis albus": "Eudocimus albus",
+  "Sternidae": "Laridae",
+  "Threskiornithinae": "Threskiornithidae"
+ },
+ "notWildlife": [
+  "Tyrannosaurus rex"
+ ],
+ "domestic": [
+  "Canis lupus",
+  "Bos taurus"
+ ],
+ "captive": [
+  "Balearica regulorum",
+  "Casuarius casuarius",
+  "Dacelo novaeguineae",
+  "Egretta novaehollandiae",
+  "Ardea pacifica",
+  "Gyps africanus",
+  "Gyps coprotheres",
+  "Lophura erythrophthalma",
+  "Primolius maracana",
+  "Threskiornis molucca",
+  "Varanus komodoensis",
+  "Varecia variegata"
+ ],
+ "families": {
+  "Anatidae": [
+   "Aves",
+   "Anseriformes",
+   "Ducks, Geese & Swans"
+  ],
+  "Anhingidae": [
+   "Aves",
+   "Suliformes",
+   "Anhingas"
+  ],
+  "Phalacrocoracidae": [
+   "Aves",
+   "Suliformes",
+   "Cormorants"
+  ],
+  "Aramidae": [
+   "Aves",
+   "Gruiformes",
+   "Limpkin"
+  ],
+  "Gruidae": [
+   "Aves",
+   "Gruiformes",
+   "Cranes"
+  ],
+  "Rallidae": [
+   "Aves",
+   "Gruiformes",
+   "Rails, Gallinules & Coots"
+  ],
+  "Ardeidae": [
+   "Aves",
+   "Pelecaniformes",
+   "Herons, Egrets & Bitterns"
+  ],
+  "Threskiornithidae": [
+   "Aves",
+   "Pelecaniformes",
+   "Ibises & Spoonbills"
+  ],
+  "Pelecanidae": [
+   "Aves",
+   "Pelecaniformes",
+   "Pelicans"
+  ],
+  "Ciconiidae": [
+   "Aves",
+   "Ciconiiformes",
+   "Storks"
+  ],
+  "Scolopacidae": [
+   "Aves",
+   "Charadriiformes",
+   "Sandpipers & Allies"
+  ],
+  "Laridae": [
+   "Aves",
+   "Charadriiformes",
+   "Gulls & Terns"
+  ],
+  "Accipitridae": [
+   "Aves",
+   "Accipitriformes",
+   "Hawks, Eagles & Kites"
+  ],
+  "Pandionidae": [
+   "Aves",
+   "Accipitriformes",
+   "Osprey"
+  ],
+  "Cathartidae": [
+   "Aves",
+   "Cathartiformes",
+   "New World Vultures"
+  ],
+  "Falconidae": [
+   "Aves",
+   "Falconiformes",
+   "Falcons"
+  ],
+  "Strigidae": [
+   "Aves",
+   "Strigiformes",
+   "Owls"
+  ],
+  "Alcedinidae": [
+   "Aves",
+   "Coraciiformes",
+   "Kingfishers"
+  ],
+  "Picidae": [
+   "Aves",
+   "Piciformes",
+   "Woodpeckers"
+  ],
+  "Psittacidae": [
+   "Aves",
+   "Psittaciformes",
+   "Parrots"
+  ],
+  "Casuariidae": [
+   "Aves",
+   "Casuariiformes",
+   "Cassowaries"
+  ],
+  "Phasianidae": [
+   "Aves",
+   "Galliformes",
+   "Pheasants & Allies"
+  ],
+  "Podicipedidae": [
+   "Aves",
+   "Podicipediformes",
+   "Grebes"
+  ],
+  "Icteridae": [
+   "Aves",
+   "Passeriformes",
+   "Blackbirds & Grackles"
+  ],
+  "Paridae": [
+   "Aves",
+   "Passeriformes",
+   "Chickadees & Titmice"
+  ],
+  "Cardinalidae": [
+   "Aves",
+   "Passeriformes",
+   "Cardinals & Buntings"
+  ],
+  "Mimidae": [
+   "Aves",
+   "Passeriformes",
+   "Mockingbirds & Catbirds"
+  ],
+  "Parulidae": [
+   "Aves",
+   "Passeriformes",
+   "New World Warblers"
+  ],
+  "Laniidae": [
+   "Aves",
+   "Passeriformes",
+   "Shrikes"
+  ],
+  "Tyrannidae": [
+   "Aves",
+   "Passeriformes",
+   "Tyrant Flycatchers"
+  ],
+  "Polioptilidae": [
+   "Aves",
+   "Passeriformes",
+   "Gnatcatchers"
+  ],
+  "Fringillidae": [
+   "Aves",
+   "Passeriformes",
+   "Finches"
+  ],
+  "Sturnidae": [
+   "Aves",
+   "Passeriformes",
+   "Starlings"
+  ],
+  "Corvidae": [
+   "Aves",
+   "Passeriformes",
+   "Crows & Jays"
+  ],
+  "Passeridae": [
+   "Aves",
+   "Passeriformes",
+   "Old World Sparrows"
+  ],
+  "Bovidae": [
+   "Mammalia",
+   "Artiodactyla",
+   "Cattle & Antelopes"
+  ],
+  "Canidae": [
+   "Mammalia",
+   "Carnivora",
+   "Dogs"
+  ],
+  "Mustelidae": [
+   "Mammalia",
+   "Carnivora",
+   "Otters & Weasels"
+  ],
+  "Procyonidae": [
+   "Mammalia",
+   "Carnivora",
+   "Raccoons"
+  ],
+  "Cercopithecidae": [
+   "Mammalia",
+   "Primates",
+   "Old World Monkeys"
+  ],
+  "Lemuridae": [
+   "Mammalia",
+   "Primates",
+   "Lemurs"
+  ],
+  "Sciuridae": [
+   "Mammalia",
+   "Rodentia",
+   "Squirrels"
+  ],
+  "Leporidae": [
+   "Mammalia",
+   "Lagomorpha",
+   "Rabbits & Hares"
+  ],
+  "Alligatoridae": [
+   "Reptilia",
+   "Crocodilia",
+   "Alligators & Caimans"
+  ],
+  "Iguanidae": [
+   "Reptilia",
+   "Squamata",
+   "Iguanas"
+  ],
+  "Varanidae": [
+   "Reptilia",
+   "Squamata",
+   "Monitor Lizards"
+  ],
+  "Colubridae": [
+   "Reptilia",
+   "Squamata",
+   "Colubrid Snakes"
+  ],
+  "Emydidae": [
+   "Reptilia",
+   "Testudines",
+   "Pond Turtles"
+  ],
+  "Testudinidae": [
+   "Reptilia",
+   "Testudines",
+   "Tortoises"
+  ],
+  "Libellulidae": [
+   "Insecta",
+   "Odonata",
+   "Skimmers"
+  ],
+  "Apidae": [
+   "Insecta",
+   "Hymenoptera",
+   "Bees"
+  ],
+  "Formicidae": [
+   "Insecta",
+   "Hymenoptera",
+   "Ants"
+  ],
+  "Nymphalidae": [
+   "Insecta",
+   "Lepidoptera",
+   "Brush-footed Butterflies"
+  ],
+  "Portunidae": [
+   "Malacostraca",
+   "Decapoda",
+   "Swimming Crabs"
+  ],
+  "Diplopoda": [
+   "Diplopoda",
+   "Millipedes",
+   "Millipedes"
+  ]
+ },
+ "genera": {
+  "Agelaius": "Icteridae",
+  "Quiscalus": "Icteridae",
+  "Aix": "Anatidae",
+  "Alopochen": "Anatidae",
+  "Anas": "Anatidae",
+  "Aythya": "Anatidae",
+  "Cairina": "Anatidae",
+  "Dendrocygna": "Anatidae",
+  "Lophodytes": "Anatidae",
+  "Oxyura": "Anatidae",
+  "Anhinga": "Anhingidae",
+  "Nannopterum": "Phalacrocoracidae",
+  "Phalacrocorax": "Phalacrocoracidae",
+  "Aramus": "Aramidae",
+  "Balearica": "Gruidae",
+  "Fulica": "Rallidae",
+  "Gallinula": "Rallidae",
+  "Porphyrio": "Rallidae",
+  "Ardea": "Ardeidae",
+  "Bubulcus": "Ardeidae",
+  "Butorides": "Ardeidae",
+  "Egretta": "Ardeidae",
+  "Nyctanassa": "Ardeidae",
+  "Nycticorax": "Ardeidae",
+  "Eudocimus": "Threskiornithidae",
+  "Platalea": "Threskiornithidae",
+  "Plegadis": "Threskiornithidae",
+  "Threskiornis": "Threskiornithidae",
+  "Pelecanus": "Pelecanidae",
+  "Mycteria": "Ciconiidae",
+  "Arenaria": "Scolopacidae",
+  "Calidris": "Scolopacidae",
+  "Tringa": "Scolopacidae",
+  "Leucophaeus": "Laridae",
+  "Buteo": "Accipitridae",
+  "Elanoides": "Accipitridae",
+  "Gyps": "Accipitridae",
+  "Rostrhamus": "Accipitridae",
+  "Pandion": "Pandionidae",
+  "Cathartes": "Cathartidae",
+  "Falco": "Falconidae",
+  "Strix": "Strigidae",
+  "Dacelo": "Alcedinidae",
+  "Megaceryle": "Alcedinidae",
+  "Dryobates": "Picidae",
+  "Picoides": "Picidae",
+  "Dryocopus": "Picidae",
+  "Melanerpes": "Picidae",
+  "Primolius": "Psittacidae",
+  "Casuarius": "Casuariidae",
+  "Lophura": "Phasianidae",
+  "Podilymbus": "Podicipedidae",
+  "Baeolophus": "Paridae",
+  "Cardinalis": "Cardinalidae",
+  "Passerina": "Cardinalidae",
+  "Dumetella": "Mimidae",
+  "Mimus": "Mimidae",
+  "Geothlypis": "Parulidae",
+  "Setophaga": "Parulidae",
+  "Lanius": "Laniidae",
+  "Myiarchus": "Tyrannidae",
+  "Sayornis": "Tyrannidae",
+  "Polioptila": "Polioptilidae",
+  "Spinus": "Fringillidae",
+  "Sturnus": "Sturnidae",
+  "Corvus": "Corvidae",
+  "Bos": "Bovidae",
+  "Canis": "Canidae",
+  "Lontra": "Mustelidae",
+  "Procyon": "Procyonidae",
+  "Macaca": "Cercopithecidae",
+  "Varecia": "Lemuridae",
+  "Sciurus": "Sciuridae",
+  "Sylvilagus": "Leporidae",
+  "Alligator": "Alligatoridae",
+  "Iguana": "Iguanidae",
+  "Varanus": "Varanidae",
+  "Nerodia": "Colubridae",
+  "Pseudemys": "Emydidae",
+  "Chelonoidis": "Testudinidae",
+  "Brachymesia": "Libellulidae",
+  "Celithemis": "Libellulidae",
+  "Crocothemis": "Libellulidae",
+  "Tramea": "Libellulidae",
+  "Apis": "Apidae",
+  "Bombus": "Apidae",
+  "Pogonomyrmex": "Formicidae",
+  "Phyciodes": "Nymphalidae",
+  "Callinectes": "Portunidae"
+ },
+ "review": [
+  "Ardea cinerea",
+  "Egretta garzetta",
+  "Anas bahamensis",
+  "Mimus gilvus",
+  "Lontra longicaudis"
+ ],
+ "_notes": {
+  "captive": "Species that in Florida are almost certainly zoo or park animals; left out of the life list unless you include them.",
+  "review": "Rare or out of range for Florida; likely misidentifications worth a second look (Grey Heron vs Great Blue Heron, Little Egret vs Snowy Egret, Neotropical vs North American River Otter)."
+ }
+}

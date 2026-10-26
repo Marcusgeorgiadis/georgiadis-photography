@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>{{title}}</title>
+<meta name="description" content="{{description}}">
+<meta property="og:type" content="website">
+<meta property="og:title" content="{{title}}">
+<meta property="og:description" content="{{description}}">
+<meta property="og:image" content="{{og_image}}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0e100f" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#e8eae5" media="(prefers-color-scheme: light)">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://lh3.googleusercontent.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..700;1,6..96,400..600&family=IBM+Plex+Mono:wght@400;500;600&family=Source+Sans+3:ital,wght@0,300..700;1,400&display=swap">
+<link rel="stylesheet" href="core/gallery.css">
+<script>try{var t=localStorage.getItem("gp-theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<div id="app"><div class="wrap" style="padding-top:28px"><div class="skeleton" aria-label="Loading the gallery"><i></i><i></i><i></i><i></i><i></i><i></i></div></div></div>
+<noscript><div class="wrap"><div class="empty"><h2>{{title}}</h2><p>This gallery needs JavaScript to show the photographs.</p></div></div></noscript>
+<script src="core/model.js"></script>
+<script src="core/app.js"></script>
+<script src="core/viewer.js"></script>
+<script src="site.js"></script>
+</body>
+</html>

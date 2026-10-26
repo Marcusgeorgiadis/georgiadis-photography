@@ -1,0 +1,57 @@
+/* Workshop additions to the shared design system: control cards, edit forms, selection bar. */
+.ws-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 18px; align-items: start; }
+.ws-card { border: 1px solid var(--line); background: var(--surface); border-radius: 4px; padding: 18px 20px; display: grid; gap: 10px; min-width: 0; }
+.ws-card h2 { margin: 0; font-family: var(--f-display); font-weight: 500; font-size: 24px; }
+.ws-card p { margin: 0; color: var(--ink-2); font-size: 15px; }
+.ws-card .big { font-size: 26px; color: var(--ink); }
+.ws-card .acts, .ws-edit .acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.err { color: var(--warn); }
+.ws-stats { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; margin: 0; font-size: 14px; }
+.ws-stats dt { color: var(--muted); }
+.ws-stats dd { margin: 0; font-family: var(--f-data); text-align: right; font-variant-numeric: tabular-nums; }
+.ws-form label, .ws-id label, .ws-pop label { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
+.ws-form input, .ws-form textarea, .ws-id input, .ws-id select, .ws-pop input, .ws-pop select, .ws-sel input, .ws-sel select { border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 4px; padding: 8px 10px; font-size: 15px; min-width: 0; width: 100%; }
+.ws-form textarea { resize: vertical; line-height: 1.5; }
+.ws-form .ck { display: flex; gap: 8px; align-items: center; color: var(--ink-2); font-size: 14px; }
+.ws-form .ck input { width: auto; }
+.ws-edit { border-top: 1px solid var(--hair); padding-top: 16px; display: grid; gap: 12px; }
+.ws-id { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px; }
+.ws-id label:first-child { grid-column: 1 / -1; }
+.ws-id .acts { grid-column: 1 / -1; }
+.ws-acts { display: flex; flex-wrap: wrap; gap: 6px; }
+.ws-acts .btn { min-height: 34px; padding: 6px 12px; font-size: 13px; font-weight: 500; }
+.ws-acts kbd { font-size: 10px; padding: 0 4px; }
+.ws-edit .q { color: var(--muted); font-size: 13.5px; }
+.ws-op { border: 1px solid var(--line); border-radius: 4px; padding: 12px 14px; display: grid; gap: 8px; font-size: 14px; background: var(--bg); }
+.ws-op p, .ws-op ul { margin: 0; }
+.ws-op ul { padding-left: 18px; color: var(--ink-2); }
+.ws-eye { display: grid; gap: 22px; margin-top: 18px; }
+.ws-eye > .q { color: var(--muted); margin: 0; max-width: 70ch; }
+.ws-sp { display: grid; gap: 12px; border-top: 1px solid var(--hair); padding-top: 16px; }
+.ws-sp-h { display: flex; justify-content: space-between; align-items: end; gap: 12px; flex-wrap: wrap; }
+.ws-sp-h h3 { margin: 0; font-family: var(--f-display); font-weight: 500; font-size: 22px; }
+.ws-run-row { display: grid; gap: 8px; }
+.ws-run-row .flow { --rowh: 150px; }
+.ws-tbl { width: 100%; border-collapse: collapse; font-size: 14px; }
+.ws-tbl th, .ws-tbl td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--hair); vertical-align: top; }
+.ws-tbl th { font-family: var(--f-data); font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+.ws-pick { display: grid; gap: 4px; }
+.ws-pick .btn { min-height: 30px; font-size: 12px; padding: 4px 10px; }
+.mini-flow .ws-pick > button:first-child { padding: 0; border: 0; aspect-ratio: 1; overflow: hidden; background: var(--bg-2); cursor: zoom-in; border-radius: 2px; }
+.ws-sel { position: fixed; z-index: 60; left: max(16px, env(safe-area-inset-left, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); bottom: max(14px, env(safe-area-inset-bottom, 0px)); display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--glass); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); box-shadow: 0 18px 50px -20px rgba(0, 0, 0, 0.5); }
+.ws-sel .n { font-size: 12px; color: var(--ink); min-width: 86px; }
+.ws-sel input { width: 200px; flex: 1 1 160px; }
+.ws-sel select { width: auto; }
+.ws-sel .btn { min-height: 34px; padding: 6px 12px; font-size: 13px; }
+.ws-sel .stars button { font-size: 20px; color: var(--muted); }
+.ws-sel .stars button:hover { color: var(--accent); }
+.ws-pop { position: fixed; z-index: 70; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(max(14px, env(safe-area-inset-bottom, 0px)) + 120px); width: min(360px, calc(100vw - 32px)); display: grid; gap: 10px; padding: 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); box-shadow: 0 18px 50px -20px rgba(0, 0, 0, 0.5); }
+.ws-pop .acts { display: flex; gap: 8px; }
+.ws-runbar { position: fixed; z-index: 65; left: max(16px, env(safe-area-inset-left, 0px)); bottom: max(14px, env(safe-area-inset-bottom, 0px)); width: min(420px, calc(100vw - 32px)); display: grid; grid-template-columns: 1fr auto; gap: 8px 12px; align-items: center; padding: 12px 14px; border-radius: 8px; background: var(--ink); color: var(--bg); box-shadow: 0 18px 50px -20px rgba(0, 0, 0, 0.5); }
+.ws-runbar .sc { color: inherit; opacity: 0.7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 300px; letter-spacing: 0.04em; text-transform: none; }
+.ws-runbar i { grid-column: 1 / -1; height: 3px; border-radius: 2px; background: linear-gradient(90deg, var(--accent) var(--p), color-mix(in srgb, var(--bg) 25%, transparent) var(--p)); }
+.ws-runbar .btn { color: var(--bg); border-color: color-mix(in srgb, var(--bg) 40%, transparent); min-height: 32px; }
+.gp-selecting .ws-runbar { bottom: calc(max(14px, env(safe-area-inset-bottom, 0px)) + 76px); }
+.gp-tools #ws-select { min-height: 34px; padding: 6px 14px; }
+@media (max-width: 760px) { .ws-id { grid-template-columns: 1fr; } .ws-sel input { width: 100%; } }
+.gp-selecting .tile .stack, .gp-selecting .tile .scrub { display: none; }
