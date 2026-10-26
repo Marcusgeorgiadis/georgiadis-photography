@@ -11,14 +11,15 @@
  *   2. Choose "setup" in the function menu and click Run, then allow access.
  * That's it: the first run starts copying and schedules the rest.
  *
- * Copies are made in batches of about five minutes (Apps Script's limit), so the
- * first full copy of a large library finishes over a few scheduled runs.
+ * Each run copies for up to about five minutes (Apps Script's limit), ten photos at
+ * a time, so the first full copy of a large library finishes over a few runs.
  */
 
 const NIKON_ID = '1lEhOfHPIO3-Kf4gl6-rhz9d-IwHL14rY';
 const PUBLIC_NAME = 'Public Gallery';
 const MANIFEST_NAME = 'manifest.json';
 const TIME_BUDGET_MS = 4.5 * 60 * 1000;
+const BATCH = 10; // copies made in parallel
 const FINALS_RE = /^finals?\b/i;
 const RAW_RE = /\braws?\b/i;
 const RAW_EXT = /\.(nef|nrw|dng|cr2|cr3|crw|arw|srf|sr2|raf|orf|rw2|pef|srw|x3f|3fr|iiq|erf|mef|mos|kdc|dcr|xmp)$/i;
@@ -75,43 +76,61 @@ function run_() {
     return;
   }
 
-  // 2. Copy what's new or changed, newest first.
+  // 2. Copy what's new or changed, newest first, BATCH at a time in parallel.
   sources.sort((a, b) => (b.modifiedTime || '').localeCompare(a.modifiedTime || ''));
   const seen = {};
-  let copied = 0, finished = true;
-  for (const src of sources) {
-    seen[src.id] = true;
+  sources.forEach((src) => { seen[src.id] = true; });
+  const todo = sources.filter((src) => {
     const have = state.items[src.id];
-    if (have && have.mod === src.modifiedTime && have.size === src.size) continue;
+    return !(have && have.mod === src.modifiedTime && have.size === src.size);
+  });
+  let copied = 0, finished = true, batches = 0;
+  for (let i = 0; i < todo.length; i += BATCH) {
     if (Date.now() - started > TIME_BUDGET_MS) { finished = false; break; }
-    const folderId = ensurePath_(pub, src.path, state);
-    let copy;
-    try {
-      copy = api_('post', `${API}/${src.id}/copy?fields=id,name,size,imageMediaMetadata(width,height)&supportsAllDrives=true`, {
+    const batch = todo.slice(i, i + BATCH);
+    const token = ScriptApp.getOAuthToken();
+    const requests = batch.map((src) => ({
+      url: `${API}/${src.id}/copy?fields=id,name,size,imageMediaMetadata(width,height)&supportsAllDrives=true`,
+      method: 'post',
+      contentType: 'application/json',
+      headers: { Authorization: 'Bearer ' + token },
+      muteHttpExceptions: true,
+      payload: JSON.stringify({ name: src.name, parents: [ensurePath_(pub, src.path, state)], description: `Public copy of ${src.id}` }),
+    }));
+    const responses = UrlFetchApp.fetchAll(requests);
+    let storageFull = false;
+    responses.forEach((res, k) => {
+      const src = batch[k];
+      const code = res.getResponseCode();
+      const text = res.getContentText();
+      let copy = null;
+      if (code >= 200 && code < 300) copy = JSON.parse(text);
+      else if (/storageQuotaExceeded/i.test(text)) storageFull = true;
+      else if (code === 429 || code >= 500) {
+        // Busy: one slower retry now; anything still failing is picked up next run.
+        try { copy = api_('post', requests[k].url, JSON.parse(requests[k].payload)); } catch (e) { finished = false; }
+      } else state.error = `Copy failed for ${src.name}: ${code} ${text.slice(0, 200)}`;
+      if (!copy) return;
+      const have = state.items[src.id];
+      if (have && have.pub) trash_(have.pub);
+      state.items[src.id] = {
+        pub: copy.id,
         name: src.name,
-        parents: [folderId],
-        description: `Public copy of ${src.id}`,
-      });
-    } catch (e) {
-      state.error = /storageQuotaExceeded|quota/i.test(String(e))
-        ? 'Your Google storage is full, so new Finals could not be copied. Free up space or add storage.'
-        : `Copy failed for ${src.name}: ${String(e).slice(0, 200)}`;
+        mod: src.modifiedTime,
+        size: src.size,
+        path: src.path.join(' / '),
+        finals: src.finals,
+        w: copy.imageMediaMetadata ? copy.imageMediaMetadata.width : null,
+        h: copy.imageMediaMetadata ? copy.imageMediaMetadata.height : null,
+      };
+      copied++;
+    });
+    if (storageFull) {
+      state.error = 'Your Google storage is full, so new Finals could not be copied. Free up space or add storage.';
       finished = false;
       break;
     }
-    if (have && have.pub) trash_(have.pub);
-    state.items[src.id] = {
-      pub: copy.id,
-      name: src.name,
-      mod: src.modifiedTime,
-      size: src.size,
-      path: src.path.join(' / '),
-      finals: src.finals,
-      w: copy.imageMediaMetadata ? copy.imageMediaMetadata.width : null,
-      h: copy.imageMediaMetadata ? copy.imageMediaMetadata.height : null,
-    };
-    copied++;
-    if (copied % 50 === 0) saveManifest_(pub, state); // keep progress if the run is cut off
+    if (++batches % 5 === 0) saveManifest_(pub, state); // keep progress if the run is cut off
   }
 
   // 3. After a complete pass, remove copies whose originals are gone.
