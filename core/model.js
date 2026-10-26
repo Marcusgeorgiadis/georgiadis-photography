@@ -330,7 +330,9 @@
       s.best = s.photos.find((x) => x.cover) || s.heroes.find((x) => x.ar >= 1.15) || s.photos[0];
       s.note = notesSp[s.bin] || notesSp[s.sci] || "";
       s.wild = !s.captive && !s.domestic;
-      s.sp = /\bsp\.$/.test(s.name) || !s.bin;
+      // Species-level when it has a binomial, or when it's a name the photographer gave it themselves.
+      s.own = s.photos.every((x) => x.mine);
+      s.sp = /\bsp\.$/.test(s.name) || (!s.bin && !s.own);
       s.uncertain = s.unsureN === s.photos.length;
       let sl = slug(s.name) || slug(s.sci) || "species";
       while (usedSlugs.has(sl)) sl += "-2";
@@ -343,7 +345,7 @@
     const speciesByKey = new Map(species.map((s) => [s.key, s]));
     const speciesBySlug = new Map(species.map((s) => [s.slug, s]));
     // Life list: confident, wild, species-level identifications, in the order first seen.
-    const life = species.filter((s) => s.wild && !s.sp && !s.uncertain && s.bin).sort((a, b) => a.first.localeCompare(b.first) || natural(a.name, b.name));
+    const life = species.filter((s) => s.wild && !s.sp && !s.uncertain && (s.bin || s.own)).sort((a, b) => a.first.localeCompare(b.first) || natural(a.name, b.name));
     life.forEach((s, i) => { s.lifeNo = i + 1; });
 
     // 7. tree of life: class > order > family > species
@@ -429,10 +431,11 @@
   function parseQuery(q, model) {
     const terms = [], tests = [];
     let s = " " + String(q || "").toLowerCase().replace(/[^\p{L}\p{N}★+\s.-]/gu, " ").replace(/\s+/g, " ") + " ";
-    const take = (re, fn) => { s = s.replace(re, (...m) => { fn(...m); return " "; }); };
+    // Each understood term remembers the words it came from, so its chip can remove them again.
+    const take = (re, fn) => { s = s.replace(re, (...m) => { const n0 = terms.length; fn(...m); for (let i = n0; i < terms.length; i++) terms[i].src = terms[i].src || m[0].trim(); return " "; }); };
     take(/\b([1-5])\s*(?:\+|stars?|★)\s*(?:\+|and up|or more|plus)?/g, (m, n) => { n = +n; terms.push({ kind: "rating", label: `★ ${n}${n < 5 ? "+" : ""}` }); tests.push((x) => x.rating >= n); });
     take(/(★{1,5})/g, (m, st) => { const n = st.length; terms.push({ kind: "rating", label: `★ ${n}+` }); tests.push((x) => x.rating >= n); });
-    if (/\bbest\b|\bfinest\b|\btop\b/.test(s) && !terms.some((t) => t.kind === "rating")) { terms.push({ kind: "rating", label: "★ 4+" }); tests.push((x) => x.rating >= 4); s = s.replace(/\b(best|finest|top)\b/g, " "); }
+    if (/\bbest\b|\bfinest\b|\btop\b/.test(s) && !terms.some((t) => t.kind === "rating")) { terms.push({ kind: "rating", label: "★ 4+", src: (/\b(best|finest|top)\b/.exec(s) || [""])[0] }); tests.push((x) => x.rating >= 4); s = s.replace(/\b(best|finest|top)\b/g, " "); }
     for (const [w, v] of Object.entries(LIGHT_WORDS).sort((a, b) => b[0].length - a[0].length)) {
       take(new RegExp(`\\s${w}\\s`, "g"), () => { if (!terms.some((t) => t.label === v)) { terms.push({ kind: "light", label: v }); tests.push((x) => x.light === v); } });
     }
@@ -444,7 +447,8 @@
     });
     take(/\s(spring|summer|autumn|fall|winter)\s/g, (m, w) => { const v = w === "fall" ? "Autumn" : w[0].toUpperCase() + w.slice(1); terms.push({ kind: "season", label: v }); tests.push((x) => x.season === v); });
     take(/\s(20\d\d)\s/g, (m, y) => { terms.push({ kind: "year", label: y }); tests.push((x) => x.year === +y); });
-    for (const [w, v] of Object.entries(COLOUR_ALIAS)) s = s.replace(new RegExp(`\\s${w}\\s`, "g"), ` ${v} `);
+    const aliasFrom = {};
+    for (const [w, v] of Object.entries(COLOUR_ALIAS)) s = s.replace(new RegExp(`\\s${w}\\s`, "g"), () => { aliasFrom[v] = w; return ` ${v} `; });
     // Colour words only count as colours when they are not part of a species name ("Great Blue Heron").
     const spNames = model.species.map((sp) => sp.name.toLowerCase());
     for (const c of Object.keys(COLOURS)) {
@@ -453,7 +457,7 @@
       const rest = s.trim();
       if (spNames.some((n) => n.includes(rest) && rest.includes(c))) continue;
       s = s.replace(re, " ");
-      terms.push({ kind: "colour", label: `${c[0].toUpperCase() + c.slice(1)} tones` });
+      terms.push({ kind: "colour", label: `${c[0].toUpperCase() + c.slice(1)} tones`, src: aliasFrom[c] || c });
       const fn = COLOURS[c];
       tests.push((x) => x.hsl.slice(0, 3).some(fn) || new RegExp(`\\b${c}`).test(x.caption.toLowerCase()));
     }
@@ -473,17 +477,18 @@
     for (const [fam, fn, re] of famHits) {
       // only when it is not part of a species name typed in full
       if (model.species.some((sp) => s.includes(" " + sp.name.toLowerCase() + " "))) continue;
+      const hit = re.exec(s);
       s = s.replace(re, " ");
-      terms.push({ kind: "family", label: fn });
+      terms.push({ kind: "family", label: fn, src: hit ? hit[1] : "" });
       tests.push((x) => x.family === fam);
     }
     const words = s.trim().split(/\s+/).filter((w) => w && !STOP.has(w));
     if (words.length) {
       const phrase = words.join(" ");
       const sp = model.species.find((x) => x.name.toLowerCase() === phrase || x.sci.toLowerCase() === phrase);
-      if (sp) { terms.push({ kind: "species", label: sp.name }); tests.push((x) => x.spKey === sp.key); }
+      if (sp) { terms.push({ kind: "species", label: sp.name, src: phrase }); tests.push((x) => x.spKey === sp.key); }
       else {
-        terms.push({ kind: "text", label: `“${phrase}”` });
+        terms.push({ kind: "text", label: `“${phrase}”`, src: phrase });
         tests.push((x) => {
           const hay = (x._hay || (x._hay = [x.common, x.sci, x.famName, x.outing, x.caption, x.behavior, x.setting, x.tags.join(" "), x.sexAge, x.name, x.season, x.light, MONTHS[(x.month || 1) - 1]].join(" ").toLowerCase()));
           return words.every((w) => hay.includes(w) || (w.length > 3 && hay.includes(w.replace(/(es|s)$/, ""))));

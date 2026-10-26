@@ -228,6 +228,10 @@
 
   function render(r) {
     clearTimers();
+    // Listeners a view adds to the page live only until the next view replaces it.
+    if (A.viewAC) A.viewAC.abort();
+    A.viewAC = new AbortController();
+    const signal = A.viewAC.signal;
     A.ctx.clear();
     const main = $("#gp-main");
     const [v, a, b] = r.parts;
@@ -258,7 +262,7 @@
     if (!A.keepScroll) window.scrollTo(0, 0);
     A.keepScroll = false;
     markLoaded(main);
-    if (after) after(main);
+    if (after) after(main, signal);
     observeReveal(main);
   }
   function markLoaded(root) {
@@ -408,7 +412,7 @@
   </div>
 </div></div>
 <div class="wrap page" style="padding-top:0"><div id="gp-results">${galleryResults(list, sq, sort, all, query)}</div></div>`;
-    const after = (main) => {
+    const after = (main, signal) => {
       const input = $("#gp-q", main);
       let t;
       input.addEventListener("input", () => { clearTimeout(t); t = setTimeout(() => updateGallery((qq) => { if (input.value.trim()) qq.set("q", input.value.trim()); else qq.delete("q"); }), 160); });
@@ -421,12 +425,20 @@
         else if (c.dataset.r != null) updateGallery((qq) => (+c.dataset.r ? qq.set("r", c.dataset.r) : qq.delete("r")));
         else if (c.dataset.all) updateGallery((qq) => (qq.get("all") === "1" ? qq.delete("all") : qq.set("all", "1")));
         else if (c.dataset.drop != null) {
-          const r = parseHash(); const cur = (r.q.get("q") || "");
-          const term = sq.terms[+c.dataset.drop];
-          const rest = cur.toLowerCase().replace(new RegExp(term.label.replace(/[“”★+]/g, "").trim().toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"), " ").replace(/\s+/g, " ").trim();
+          const cur = parseHash().q.get("q") || "";
+          const now = GP.model.parseQuery(cur, A.model);
+          const term = now.terms[+c.dataset.drop];
+          if (!term) return;
+          const words = String(term.src || "").toLowerCase().split(/\s+/).filter(Boolean);
+          // Drop the words this chip was understood from, wherever they sit in the query.
+          let rest = " " + cur.toLowerCase().replace(/[^\p{L}\p{N}★+\s.-]/gu, " ").replace(/\s+/g, " ") + " ";
+          const at = rest.indexOf(" " + words.join(" ") + " ");
+          if (at >= 0) rest = rest.slice(0, at) + " " + rest.slice(at + words.join(" ").length + 2);
+          else for (const w of words) rest = rest.replace(" " + w + " ", " ");
+          rest = rest.replace(/\s+/g, " ").trim();
           input.value = rest; updateGallery((qq) => (rest ? qq.set("q", rest) : qq.delete("q")));
         }
-      });
+      }, { signal });
     };
     return { html, after, title: "Gallery" };
   }
@@ -492,12 +504,12 @@
 <div class="wall-nav"><button class="icon-btn" data-wall="-1" aria-label="Previous">${ICON.left}</button><span class="sc wall-pos">1 / ${wall.length}</span><button class="icon-btn" data-wall="1" aria-label="Next">${ICON.right}</button></div></section>
 <div class="wrap page">${rest.length ? `<div class="sec-h"><h2>More in this room</h2><span class="meta">${plural(rest.length, "photograph")}</span></div>${flow(rest)}` : ""}
 <hr class="rule"><div class="sec-h"><h2>Other rooms</h2></div><div class="chips">${others.map((o) => `<a class="chip" href="#/rooms/${esc(o.id)}">${esc(o.title)} <span class="n">${o.photos.length}</span></a>`).join("")}</div></div>`;
-    const after = (main) => {
+    const after = (main, signal) => {
       const track = $(".wall-track", main), pos = $(".wall-pos", main);
       const items = $$(".wall-item", track);
       const at = () => { const c = track.scrollLeft + track.clientWidth / 2; let best = 0, bd = 1e9; items.forEach((it, i) => { const d = Math.abs(it.offsetLeft + it.offsetWidth / 2 - c); if (d < bd) { bd = d; best = i; } }); return best; };
       const go = (d) => { const i = Math.max(0, Math.min(items.length - 1, at() + d)); const it = items[i]; track.scrollTo({ left: it.offsetLeft - (track.clientWidth - it.offsetWidth) / 2, behavior: reduced() ? "auto" : "smooth" }); };
-      main.addEventListener("click", (e) => { const b = e.target.closest("[data-wall]"); if (b) go(+b.dataset.wall); });
+      main.addEventListener("click", (e) => { const b = e.target.closest("[data-wall]"); if (b) go(+b.dataset.wall); }, { signal });
       track.addEventListener("scroll", () => { pos.textContent = `${at() + 1} / ${items.length}`; }, { passive: true });
       track.addEventListener("keydown", (e) => { if (e.key === "ArrowRight") { go(1); e.preventDefault(); } if (e.key === "ArrowLeft") { go(-1); e.preventDefault(); } });
       track.addEventListener("wheel", (e) => { if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && !e.shiftKey) { track.scrollLeft += e.deltaY; e.preventDefault(); } }, { passive: false });
@@ -530,11 +542,11 @@
   ${flow(list)}
   <nav class="result-line" style="margin-top:48px" aria-label="Other chapters">${prev ? `<a class="btn" href="#/outings/${esc(prev.id)}">${ICON.left} ${esc(fmtShort(prev.date))}</a>` : "<span></span>"}${next ? `<a class="btn" href="#/outings/${esc(next.id)}">${esc(fmtShort(next.date))} ${ICON.right}</a>` : ""}</nav>
 </div>`;
-    const after = (main) => {
+    const after = (main, signal) => {
       const img = $(".chapter-hero img", main);
       if (!img || reduced()) return;
       const onScroll = () => { if (!img.isConnected) { window.removeEventListener("scroll", onScroll); return; } img.style.transform = `translateY(${Math.min(120, window.scrollY * 0.25)}px)`; };
-      window.addEventListener("scroll", onScroll, { passive: true });
+      window.addEventListener("scroll", onScroll, { passive: true, signal });
     };
     return { html, after, title: fmtDate(o.date) };
   }

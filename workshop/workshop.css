@@ -55,3 +55,13 @@
 .gp-tools #ws-select { min-height: 34px; padding: 6px 14px; }
 @media (max-width: 760px) { .ws-id { grid-template-columns: 1fr; } .ws-sel input { width: 100%; } }
 .gp-selecting .tile .stack, .gp-selecting .tile .scrub { display: none; }
+.gp-selecting .toast { bottom: calc(max(22px, env(safe-area-inset-bottom, 0px)) + 84px); }
+@media (max-width: 760px) {
+  .ws-sel { gap: 6px; padding: 8px; }
+  .ws-sel .btn { min-height: 30px; padding: 4px 10px; font-size: 12px; }
+  .ws-sel input { flex-basis: 100%; padding: 6px 10px; font-size: 14px; }
+  .ws-sel select { padding: 5px 8px; font-size: 13px; }
+  .ws-sel .stars button { font-size: 18px; padding: 0 1px; }
+  .ws-sel [data-ws="sel-all"] { display: none; }
+  .gp-selecting .ws-runbar, .gp-selecting .toast { bottom: calc(max(14px, env(safe-area-inset-bottom, 0px)) + 150px); }
+}

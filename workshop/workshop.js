@@ -160,7 +160,7 @@
   <div class="kicker">Workshop</div>
   <form class="ws-id" data-ws-form="id">
     <label>Species<input id="ws-common" name="common" list="ws-species" autocomplete="off" value="${esc(x.common || (x.raw.ov && x.raw.ov.common) || "")}" placeholder="Common name"></label>
-    <label>Scientific name<input id="ws-sci" name="scientific" autocomplete="off" value="${esc(x.sci || "")}" placeholder="Genus species"></label>
+    <label>Scientific name<input id="ws-sci" name="scientific" autocomplete="off" value="${esc(x.sci || "")}" placeholder="Genus species, if known" data-auto="1"></label>
     <label>Group<select id="ws-group" name="group">${groupOpts}</select></label>
     <div class="acts"><button class="btn primary" type="submit">Save ID</button>${x.mine ? `<button class="btn ghost" type="button" data-ws="revert">Back to Claude's ID</button>` : ""}</div>
   </form>
@@ -216,7 +216,12 @@
       if (!x) return;
       const common = $("#ws-common", f).value.trim().slice(0, 80);
       if (!common) { toast("Type a species name first."); return; }
-      saveId([x], common, $("#ws-sci", f).value.trim().slice(0, 80), $("#ws-group", f).value);
+      const sciEl = $("#ws-sci", f);
+      let sci = sciEl.value.trim().slice(0, 80);
+      // A scientific name left over from the photo's old ID would file the new name under the
+      // old species, so it only counts when it was typed or chosen for this name.
+      if (sciEl.dataset.auto === "1" && !known(common) && nameKey(common) !== nameKey(x.common)) sci = "";
+      saveId([x], common, sci, $("#ws-group", f).value);
     } else if (kind === "site") saveSiteForm(f);
     else if (kind === "sel") applySelection(f);
   });
@@ -262,13 +267,13 @@
     if (e.target.id === "ws-common" || e.target.id === "ws-sel-sp") {
       const k = known(e.target.value);
       const f = e.target.form;
-      if (k && f) {
-        const sci = f.querySelector("#ws-sci");
-        if (sci && !sci.value) sci.value = k.sci || "";
-        const g = f.querySelector("select[name=group]");
-        if (g && GROUPS[k.group]) g.value = k.group;
-      }
-    }
+      if (!f) return;
+      // The scientific name follows the species typed, until it's edited by hand.
+      const sci = f.querySelector("#ws-sci");
+      if (sci && sci.dataset.auto === "1") sci.value = k ? k.sci || "" : "";
+      const g = f.querySelector("select[name=group]");
+      if (k && g && GROUPS[k.group]) g.value = k.group;
+    } else if (e.target.id === "ws-sci") e.target.dataset.auto = "0";
   });
 
   /* ---------- selection ---------- */

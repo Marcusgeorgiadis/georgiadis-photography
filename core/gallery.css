@@ -461,3 +461,7 @@ kbd { font-family: var(--f-data); font-size: 12px; border: 1px solid var(--line)
 .tile { container-type: inline-size; }
 @container (max-width: 190px) { .tile .cap span { display: none; } .tile .cap b { font-size: 14px; } }
 @container (max-width: 120px) { .tile .cap { display: none; } }
+.toast { pointer-events: none; }
+.toast.on { pointer-events: auto; }
+.chapter-hero::after { pointer-events: none; }
+.chapter-hero img[data-open] { cursor: zoom-in; }

@@ -54,6 +54,9 @@
     V.stage.addEventListener("dblclick", (e) => { if (e.target === V.img || e.target === V.stage) toggleZoom(e.clientX, e.clientY); });
     el.addEventListener("pointermove", wake, { passive: true });
     el.addEventListener("keydown", trapTab);
+    V.info.addEventListener("focusout", () => setTimeout(() => {
+      if (V.infoStale && V.open && !V.info.contains(document.activeElement)) { V.infoStale = false; renderInfo(cur()); }
+    }, 0));
     window.addEventListener("resize", () => { if (V.open) { layout(); fit(false); } });
     document.addEventListener("keydown", onKey);
     document.addEventListener("fullscreenchange", () => { const b = $('[data-v="fs"]', el); if (b) b.setAttribute("aria-pressed", String(!!document.fullscreenElement)); });
@@ -62,6 +65,19 @@
   /* ---------- open / close ---------- */
   function open(list, i, fromImg) {
     build();
+    // A close that is still going back through history would land after this open and undo it.
+    if (V.backPending) {
+      const go = () => { window.removeEventListener("popstate", go); clearTimeout(t); V.backPending = false; open(list, i, fromImg); };
+      const t = setTimeout(go, 350);
+      window.addEventListener("popstate", go);
+      return;
+    }
+    // Cancel anything left from a close still animating.
+    V.ctok = (V.ctok || 0) + 1;
+    document.querySelectorAll(".vw-fly").forEach((f) => f.remove());
+    V.img.getAnimations().forEach((a) => a.cancel());
+    V.img.style.visibility = "";
+    $(".vw-ui", V.el).style.opacity = "";
     const opener = document.activeElement;
     V.opener = opener;
     V.list = list.filter(Boolean);
@@ -87,7 +103,9 @@
     V.open = false;
     clearTimeout(V.idleT);
     const x = cur();
+    const tok = (V.ctok = (V.ctok || 0) + 1);
     const done = () => {
+      if (tok !== V.ctok) return; // reopened meanwhile
       V.el.hidden = true;
       V.el.classList.remove("open", "info", "idle", "dragging");
       V.img.removeAttribute("src");
@@ -97,7 +115,12 @@
     if (!o.fromRoute) {
       const h = GP.app.parseHash();
       if (h.q.get("p")) {
-        if (V.pushed && history.state && history.state.gpViewer) history.back();
+        if (V.pushed && history.state && history.state.gpViewer) {
+          V.backPending = true;
+          window.addEventListener("popstate", () => { V.backPending = false; }, { once: true });
+          setTimeout(() => { V.backPending = false; }, 1000);
+          history.back();
+        }
         else { h.q.delete("p"); history.replaceState(null, "", GP.app.hashFor(h.parts, h.q)); }
       }
     }
@@ -536,9 +559,13 @@ ${ws && ws.infoExtra ? ws.infoExtra(x) : ""}`;
     const url = shareUrl(x);
     if (!url) return;
     const title = `${H().titleOf(x)} · ${GP.app.site.title || "Georgiadis Photography"}`;
-    if (navigator.share) navigator.share({ title, url }).catch(() => {});
-    else if (navigator.clipboard) navigator.clipboard.writeText(url).then(() => GP.app.toast("Link copied"), () => GP.app.toast(url));
-    else GP.app.toast(url);
+    const copy = () => {
+      if (navigator.clipboard) navigator.clipboard.writeText(url).then(() => GP.app.toast("Link copied"), () => GP.app.toast(url));
+      else GP.app.toast(url);
+    };
+    // Phones get the share sheet; elsewhere (and wherever sharing is refused) the link is copied.
+    if (navigator.share && matchMedia("(pointer: coarse)").matches) navigator.share({ title, url }).catch((e) => { if (!e || e.name !== "AbortError") copy(); });
+    else copy();
   }
   function onKey(e) {
     if (!V.open || e.metaKey || e.ctrlKey || e.altKey) return;
@@ -588,7 +615,11 @@ ${ws && ws.infoExtra ? ws.infoExtra(x) : ""}`;
     V.frame = fid ? model.byId.get(fid) : null;
     const x = cur();
     if (!x) { close({ instant: true }); return; }
-    renderInfo(x); strip(x); badge();
+    // Don't redraw the details panel under someone typing in it; catch up when they leave it.
+    const ae = document.activeElement;
+    if (ae && V.info.contains(ae) && ae.matches("input, textarea, select")) V.infoStale = true;
+    else renderInfo(x);
+    strip(x); badge();
     $(".vw-top .t b", V.el).textContent = H().titleOf(x);
   }
 
