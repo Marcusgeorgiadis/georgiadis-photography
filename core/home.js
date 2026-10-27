@@ -207,15 +207,49 @@
     sampled.set(x.id, p);
     return p;
   }
-  function chooseCorner(x, box, smp) {
+  // The photograph's depth map, sampled the same way (lighter is nearer): where the subject really
+  // is, head, beak and wings included, rather than only its point of focus.
+  // The ground in front of a bird is near too, but evenly along each row, so the subject is what
+  // stands out from its own row: lighter than that row's background level.
+  function sampleDepth(x) {
+    if (!GP.fx) return Promise.resolve(null);
+    return GP.fx.depthUrl(x).then((u) => (u ? sample({ id: "depth:" + x.id, ar: x.ar }, u) : null)).then((g) => {
+      if (!g) return null;
+      const sub = new Float32Array(g.w * g.h);
+      for (let y = 0; y < g.h; y++) {
+        const row = [];
+        for (let x2 = 0; x2 < g.w; x2++) row.push(g.d[(y * g.w + x2) * 4] / 255);
+        const floor = row.slice().sort((a, b) => a - b)[Math.floor(row.length * 0.25)];
+        row.forEach((v, x2) => { sub[y * g.w + x2] = Math.max(0, Math.min(1, (v - floor - 0.1) / 0.3)); });
+      }
+      return { w: g.w, h: g.h, sub };
+    }).catch(() => null);
+  }
+  // sizes: the headline block as fractions of the hero ({ w, h, x, top, bottom }), measured on the
+  // page at its full size and, when it has one, at its compact size for crowded photographs
+  function chooseCorner(x, box, smp, sizes, dep) {
     const ba = box.width / box.height, ia = x.ar, fp = x.fp || [0.5, 0.5];
     // the photograph's visible window (object-fit: cover, positioned at the subject)
     let cx0 = 0, cy0 = 0, cw = 1, ch = 1;
     if (ia > ba) { cw = ba / ia; cx0 = fp[0] * (1 - cw); } else { ch = ia / ba; cy0 = fp[1] * (1 - ch); }
-    const REG = { bl: [0, 0.48, 0.52, 0.94], br: [0.48, 0.48, 1, 0.94], tl: [0, 0.1, 0.52, 0.52], tr: [0.48, 0.1, 1, 0.52] };
+    // where the subject lands in the hero
+    const sx = (fp[0] - cx0) / cw, sy = (fp[1] - cy0) / ch;
+    const list = sizes && sizes.full ? [["full", sizes.full], ["compact", sizes.compact]].filter((v) => v[1]) : [["full", { w: 0.5, h: 0.4, x: 0.02, top: 0.1, bottom: 0.1 }]];
     const out = {};
+    for (const [fit, z] of list) {
+    const w = Math.min(0.96, z.w), hh = Math.min(0.85, z.h);
+    const REG = {
+      bl: [z.x, 1 - z.bottom - hh, z.x + w, 1 - z.bottom], br: [1 - z.x - w, 1 - z.bottom - hh, 1 - z.x, 1 - z.bottom],
+      tl: [z.x, z.top, z.x + w, z.top + hh], tr: [1 - z.x - w, z.top, 1 - z.x, z.top + hh],
+    };
     for (const [k, [x0, y0, x1, y1]] of Object.entries(REG)) {
-      let n = 0, sum = 0, busy = 0;
+      let n = 0, sum = 0, busy = 0, nearSum = 0, nearN = 0;
+      // the subject's mass under the words: the part of the frame clearly nearer than the rest
+      if (dep) for (let by = y0; by < y1; by += 0.03) for (let bx = x0; bx < x1; bx += 0.02) {
+        const u = cx0 + bx * cw, v = cy0 + by * ch;
+        nearSum += dep.sub[Math.min(dep.h - 1, Math.max(0, Math.floor(v * dep.h))) * dep.w + Math.min(dep.w - 1, Math.max(0, Math.floor(u * dep.w)))];
+        nearN++;
+      }
       if (smp) {
         const { w, h, d } = smp;
         const lumAt = (u, v) => { const i = (Math.min(h - 1, Math.max(0, Math.floor(v * h))) * w + Math.min(w - 1, Math.max(0, Math.floor(u * w)))) * 4; return (0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2]) / 255; };
@@ -226,14 +260,19 @@
         }
       }
       const mean = n ? sum / n : 0.3;
-      // the subject's distance from the region (in box terms)
-      const dx = Math.max(x0 - fp[0], 0, fp[0] - x1), dy = Math.max(y0 - fp[1], 0, fp[1] - y1);
+      // the subject's distance from the words, in heights of the hero: a head or a wing reaches
+      // a little way beyond the point of focus, so closer than that counts as covering it
+      const dx = Math.max(x0 - sx, 0, sx - x1) * ba, dy = Math.max(y0 - sy, 0, sy - y1);
       const near = Math.hypot(dx, dy);
-      const subj = near < 0.04 ? 3 : 0.18 / (near + 0.06);
-      out[k] = { score: (n ? busy / n : 0.2) * 4 + subj + (k[0] === "t" ? 0.35 : 0), mean };
+      const subj = near < 0.12 ? 3 + (0.12 - near) * 12 : 0.18 / (near + 0.06);
+      const mass = nearN ? nearSum / nearN : 0;
+      // with a depth map the subject's own outline leads and the point of focus only nudges
+      const score = (n ? busy / n : 0.2) * 4 + (dep ? subj * 0.35 + mass * 14 : subj) + (k[0] === "t" ? 0.35 : 0) + (fit === "compact" ? 0.6 : 0);
+      out[k + (fit === "compact" ? "-c" : "")] = { score, mean, corner: k, fit };
     }
-    const best = Object.entries(out).sort((a, b) => a[1].score - b[1].score)[0];
-    return { corner: best[0], tone: best[1].mean > 0.62 ? "dark" : "light" };
+    }
+    const best = Object.values(out).sort((a, b) => a.score - b.score)[0];
+    return { corner: best.corner, fit: best.fit, tone: best.mean > 0.62 ? "dark" : "light", scores: out };
   }
 
   const pos = (x) => `object-position:${((x.fp || [0.5])[0] * 100).toFixed(1)}% ${((x.fp || [0, 0.5])[1] * 100).toFixed(1)}%`;
@@ -387,19 +426,45 @@
     let surf = null, stopLive = null, liveT = 0, placeTok = 0;
     const W = Math.min(2560, Math.max(innerWidth, 1280) * Math.min(2, devicePixelRatio || 1));
     const copy = hero && hero.querySelector(".hm-copy");
+    // the words' own extent (not their full-width box), so a long title is known to be long
+    const measure = () => {
+      const hb = hero.getBoundingClientRect();
+      if (!hb.width || !hb.height) return null;
+      let w = 0, top = Infinity, bottom = -Infinity;
+      for (const el of copy.children) {
+        const rg = document.createRange(); rg.selectNodeContents(el);
+        const r = rg.getBoundingClientRect(), b = el.getBoundingClientRect();
+        if (!b.height) continue;
+        w = Math.max(w, r.width);
+        top = Math.min(top, b.top); bottom = Math.max(bottom, b.bottom);
+      }
+      if (!w || bottom <= top) return null;
+      // the copy is a centred column: its padding, plus any margin on wide screens, is the inset
+      const cb = copy.getBoundingClientRect(), vh = innerHeight;
+      const inset = Math.max(0, cb.left - hb.left) + (parseFloat(getComputedStyle(copy).paddingLeft) || 0);
+      return { w: w / hb.width, h: (bottom - top) / hb.height, x: inset / hb.width, top: Math.min(96, Math.max(40, vh * 0.09)) / hb.height, bottom: Math.min(132, Math.max(80, vh * 0.13)) / hb.height };
+    };
+    const copySize = () => {
+      if (!copy || !hero) return null;
+      const was = hero.dataset.fit || "";
+      hero.dataset.fit = "full"; const full = measure();
+      hero.dataset.fit = "compact"; const compact = measure();
+      if (was) hero.dataset.fit = was; else delete hero.dataset.fit;
+      return full ? { full, compact: compact && compact.w < full.w - 0.04 ? compact : null } : null;
+    };
     const placeCopy = (x, img) => {
       const tok = ++placeTok;
       const apply = (r) => {
         if (tok !== placeTok || !hero) return;
         const corner = innerWidth < 900 ? (r.corner[0] === "t" ? "bl" : "b" + r.corner[1]) : r.corner;
         const narrow = innerWidth < 900;
-        const next = narrow ? "bl" : corner;
-        if (hero.dataset.copy === next && hero.dataset.tone === r.tone) return;
-        const swap = () => { hero.dataset.copy = next; hero.dataset.tone = r.tone; copy && copy.classList.remove("moving"); };
+        const next = narrow ? "bl" : corner, fit = narrow ? "full" : r.fit || "full";
+        if (hero.dataset.copy === next && hero.dataset.tone === r.tone && (hero.dataset.fit || "full") === fit) return;
+        const swap = () => { hero.dataset.copy = next; hero.dataset.tone = r.tone; hero.dataset.fit = fit; copy && copy.classList.remove("moving"); };
         if (!hero.dataset.copy || reduced()) swap();
         else { copy && copy.classList.add("moving"); setTimeout(swap, 380); }
       };
-      sample(x, img.currentSrc || img.src).then((smp) => apply(chooseCorner(x, hero.getBoundingClientRect(), smp)));
+      Promise.all([sample(x, img.currentSrc || img.src), sampleDepth(x)]).then(([smp, dep]) => apply(chooseCorner(x, hero.getBoundingClientRect(), smp, copySize(), dep)));
     };
     const activate = (k) => {
       if (!hero) return;

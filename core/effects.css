@@ -143,6 +143,9 @@ img.fx-develop { animation: fx-develop 2600ms cubic-bezier(0.2, 0.6, 0.2, 1) bot
 .hm-copy { transition: opacity 360ms ease, transform 500ms var(--ease-out); }
 .hm-copy.moving { opacity: 0; transform: translateY(10px); }
 @media (min-width: 900px) {
+  /* when the bird fills the frame, the headline steps down a size to fit the clear corner */
+  .hm-hero[data-fit="compact"] .hm-copy h1 { font-size: clamp(40px, 4vw, 68px); }
+  .hm-hero[data-fit="compact"] .hm-copy p { max-width: 40ch; }
   .hm-hero[data-copy="br"] .hm-copy, .hm-hero[data-copy="tr"] .hm-copy { justify-items: end; text-align: right; }
   .hm-hero[data-copy="br"] .hm-copy .cta, .hm-hero[data-copy="tr"] .hm-copy .cta { justify-content: flex-end; }
   .hm-hero[data-copy="tl"] .hm-copy, .hm-hero[data-copy="tr"] .hm-copy { top: clamp(40px, 9vh, 96px); bottom: auto; padding-bottom: 0; }
