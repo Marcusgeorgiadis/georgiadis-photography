@@ -501,5 +501,5 @@
     return { terms, test: (x) => tests.every((t) => t(x)), empty: !tests.length };
   }
 
-  GP.model = { build, parseQuery, splitName, binomial, nameKey, slug, frameNo, rawId, sunTimes, lightOf, hexHsl, cleanLens, shutter, MONTHS, MON, SEASONS, BEHAVIOURS, NONE_RE, UNSURE_RE };
+  GP.model = { build, parseQuery, splitName, binomial, nameKey, slug, frameNo, rawId, sunTimes, lightOf, easternOffset, hexHsl, cleanLens, shutter, MONTHS, MON, SEASONS, BEHAVIOURS, NONE_RE, UNSURE_RE };
 })(window.GP = window.GP || {});

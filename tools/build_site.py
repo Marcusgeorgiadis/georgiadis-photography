@@ -12,6 +12,8 @@ repository's notes and taxonomy, then writes:
                       (tools/og_pages.js; needs Node)
   audio/calls/        calls for species new since the last build (tools/fetch_calls.py;
                       needs ffmpeg, skipped without it or with --no-calls)
+  depth/              a depth map for each new photograph (tools/depth_maps.py; installs
+                      onnxruntime if needed, at most 90 s a run, skipped with --no-depth)
 
   manifest --out FILE                          fetch Nikon/Public Gallery/manifest.json
   merge --db DIR --manifest FILE --out DIR     add Finals the Workshop hasn't indexed yet
@@ -193,6 +195,29 @@ def fetch_new_calls(repo):
     return out
 
 
+def depth_maps(repo):
+    """Depth maps for photographs new since the last run (tools/depth_maps.py).
+    Best effort: installs onnxruntime with pip if it's missing, skips the step if that fails, and
+    stops starting new maps after 90 seconds so a run stays short (the rest are made next run)."""
+    import subprocess
+    script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "depth_maps.py")
+    check = [sys.executable, "-c", "import numpy, onnxruntime, PIL"]
+    if subprocess.run(check, capture_output=True).returncode != 0:
+        subprocess.run([sys.executable, "-m", "pip", "install", "-q", "numpy", "pillow", "onnxruntime"], capture_output=True, timeout=300)
+        if subprocess.run(check, capture_output=True).returncode != 0:
+            return {"skipped": "numpy, onnxruntime or pillow missing"}
+    try:
+        p = subprocess.run([sys.executable, script, "--repo", repo, "--limit", "400", "--budget", "90"], capture_output=True, text=True, timeout=900)
+    except subprocess.TimeoutExpired:
+        return {"error": "timed out"}
+    if p.returncode != 0:
+        return {"error": (p.stderr or p.stdout).strip()[-300:]}
+    try:
+        return json.loads(p.stdout.strip().splitlines()[-1])
+    except Exception:
+        return {"error": p.stdout[-300:]}
+
+
 def og_pages(repo, base):
     """Link-preview pages (p/, s/, o/) from the same model the site runs; needs Node."""
     import shutil, subprocess
@@ -372,11 +397,14 @@ def cmd_build(a):
                     tally[c] = tally.get(c, 0) + 1
             outs.append({"fid": fid, "outing": f["outing"], "date": f["date"], "photos": len(f["photos"]), "species": [c for c, _ in sorted(tally.items(), key=lambda kv: -kv[1])][:8]})
         json.dump({"species": sp, "outings": outs}, open(a.report, "w"), indent=1)
+    depth = depth_maps(repo) if not a.dev and not a.no_depth else {"skipped": "dev build" if a.dev else "--no-depth"}
+    if depth.get("written") or depth.get("removed"):
+        changed = True
     pages = og_pages(repo, site.get("url") or a.base) if not a.dev else {"skipped": "dev build"}
     if any((pages.get(k) or {}).get("written") or (pages.get(k) or {}).get("removed") for k in ("p", "s", "o", "r")):
         changed = True
     n = len(live)
-    print(json.dumps({"calls": calls_run, "pages": pages, "photos": n, "outings": len(out_folders), "missingPublicCopy": missing, "bytes": len(body.encode()), "changed": changed, "manifestComplete": (manifest or {}).get("complete"), "manifestError": (manifest or {}).get("error")}))
+    print(json.dumps({"calls": calls_run, "depth": depth, "pages": pages, "photos": n, "outings": len(out_folders), "missingPublicCopy": missing, "bytes": len(body.encode()), "changed": changed, "manifestComplete": (manifest or {}).get("complete"), "manifestError": (manifest or {}).get("error")}))
 
 
 def main():
@@ -391,6 +419,7 @@ def main():
     b.add_argument("--dev", action="store_true")
     b.add_argument("--base", help="the site's public address, for link previews (default: meta/site url)")
     b.add_argument("--no-calls", action="store_true", help="don't look up bird calls for new species")
+    b.add_argument("--no-depth", action="store_true", help="don't make depth maps for new photographs")
     m = sub.add_parser("manifest")
     m.add_argument("--out", required=True)
     g = sub.add_parser("merge")

@@ -116,10 +116,52 @@
     }
     progress();
   }
+  /* ---------- names that sing, rings that spread ---------- */
+  // The call's loudness at a moment, from the waveform it already carries.
+  function loudness(p) {
+    const pk = (C.call && C.call.peaks) || [];
+    if (!pk.length) return 0;
+    const f = Math.max(0, Math.min(pk.length - 1, p * (pk.length - 1))), i = Math.floor(f), k = f - i;
+    const v = (pk[i] || 0) * (1 - k) + (pk[Math.min(pk.length - 1, i + 1)] || 0) * k;
+    return Math.max(0, Math.min(1, v / 100));
+  }
+  const SING = { lv: 0, prev: 0, ring: 0, key: null };
+  function sing(p, playing) {
+    const key = C.key, lv = playing ? loudness(p) : 0;
+    SING.lv += (lv - SING.lv) * (lv > SING.lv ? 0.55 : 0.18);
+    if (SING.key && SING.key !== key) document.querySelectorAll(`[data-sing="${CSS.escape(SING.key)}"]`).forEach((el) => { el.classList.remove("singing"); el.style.removeProperty("--sing"); });
+    SING.key = key;
+    if (!key) return;
+    for (const el of document.querySelectorAll(`[data-sing="${CSS.escape(key)}"]`)) {
+      el.classList.toggle("singing", playing);
+      el.style.setProperty("--sing", SING.lv.toFixed(3));
+    }
+    // a ring from the bird on each new phrase: a rise in loudness past a threshold
+    const now = performance.now();
+    if (playing && !reduced() && lv > 0.38 && lv - SING.prev > 0.09 && now - SING.ring > 170) {
+      SING.ring = now;
+      for (const el of document.querySelectorAll(`[data-ripple="${CSS.escape(key)}"]`)) ring(el, lv);
+    }
+    SING.prev = lv;
+  }
+  function ring(el, lv) {
+    const r = el.getBoundingClientRect();
+    if (!r.width || r.bottom < 0 || r.top > innerHeight) return;
+    if (el.querySelectorAll(":scope > .song-ring").length > 5) return;
+    const i = document.createElement("i");
+    i.className = "song-ring";
+    i.setAttribute("aria-hidden", "true");
+    i.style.setProperty("--k", (0.6 + lv * 0.9).toFixed(2));
+    i.style.setProperty("--o", (0.35 + lv * 0.5).toFixed(2));
+    el.appendChild(i);
+    i.addEventListener("animationend", () => i.remove(), { once: true });
+    setTimeout(() => i.remove(), 2600);
+  }
   function progress() {
     const a = C.audio;
     if (!a || !C.key) return;
     const d = a.duration || (C.call && C.call.dur) || 1, p = Math.min(1, (a.currentTime || 0) / d);
+    sing(p, !a.paused && !a.ended);
     for (const el of document.querySelectorAll(`.call[data-call="${CSS.escape(C.key)}"]`)) {
       el.style.setProperty("--p", (p * 100).toFixed(2) + "%");
       const sl = el.querySelector("[role=slider]");

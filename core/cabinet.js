@@ -76,7 +76,7 @@ ${cases.map((c) => `<section class="cab-case${c.extra ? " varia" : ""}" aria-lab
 </a>`;
     }).join("");
     return `<div class="cab-tray" id="cab-tray-${h.esc(f.id)}" role="region" aria-label="${h.esc(f.common)}"><div class="cab-tray-in"><div class="cab-tray-wood">
-  <div class="cab-tray-head"><span><b>${h.esc(f.common)}</b> <i>${h.esc(f.name)}</i></span><span class="sc">${h.plural(f.species.length, "specimen")} · ${h.plural(f.species.reduce((k, s) => k + s.photos.length, 0), "photograph")}</span><button class="icon-btn cab-close" aria-label="Close the drawer">${h.ICON.close}</button></div>
+  <div class="cab-tray-head"><span><b>${h.esc(f.common)}</b> <i>${h.esc(f.name)}</i></span><span class="sc">${h.plural(f.species.length, "specimen")} · ${h.plural(f.species.reduce((k, s) => k + s.photos.length, 0), "photograph")}</span>${GP.plates && GP.plates.plateOf(GP.app.model, f.name) ? `<a class="cab-plate" href="#/plates/${encodeURIComponent(f.name)}">Plate ${GP.plates.plateOf(GP.app.model, f.name).roman}</a>` : ""}<button class="icon-btn cab-close" aria-label="Close the drawer">${h.ICON.close}</button></div>
   <div class="cab-board">${specs}</div>
 </div></div></div>`;
   }

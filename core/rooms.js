@@ -151,7 +151,7 @@ ${GP.visitor && !GP.app.workshop ? (fav.photos.length ? card(fav) : `<article cl
     const html = `<section class="rm-hero">${h.cover(cover, Math.max(1600, innerWidth) * Math.min(2, devicePixelRatio || 1), "", "")}<div class="wrap">
   <div class="kicker">${r.own ? "Your room" : "Exhibition"} · ${h.plural(r.photos.length, "photograph")}${sps.length ? " · " + h.plural(sps.length, "species", "species") : ""}${dates.length ? " · " + h.esc(h.fmtShort(dates[0])) + " – " + h.esc(h.fmtShort(dates[dates.length - 1])) : ""}</div>
   <h1 class="display">${h.esc(r.title)}</h1>${r.sub ? `<p>${h.esc(r.sub)}</p>` : ""}
-  <div class="cta"><button class="btn primary" data-rm="play">${h.ICON.play} Play this exhibition</button><a class="btn" href="#rm-wall" data-rm="walk">Walk through</a>${r.own ? "" : h.shareBtn(h.pageUrl("room", r.id) || "", `${r.title} · ${GP.app.site.title || "Georgiadis Photography"}`)}</div>
+  <div class="cta"><button class="btn primary" data-rm="play">${h.ICON.play} Play this exhibition</button><a class="btn" href="#rm-wall" data-rm="walk">Walk through</a><button class="btn rm-lights" data-rm="lights" aria-pressed="false" title="Lights down (B)"><i class="rm-lamp" aria-hidden="true"></i><span>Lights down</span></button>${r.own ? "" : h.shareBtn(h.pageUrl("room", r.id) || "", `${r.title} · ${GP.app.site.title || "Georgiadis Photography"}`)}</div>
 </div></section>
 <div class="wrap page rm-page">
   ${sps.length > 1 ? `<div class="rm-sp"><span class="sc">In this room</span><div class="chips">${sps.slice(0, 12).map(({ s, n: c }) => `<a class="chip" href="#/species/${h.esc(s.slug)}">${h.esc(s.name)} <span class="n">${c}</span></a>`).join("")}${sps.length > 12 ? `<span class="chip ghost">+${sps.length - 12} more</span>` : ""}</div></div>` : ""}
@@ -161,6 +161,7 @@ ${GP.visitor && !GP.app.workshop ? (fav.photos.length ? card(fav) : `<article cl
   <div class="rm-all"><a class="btn ghost" href="#/rooms">All exhibitions ${h.ICON.arrow}</a></div>
 </div>`;
     const after = (main, signal) => {
+      if (GP.tint) GP.tint.page(cover);
       main.addEventListener("click", (e) => {
         if (e.target.closest('[data-rm="play"]')) { GP.exhibit(order, { title: r.title }); return; }
         const walk = e.target.closest('[data-rm="walk"]');
@@ -176,8 +177,53 @@ ${GP.visitor && !GP.app.workshop ? (fav.photos.length ? card(fav) : `<article cl
         signal.addEventListener("abort", () => io.disconnect());
       }
       if (r.own) document.addEventListener("gp:favs", () => GP.app.route(), { signal });
+      lights(main, signal);
     };
     return { html, after, title: r.title };
+  }
+
+  /* ---------- lights down ---------- */
+  // The wall goes dark and each print is lit by its own spotlight, brightening and warming as it
+  // nears the middle of the screen; the shadows lean away from the pointer (or the phone's tilt).
+  function lights(main, signal) {
+    const hang = main.querySelector(".hang"), btn = main.querySelector('[data-rm="lights"]');
+    if (!hang || !btn) return;
+    const root = document.documentElement;
+    let on = store.get("gp-lights") === "1", raf = 0, lx = 0, ly = 0;
+    const paint = () => {
+      raf = 0;
+      if (!on) return;
+      const mid = innerHeight / 2;
+      for (const pr of hang.querySelectorAll(".print")) {
+        const r = pr.getBoundingClientRect();
+        if (r.bottom < -200 || r.top > innerHeight + 200) continue;
+        const d = Math.min(1, Math.abs(r.top + r.height / 2 - mid) / (innerHeight * 0.75));
+        pr.style.setProperty("--lit", (1 - d * d).toFixed(3));
+      }
+      hang.style.setProperty("--lx", lx.toFixed(3));
+      hang.style.setProperty("--ly", ly.toFixed(3));
+    };
+    const kick = () => { if (!raf) raf = requestAnimationFrame(paint); };
+    const set = (v, quiet) => {
+      on = v;
+      store.set("gp-lights", on ? "1" : "0");
+      btn.setAttribute("aria-pressed", String(on));
+      btn.querySelector("span").textContent = on ? "Lights up" : "Lights down";
+      if (on) root.setAttribute("data-lights", "down"); else root.removeAttribute("data-lights");
+      hang.classList.toggle("lights", on);
+      if (on) kick();
+      if (!quiet && GP.app) GP.app.toast(on ? "Lights down: walk the wall" : "Lights up");
+    };
+    btn.addEventListener("click", () => set(!on), { signal });
+    document.addEventListener("keydown", (e) => {
+      if ((e.key === "b" || e.key === "B") && !e.metaKey && !e.ctrlKey && !e.altKey && !/input|textarea|select/i.test(e.target.tagName) && !(GP.viewer && GP.viewer.isOpen()) && !document.querySelector(".ex2")) { set(!on); e.preventDefault(); }
+    }, { signal });
+    addEventListener("scroll", kick, { passive: true, signal });
+    addEventListener("resize", kick, { passive: true, signal });
+    addEventListener("pointermove", (e) => { if (!on || e.pointerType !== "mouse") return; lx = (e.clientX / innerWidth) * 2 - 1; ly = (e.clientY / innerHeight) * 2 - 1; kick(); }, { passive: true, signal });
+    addEventListener("deviceorientation", (e) => { if (!on || e.gamma == null) return; lx = Math.max(-1, Math.min(1, e.gamma / 25)); ly = Math.max(-1, Math.min(1, (e.beta - 45) / 30)); kick(); }, { passive: true, signal });
+    signal.addEventListener("abort", () => { root.removeAttribute("data-lights"); cancelAnimationFrame(raf); });
+    if (on) set(true, true);
   }
 
   function render({ parts, model: m, h }) {
@@ -204,7 +250,7 @@ ${GP.visitor && !GP.app.workshop ? (fav.photos.length ? card(fav) : `<article cl
     el.setAttribute("aria-label", `Exhibition: ${o.title || "the archive"}`);
     el.tabIndex = -1;
     el.innerHTML = `<div class="ex2-bg" aria-hidden="true"><i></i><i></i></div>
-<div class="ex2-stage"><figure class="ex2-s"><img alt=""></figure><figure class="ex2-s"><img alt=""></figure></div>
+<div class="ex2-stage"><figure class="ex2-s"><div class="ex2-cam"><div class="ex2-pic"><img alt=""></div></div></figure><figure class="ex2-s"><div class="ex2-cam"><div class="ex2-pic"><img alt=""></div></div></figure><div class="ex2-bokeh" aria-hidden="true"></div></div>
 <div class="ex2-progress" aria-hidden="true"><i></i></div>
 <header class="ex2-top"><div class="ex2-title"><span class="sc">Exhibition</span><b>${h.esc(o.title || "The archive")}</b></div><span class="ex2-count mono" aria-live="polite"></span>
   <div class="ex2-btns">${calls ? `<button class="ex2-b" data-x="sound" aria-pressed="false" title="Bird calls (S)"></button>` : ""}<button class="ex2-b" data-x="notes" aria-pressed="true" title="Field notes (N)">${I.info}</button><button class="ex2-b" data-x="fs" title="Full screen (F)">${I.expand}</button><button class="ex2-b" data-x="close" title="Leave (Esc)" aria-label="Leave the exhibition">${I.close}</button></div></header>
@@ -235,6 +281,7 @@ ${GP.visitor && !GP.app.workshop ? (fav.photos.length ? card(fav) : `<article cl
       const sp = x.spKey ? m.speciesByKey.get(x.spKey) : null;
       $(".ex2-cap .kicker").textContent = [x.famName, x.light].filter(Boolean).join(" · ");
       $(".ex2-cap h2").textContent = h.titleOf(x);
+      if (sp && sp.call) $(".ex2-cap h2").setAttribute("data-sing", sp.slug); else $(".ex2-cap h2").removeAttribute("data-sing");
       $(".ex2-cap .binomial").textContent = x.sci && x.common ? x.sci : "";
       const note = x.caption || (sp && sp.note) || "";
       $(".ex2-note").textContent = note;
@@ -256,30 +303,103 @@ ${GP.visitor && !GP.app.workshop ? (fav.photos.length ? card(fav) : `<article cl
       if (sp && sp.call) { if (GP.calls.state.key !== sp.slug || !GP.calls.state.playing) GP.calls.play(sp.slug, { auto: true, restart: GP.calls.state.key !== sp.slug }); }
       else GP.calls.pause(true);
     }
+    // The photograph's box in the stage: as large as the space allows at its own proportions.
+    function fitPic(f, x) {
+      const pic = f.querySelector(".ex2-pic"), cs = getComputedStyle(f);
+      const aw = f.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+      const ah = f.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+      if (!aw || !ah) return;
+      const w = Math.min(aw, ah * x.ar);
+      pic.style.width = Math.round(w) + "px"; pic.style.height = Math.round(w / x.ar) + "px";
+      if (f._surf) f._surf.place();
+    }
+    // Where the camera goes: with a bird in flight, along its direction of travel; otherwise a slow
+    // push towards the subject (closer on portrait frames).
+    function heading(x, flying) {
+      const t = [x.caption, x.behavior].join(" ").toLowerCase();
+      if (/left to right/.test(t)) return 1;
+      if (/right to left/.test(t)) return -1;
+      const m2 = /(fly|flying|flies|soar|soaring|glid|bank|heading|moving|swimming|walking|wading|running|crossing|lands?|landing|taking off|takes off)[^.;]{0,40}?\b(to the |toward the |towards the |toward |towards )?(left|right)\b/.exec(t)
+        || /\b(left|right)(ward)?[^.;]{0,12}\b(in flight|flying|across)/.exec(t);
+      if (m2) return /left/.test(m2[0]) ? -1 : 1;
+      // no word for it: photographers leave room ahead of a flying bird, so it flies towards the open side
+      const fx = (x.fp || [0.5])[0];
+      return flying && Math.abs(fx - 0.5) > 0.06 ? (fx < 0.5 ? 1 : -1) : 0;
+    }
+    function camera(f, x) {
+      const cam = f.querySelector(".ex2-cam");
+      if (f._cam) f._cam.cancel();
+      if (reduced()) return;
+      const dur = (speed + 3) * 1000, fp = x.fp || [0.5, 0.5];
+      const flying = (x.behaviours || []).includes("In flight");
+      const dir = flying || /\b(swimming|walking|wading)\b/i.test(x.behavior || "") ? heading(x, flying) : 0;
+      cam.style.transformOrigin = `${(fp[0] * 100).toFixed(1)}% ${(fp[1] * 100).toFixed(1)}%`;
+      let kf;
+      if (dir) {
+        // follow the bird: the frame drifts the way it flies, with a little room ahead of it
+        kf = [{ transform: `translate3d(${(-dir * 2.6).toFixed(2)}%, 0, 0) scale(1.07)` }, { transform: `translate3d(${(dir * 2.6).toFixed(2)}%, 0, 0) scale(1.09)` }];
+      } else if (x.ar < 1) kf = [{ transform: "scale(1.0)" }, { transform: "scale(1.11)" }];
+      else kf = [{ transform: "scale(1.015)" }, { transform: "scale(1.085)" }];
+      f._cam = cam.animate(kf, { duration: dur, easing: "linear", fill: "forwards" });
+      f.dataset.heading = dir ? (dir < 0 ? "left" : "right") : "";
+    }
+    // Between photographs the focus pulls: the old one softens into bokeh and the new one sharpens.
+    function bokeh(x) {
+      const box = $(".ex2-bokeh");
+      if (reduced() || !box) return;
+      const pal = (x.pal || []).filter(Boolean);
+      box.innerHTML = Array.from({ length: 11 }, (_, k) => {
+        const c = pal[k % Math.max(1, pal.length)] || "#fff", sz = 40 + ((k * 37) % 90);
+        return `<i style="left:${(8 + (k * 53) % 84)}%;top:${(10 + (k * 29) % 76)}%;width:${sz}px;height:${sz}px;background:${h.esc(c)};--d:${(k % 5) * 60}ms"></i>`;
+      }).join("");
+      box.classList.remove("on"); void box.offsetWidth; box.classList.add("on");
+    }
+    let first = true;
     function show(n) {
       if (ended) return;
       i = (n + list.length) % list.length;
       const x = list[i], f = figs[slot], other = figs[1 - slot];
-      const img = f.querySelector("img");
-      img.style.animation = "none";
+      const img = f.querySelector("img"), pic = f.querySelector(".ex2-pic");
+      if (f._surf) { f._surf.destroy(); f._surf = null; }
+      if (GP.fx) GP.fx.unleak(pic);
       img.src = h.src(x, W);
       img.alt = h.titleOf(x);
-      img.style.setProperty("--fx", (x.fp[0] * 100).toFixed(1) + "%");
-      img.style.setProperty("--fy", (x.fp[1] * 100).toFixed(1) + "%");
       f.style.setProperty("--ar", x.ar.toFixed(4));
+      const sp = x.spKey ? m.speciesByKey.get(x.spKey) : null;
+      if (sp && sp.call) pic.setAttribute("data-ripple", sp.slug); else pic.removeAttribute("data-ripple");
+      pic.style.setProperty("--fx", (x.fp[0] * 100).toFixed(1) + "%");
+      pic.style.setProperty("--fy", (x.fp[1] * 100).toFixed(1) + "%");
+      fitPic(f, x);
       const reveal = () => {
         if (ended || list[i] !== x) return;
-        img.style.animation = reduced() ? "none" : `ex2-drift ${speed + 3}s linear forwards`;
+        camera(f, x);
+        const pull = !first && !reduced();
         f.classList.add("on"); other.classList.remove("on");
+        if (pull) {
+          f.animate([{ filter: "blur(16px) saturate(1.15)", opacity: 0.4 }, { filter: "blur(0px) saturate(1)", opacity: 1 }], { duration: 1250, easing: "cubic-bezier(.25,.6,.2,1)" });
+          other.animate([{ filter: "blur(0px)" }, { filter: "blur(18px)" }], { duration: 900, easing: "ease-in", fill: "forwards" }).onfinish = (a) => setTimeout(() => a.target.cancel && a.target.cancel(), 900);
+          bokeh(x);
+        } else if (first && GP.fx) GP.fx.develop(img, { host: pic });
+        first = false;
+        if (GP.tint) GP.tint.set(x);
+        if (GP.fx) {
+          GP.fx.leak(pic, x);
+          // the subject floats in front of its background, drifting slowly (or with the pointer)
+          setTimeout(() => { if (!ended && list[i] === x && !f._surf) f._surf = GP.fx.surface(img, x, { auto: true, listen: el, amount: 0.02, ripple: true, tilt: true }); }, pull ? 1300 : 2700);
+        }
         const bg = bgs[slot], ob = bgs[1 - slot];
         bg.style.backgroundImage = `url("${h.src(x, 480)}")`;
         bg.classList.add("on"); ob.classList.remove("on");
         caption(x); progress(); schedule(); sing(x);
+        // the old photograph's depth goes once it has faded
+        setTimeout(() => { if (other._surf && !other.classList.contains("on")) { other._surf.destroy(); other._surf = null; } }, 1700);
       };
       if (img.complete && img.naturalWidth) reveal(); else { img.onload = reveal; img.onerror = reveal; }
       slot = 1 - slot;
       const pre = new Image(); pre.src = h.src(list[(i + 1) % list.length], W);
     }
+    const onResize = () => figs.forEach((f) => { const k = f.classList.contains("on") ? i : -1; if (k >= 0) fitPic(f, list[k]); });
+    addEventListener("resize", onResize);
     function wake() {
       el.classList.remove("idle", "idle-soon");
       clearTimeout(idleT);
@@ -301,6 +421,9 @@ ${GP.visitor && !GP.app.workshop ? (fav.photos.length ? card(fav) : `<article cl
       if (ended) return;
       ended = true;
       clearTimeout(timer); clearTimeout(idleT);
+      removeEventListener("resize", onResize);
+      figs.forEach((f) => { if (f._surf) { f._surf.destroy(); f._surf = null; } if (f._cam) f._cam.cancel(); });
+      if (GP.tint) GP.tint.restore();
       document.removeEventListener("keydown", key, true);
       document.removeEventListener("fullscreenchange", fsc);
       if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
@@ -319,7 +442,7 @@ ${GP.visitor && !GP.app.workshop ? (fav.photos.length ? card(fav) : `<article cl
       else if (k === "ArrowLeft") show(i - 1);
       else if (k === " " || k === "k") togglePause();
       else if (k === "f" || k === "F") fs();
-      else if (k === "n" || k === "N") { notes = !notes; store.set("gp-ex-notes", notes ? "1" : "0"); paintNotes(); }
+      else if (k === "n" || k === "N") { notes = !notes; store.set("gp-ex-notes", notes ? "1" : "0"); paintNotes(); onResize(); }
       else if ((k === "s" || k === "S") && calls) { GP.calls.toggle(); paintSound(); sing(list[i]); }
       else if (k === "i" || k === "I" || k === "Enter") openViewer();
       else return;
@@ -338,7 +461,7 @@ ${GP.visitor && !GP.app.workshop ? (fav.photos.length ? card(fav) : `<article cl
       else if (x === "toggle") togglePause();
       else if (x === "fs") fs();
       else if (x === "open") openViewer();
-      else if (x === "notes") { notes = !notes; store.set("gp-ex-notes", notes ? "1" : "0"); paintNotes(); }
+      else if (x === "notes") { notes = !notes; store.set("gp-ex-notes", notes ? "1" : "0"); paintNotes(); onResize(); }
       else if (x === "sound") { GP.calls.toggle(); paintSound(); sing(list[i]); }
     });
     el.addEventListener("pointermove", (e) => { if (e.pointerType === "mouse") wake(); }, { passive: true });

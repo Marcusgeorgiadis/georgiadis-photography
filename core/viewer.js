@@ -21,9 +21,10 @@
     el.setAttribute("aria-modal", "true");
     el.setAttribute("aria-label", "Photograph");
     el.innerHTML = `<div class="vw-bg"><div class="amb"></div></div>
-<div class="vw-stage"><img class="vw-img" alt="" draggable="false">
+<div class="vw-stage"><img class="vw-img" alt="" draggable="false"><div class="vw-fxbox" aria-hidden="true"></div>
   <div class="vw-ui">
     <div class="vw-top"><div class="t"><b></b><span></span></div>
+      <button class="icon-btn vw-live" data-v="live" title="Play the burst (V)" aria-label="Play this burst as the moment it was" aria-pressed="false" hidden><span>LIVE</span></button>
       <button class="icon-btn" data-v="zoom" title="Zoom (Z)" aria-label="Zoom to full resolution" aria-pressed="false">${I.zoom}</button>
       <a class="icon-btn" data-v="download" title="Download the original (D)" aria-label="Download the original" target="_blank" rel="noopener">${I.download}</a>
       <button class="icon-btn" data-v="fav" title="Favourite (L)" aria-label="Add to your favourites" aria-pressed="false">${I.heart}</button>
@@ -47,6 +48,7 @@
     V.amb = $(".amb", el);
     V.info = $(".vw-info .in", el);
     V.mini = $(".vw-mini", el);
+    V.fxbox = $(".vw-fxbox", el);
     el.addEventListener("click", onClick);
     V.stage.addEventListener("pointerdown", onDown);
     V.stage.addEventListener("pointermove", onMove);
@@ -104,6 +106,8 @@
     if (!V.open) return;
     V.open = false;
     clearTimeout(V.idleT);
+    fxClear();
+    if (GP.tint) GP.tint.restore();
     document.dispatchEvent(new CustomEvent("gp:viewer-close"));
     const x = cur();
     const tok = (V.ctok = (V.ctok || 0) + 1);
@@ -164,16 +168,67 @@
 
   /* ---------- showing a photograph ---------- */
   const cur = () => V.frame || V.list[V.i];
+  /* ---------- the photograph on stage: its colours, its depth, its light, its burst ---------- */
+  function fxClear() {
+    clearTimeout(V.fxT);
+    if (V.liveStop) { V.liveStop(); V.liveStop = null; }
+    if (V.surf) { V.surf.destroy(); V.surf = null; }
+    if (V.fxbox) { V.fxbox.innerHTML = ""; V.fxbox.removeAttribute("data-ripple"); }
+    const lb = $('[data-v="live"]', V.el);
+    if (lb) lb.setAttribute("aria-pressed", "false");
+  }
+  function fxFor(x, tok) {
+    const sp = x.spKey ? GP.app.model.speciesByKey.get(x.spKey) : null;
+    if (sp && sp.call) V.fxbox.setAttribute("data-ripple", sp.slug);
+    V.fxbox.style.setProperty("--fx", (x.fp[0] * 100).toFixed(1) + "%");
+    V.fxbox.style.setProperty("--fy", (x.fp[1] * 100).toFixed(1) + "%");
+    if (!GP.fx) return;
+    GP.fx.leak(V.fxbox, x);
+    const lb = $('[data-v="live"]', V.el);
+    const burst = x.burst && x.burst.size >= 2;
+    if (lb) lb.hidden = !burst;
+    // a burst opens by playing once, as the moment it was; a still floats in front of its background
+    if (burst && !V.frame && x.burst.size >= 3 && !reduced()) V.fxT = setTimeout(() => { if (tok === V.token) live(true); }, 650);
+    else V.fxT = setTimeout(() => {
+      if (tok !== V.token || V.k > 1.01) return;
+      V.surf = GP.fx.surface(V.img, x, { listen: V.stage, ripple: true, amount: 0.016, cls: "vw-surface", src: V.large });
+      sync();
+    }, 900);
+  }
+  // the overlays move and scale with the photograph
+  function sync() {
+    const t = V.img.style.transform;
+    V.fxbox.style.width = V.bw + "px"; V.fxbox.style.height = V.bh + "px"; V.fxbox.style.transform = t;
+    if (V.surf && V.surf.el) { V.surf.el.style.transformOrigin = "0 0"; V.surf.el.style.transform = t; V.surf.hide(V.k > 1.01 || V.el.classList.contains("dragging")); }
+  }
+  function live(once) {
+    const x = cur();
+    if (!GP.fx || !x || !x.burst || x.burst.size < 2) return;
+    const lb = $('[data-v="live"]', V.el);
+    if (V.liveStop) { V.liveStop(); V.liveStop = null; if (lb) lb.setAttribute("aria-pressed", "false"); return; }
+    if (V.surf) { V.surf.destroy(); V.surf = null; }
+    if (lb) lb.setAttribute("aria-pressed", "true");
+    const fr = x.burst.frames, w = Math.min(2048, Math.max(V.bw, V.bh) * Math.min(2, devicePixelRatio || 1));
+    const strip = $(".vw-strip", V.el);
+    V.liveStop = GP.fx.play(V.img, x, {
+      width: w, once: !!once, crossfade: false,
+      onFrame: (k) => { strip.querySelectorAll("[data-frame]").forEach((b, n) => b.classList.toggle("live", n === k)); badge(`live · frame ${k + 1} of ${fr.length}`); },
+      onEnd: () => { V.liveStop = null; if (lb) lb.setAttribute("aria-pressed", "false"); strip.querySelectorAll(".live").forEach((b) => b.classList.remove("live")); badge(); },
+    });
+  }
   function show(o = {}) {
     const x = cur();
     if (!x) return;
     const tok = ++V.token;
     V.full = null;
+    fxClear();
     layout();
+    if (GP.tint) GP.tint.set(x);
     const h = H();
     // Start from whatever is already decoded (the tile), then step up to a large rendition.
     const small = o.fly && o.fly.currentSrc ? o.fly.currentSrc : h.src(x, 720);
     const large = h.src(x, Math.min(2560, Math.max(V.sw, V.sh) * Math.min(2, devicePixelRatio || 1)));
+    V.large = large || small;
     V.img.src = small;
     V.img.alt = h.titleOf(x);
     V.img.style.width = V.bw + "px";
@@ -210,6 +265,8 @@
     badge();
     renderInfo(x);
     preload();
+    sync();
+    fxFor(x, tok);
     document.dispatchEvent(new CustomEvent("gp:viewer-show", { detail: { x } }));
     const hh = GP.app.parseHash();
     if (hh.q.get("p") && hh.q.get("p") !== x.id) { hh.q.set("p", x.id); history.replaceState(history.state, "", GP.app.hashFor(hh.parts, hh.q)); }
@@ -251,17 +308,19 @@
     const dl = GP.app.adapter.download ? GP.app.adapter.download(x) : null;
     V.info.innerHTML = `
 <div class="kicker">${h.esc([x.famName, x.light].filter(Boolean).join(" · ") || "Photograph")}</div>
-<h2>${h.esc(h.titleOf(x))}</h2>${x.sci && x.common ? `<div class="binomial">${h.esc(x.sci)}${x.unsure ? " · probable" : ""}</div>` : ""}
+<h2${sp ? ` data-sing="${h.esc(sp.slug)}"` : ""}>${h.esc(h.titleOf(x))}</h2>${x.sci && x.common ? `<div class="binomial">${h.esc(x.sci)}${x.unsure ? " · probable" : ""}</div>` : ""}
 ${stars}
 ${sp && sp.call && GP.calls ? GP.calls.player(sp, true) : ""}
 ${x.caption ? `<p>${h.esc(x.caption)}</p>` : ""}
 ${sp && sp.note ? `<p class="note">${h.esc(sp.note)}</p>` : ""}
 ${h.specimenTag(x)}
+${GP.shot ? GP.shot.panel(x) + GP.shot.almanac(x) : ""}
 ${pal}
 <div class="acts">${dl ? `<a class="btn primary" data-v="download" ${typeof dl === "string" ? `href="${h.esc(dl)}" download="${h.esc(x.name)}"` : ""} target="_blank" rel="noopener">${h.ICON.download} Download original</a>` : ""}${shareUrl(x) ? `<button class="btn" data-v="share">${h.ICON.share} Share</button>` : ""}</div>
 <div class="acts">${sp ? `<a class="btn ghost" href="#/species/${h.esc(sp.slug)}">All ${h.esc(sp.name)} ${h.ICON.arrow}</a>` : ""}<a class="btn ghost" href="#/outings/${h.esc(x.fid)}">This outing ${h.ICON.arrow}</a></div>
 ${moreLike(x)}
 ${ws && ws.infoExtra ? ws.infoExtra(x) : ""}`;
+    if (GP.shot && V.el.classList.contains("info")) GP.shot.mount(V.info);
   }
 
   /* ---------- geometry ---------- */
@@ -294,6 +353,7 @@ ${ws && ws.infoExtra ? ws.infoExtra(x) : ""}`;
     V.img.classList.toggle("grab", V.k > 1.01);
     $('[data-v="zoom"]', V.el).setAttribute("aria-pressed", String(V.k > 1.01));
     minimap();
+    if (V.fxbox) sync();
   }
   function fit(anim = true) {
     V.k = 1;
@@ -432,6 +492,7 @@ ${ws && ws.infoExtra ? ws.infoExtra(x) : ""}`;
     V.g = null;
     V.img.classList.remove("grabbing");
     V.el.classList.remove("dragging");
+    sync();
     $(".vw-bg", V.el).style.opacity = "";
     const dx = e.clientX - g.x0, dy = e.clientY - g.y0;
     if (!g.moved) { tap(e, g); return; }
@@ -535,6 +596,7 @@ ${ws && ws.infoExtra ? ws.infoExtra(x) : ""}`;
     else if (v === "share") share();
     else if (v === "fav") fav();
     else if (v === "play") playFrom();
+    else if (v === "live") live(false);
     else if (v === "download") { const d = GP.app.adapter.download && GP.app.adapter.download(cur()); if (d && typeof d !== "string") { e.preventDefault(); Promise.resolve(d).then((u) => { if (u) window.open(u, "_blank", "noopener"); }); } }
   }
   function colourName(hex) {
@@ -556,6 +618,7 @@ ${ws && ws.infoExtra ? ws.infoExtra(x) : ""}`;
     V.el.classList.toggle("info", on);
     $('[data-v="info"]', V.el).setAttribute("aria-pressed", String(on));
     store("gp-info", on ? "1" : "0");
+    if (on && GP.shot) GP.shot.mount(V.info);
     setTimeout(() => { layout(); fit(false); }, 400);
     if (on) V.el.classList.remove("idle");
   }
@@ -649,6 +712,8 @@ ${ws && ws.infoExtra ? ws.infoExtra(x) : ""}`;
     else if (k === "f" || k === "F") fullscreen();
     else if ((k === "l" || k === "L") && GP.visitor && !GP.app.workshop) fav();
     else if (k === "p" || k === "P") playFrom();
+    else if (k === "v" || k === "V") live(false);
+    else if ((k === "h" || k === "H") && !(GP.app.workshop && GP.app.workshop.key)) { toggleInfo(true); setTimeout(() => { const sh = V.info.querySelector(".shot"); if (sh) sh.scrollIntoView({ block: "start", behavior: reduced() ? "auto" : "smooth" }); }, 120); }
     else if (k === "d" || k === "D") { const a = $('.vw-top [data-v="download"]', V.el); if (a && !a.hidden) a.click(); }
     else if (GP.app.workshop && GP.app.workshop.rate && /^[1-5]$/.test(k)) { GP.app.workshop.rate(cur(), +k); }
     else if (!(GP.app.workshop && GP.app.workshop.key && GP.app.workshop.key(k, cur()))) return;

@@ -34,7 +34,7 @@
   }
 
   /* ---------- viewfinder ---------- */
-  const VF = { el: null, read: null, target: null, t: 0, hint: 0 };
+  const VF = { el: null, read: null, ret: null, target: null, t: 0, hint: 0, box: null, raf: 0, px: 0, py: 0 };
   function vfEnsure() {
     if (VF.el) return;
     VF.el = document.createElement("div");
@@ -44,7 +44,32 @@
     VF.read = document.createElement("div");
     VF.read.className = "vf-read";
     VF.read.setAttribute("aria-hidden", "true");
-    document.body.append(VF.el, VF.read);
+    // the cursor becomes a lens: a reticle that follows the pointer, with the camera's readout under it
+    VF.ret = document.createElement("div");
+    VF.ret.className = "vf-ret";
+    VF.ret.setAttribute("aria-hidden", "true");
+    VF.ret.innerHTML = `<span class="vf-ring"><i class="t"></i><i class="r"></i><i class="b"></i><i class="l"></i><i class="c"></i></span><span class="vf-lcd"></span>`;
+    document.body.append(VF.el, VF.read, VF.ret);
+  }
+  function lcd(x) {
+    const e = x.exif || {}, out = [];
+    if (e.ss) out.push(`<b>${GP.model.shutter(e.ss).replace(/ s$/, "")}</b>`);
+    if (e.f) out.push(`<b>F${+(+e.f).toFixed(1)}</b>`);
+    // the exposure meter, its needle at the compensation that was dialled in
+    const eb = Math.max(-2, Math.min(2, +e.eb || 0));
+    out.push(`<span class="vf-meter" style="--eb:${((eb + 2) / 4 * 100).toFixed(0)}%"><i></i><i></i><i></i><i class="z"></i><i></i><i></i><i></i><em></em></span>`);
+    if (e.iso) out.push(`<b>ISO ${e.iso}</b>`);
+    if (e.fl) out.push(`<b>${Math.round(e.fl)}mm</b>`);
+    out.push(`<span class="vf-ok">●</span>`);
+    return out.join("");
+  }
+  function retMove() {
+    VF.raf = 0;
+    if (!VF.ret) return;
+    VF.ret.style.transform = `translate3d(${VF.px}px, ${VF.py}px, 0)`;
+    const b = VF.box;
+    // in focus when the lens is on the subject the brackets locked onto
+    VF.ret.classList.toggle("focus", !!(b && VF.el.classList.contains("lock") && VF.px > b[0] && VF.px < b[2] && VF.py > b[1] && VF.py < b[3]));
   }
   function exposure(x) {
     const e = x.exif || {}, a = [];
@@ -66,8 +91,12 @@
     const cy = Math.max(r.top + side / 2 + 4, Math.min(r.bottom - side / 2 - 4, g.oy + fp[1] * g.H));
     const box = VF.el.style;
     VF.target = el;
+    VF.box = [cx - side / 2, cy - side / 2, cx + side / 2, cy + side / 2];
     VF.el.classList.remove("lock", "on");
     VF.read.classList.remove("on");
+    VF.ret.querySelector(".vf-lcd").innerHTML = lcd(x);
+    VF.ret.classList.add("on");
+    document.documentElement.classList.add("gp-lens");
     clearTimeout(VF.t);
     // start at the frame's edges, then close in on the subject
     VF.el.style.transition = "none";
@@ -80,6 +109,9 @@
       VF.t = setTimeout(() => {
         if (VF.target !== el) return;
         VF.el.classList.add("lock");
+        retMove();
+        // the reticle carries the readout now; the old label stays for screens without one
+        if (VF.ret && VF.ret.classList.contains("on")) return;
         const txt = exposure(x);
         if (!txt) return;
         VF.read.textContent = txt;
@@ -101,11 +133,14 @@
   }
   function vfHide() {
     VF.target = null;
+    VF.box = null;
     clearTimeout(VF.t);
     if (VF.hint) { clearTimeout(VF.hint); VF.hint = 0; }
     if (!VF.el) return;
     VF.el.classList.remove("on", "lock");
     VF.read.classList.remove("on");
+    VF.ret.classList.remove("on", "focus");
+    document.documentElement.classList.remove("gp-lens");
   }
 
   /* ---------- loupe ---------- */
@@ -202,11 +237,12 @@
     if (e.pointerType !== "mouse" || viewerOpen()) return;
     const el = targetAt(e.target, VF_SEL);
     if (L.on) return;
-    if (el && el !== VF.target && finePointer() && !document.documentElement.classList.contains("gp-selecting")) vfShow(el);
+    if (el && el !== VF.target && finePointer() && !document.documentElement.classList.contains("gp-selecting")) { VF.px = e.clientX; VF.py = e.clientY; vfShow(el); retMove(); }
     else if (!el && VF.target) vfHide();
   }, { passive: true });
   document.addEventListener("pointermove", (e) => {
     last = { x: e.clientX, y: e.clientY, el: e.target };
+    if (VF.target && VF.ret && e.pointerType === "mouse") { VF.px = e.clientX; VF.py = e.clientY; if (!VF.raf) VF.raf = requestAnimationFrame(retMove); }
     if (L.on) {
       if (L.touch && e.pointerType !== "touch") return;
       const el = targetAt(e.target, LOUPE_SEL);
@@ -282,5 +318,5 @@
     setTimeout(() => app().toast("Tip: long-press any photograph for a loupe"), 600);
   });
 
-  GP.lens = { open: (el, x, y, touch) => lOpen(el, x, y, !!touch), close: lClose, zoom: lZoom, get state() { return { on: L.on, mag: L.mag, have: L.have }; }, hideViewfinder: vfHide };
+  GP.lens = { open: (el, x, y, touch) => lOpen(el, x, y, !!touch), close: lClose, zoom: lZoom, get state() { return { on: L.on, mag: L.mag, have: L.have, reticle: !!(VF.ret && VF.ret.classList.contains("on")), focus: !!(VF.ret && VF.ret.classList.contains("focus")) }; }, hideViewfinder: vfHide };
 })(window.GP = window.GP || {});

@@ -94,7 +94,10 @@
     download: (x) => `https://drive.google.com/file/d/${encodeURIComponent(x.id)}/view`,
     // public links: the small preview pages the site build writes for each photograph, species and outing
     shareUrl: (x) => (W.site.url ? siteBase() + "p/" + encodeURIComponent(x.id) : null),
-    pageUrl: (kind, key) => (W.site.url ? siteBase() + (kind === "outing" ? "o/" : kind === "room" ? "r/" : "s/") + encodeURIComponent(key) : null),
+    pageUrl: (kind, key) => (W.site.url ? siteBase() + (kind === "outing" ? "o/" : kind === "room" ? "r/" : kind === "story" ? "o/" : "s/") + encodeURIComponent(key) : null),
+    // depth maps live with the public site; where the page may not reach it, photographs stay flat
+    depth: (x) => (W.site.url ? siteBase() + "depth/" + encodeURIComponent(x.id) + ".webp" : null),
+    get depthIndex() { return W.site.url ? siteBase() + "depth/index.json" : "depth/index.json"; },
   };
   // Originals the connector can return replace the preview while the viewer zooms in,
   // held only as temporary object URLs.
