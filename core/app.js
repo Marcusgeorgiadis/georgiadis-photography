@@ -210,6 +210,7 @@
     <button class="icon-btn" data-act="exhibit" title="Play an exhibition (E)" aria-label="Play an exhibition">${ICON.play}</button>
     ${GP.calls && GP.calls.available() ? GP.calls.button() : ""}
     ${GP.scape ? GP.scape.button() : ""}
+    ${GP.fx ? GP.fx.depthButton() : ""}
     <button class="icon-btn" data-act="theme" title="Light or dark" aria-label="Switch light or dark">${ICON.moon}</button>
     <button class="icon-btn" data-act="keys" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">${ICON.keys}</button>
   </div>
@@ -1100,7 +1101,7 @@ ${footer(nav)}
     let d = $("#gp-keys");
     if (!d) {
       d = document.createElement("dialog"); d.id = "gp-keys"; d.className = "gp-keys";
-      const rows = [["/", "Search"], ["← →", "Previous or next photograph"], ["↑ ↓", "Frames within a burst"], ["I", "Specimen label"], ["Z", "Zoom to full resolution"], ["0", "Fit to screen"], ["F", "Full screen"], ["D", "Download the original"], ["Shift", "Hold over a photograph for a loupe; scroll to change its power"], ["C", "Play the bird's call (in the viewer)"], ["L", "Add to or remove from your favourites (in the viewer)"], ["P", "Play the photographs from here as an exhibition (in the viewer)"], ["V", "Play a burst as it was shot (in the viewer)"], A.workshop ? ["H", "Hide from or show on the public site (in the viewer)"] : ["H", "How it was shot, and the sky that moment (in the viewer)"], ["B", "Lights down (in an exhibition room)"], ["Space", "Play or pause the day (in A day in the marsh)"], ["R", "Surprise me: a random photograph"], ["E", "Play an exhibition"], ["S", "Sound on or off: the marsh, the pines, the surf"], ["T", "Light or dark"], ["Esc", "Close"]];
+      const rows = [["/", "Search"], ["← →", "Previous or next photograph"], ["↑ ↓", "Frames within a burst"], ["I", "Specimen label"], ["Z", "Zoom to full resolution"], ["0", "Fit to screen"], ["F", "Full screen"], ["D", "Download the original"], ["Shift", "Hold over a photograph for a loupe; scroll to change its power"], ["C", "Play the bird's call (in the viewer)"], ["L", "Add to or remove from your favourites (in the viewer)"], ["P", "Play the photographs from here as an exhibition (in the viewer)"], ["V", "Play a burst as it was shot (in the viewer)"], A.workshop ? ["H", "Hide from or show on the public site (in the viewer)"] : ["H", "How it was shot, and the sky that moment (in the viewer)"], ["B", "Lights down (in an exhibition room)"], ["Space", "Play or pause the day (in A day in the marsh)"], ["R", "Surprise me: a random photograph"], ["E", "Play an exhibition"], ["S", "Sound on or off: the marsh, the pines, the surf"], ["M", "Depth on or off: each subject stands a little in front of its background"], ["T", "Light or dark"], ["Esc", "Close"]];
       d.innerHTML = `<form method="dialog"><h2 class="display">Keyboard</h2><dl>${rows.map(([k, v]) => `<dt><kbd>${k}</kbd></dt><dd>${v}</dd>`).join("")}</dl><button class="btn">Close</button></form>`;
       document.body.appendChild(d);
     }

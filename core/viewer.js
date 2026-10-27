@@ -191,7 +191,7 @@
     if (burst && !V.frame && x.burst.size >= 3 && !reduced()) V.fxT = setTimeout(() => { if (tok === V.token) live(true); }, 650);
     else V.fxT = setTimeout(() => {
       if (tok !== V.token || V.k > 1.01) return;
-      V.surf = GP.fx.surface(V.img, x, { listen: V.stage, ripple: true, amount: 0.016, cls: "vw-surface", src: V.large });
+      V.surf = GP.fx.surface(V.img, x, { listen: V.stage, ripple: true, amount: 0.016, cls: "vw-surface", src: V.large, onReady: () => sync() });
       sync();
     }, 900);
   }

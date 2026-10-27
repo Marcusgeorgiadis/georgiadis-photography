@@ -5,7 +5,8 @@
    - live: a burst plays as the moment it was, frame by frame at the real interval.
    - surface: a WebGL copy of a photograph that floats the subject in front of its background
      (from a depth map made at build time) as the pointer moves or the phone tilts, and lets
-     water ripple where the pointer touches it.
+     water ripple where the pointer touches it. The depth is a visitor's choice, off until they
+     turn it on (the header's Depth button, or M), and kept subtle when it is on.
    Everything waits for reduced motion to be off and falls back to the plain photograph. */
 (function (GP) {
   "use strict";
@@ -14,6 +15,44 @@
   const saveData = () => !!(navigator.connection && navigator.connection.saveData);
   const app = () => GP.app;
   const H = () => GP.app.helpers;
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* private window */ } },
+  };
+
+  /* ---------- depth: the visitor's setting ---------- */
+  let depthOn = store.get("gp-depth") === "1";
+  // how far the layers part, as a share of what each view asks for: a gentle hint of depth
+  const DEPTH_STRENGTH = 0.3;
+  const DEPTH_ICON = {
+    off: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="6" width="16" height="12" rx="1.5"/><path d="M8 15l3-3.5 2.5 2.5 1.5-1.5 2 2.5" stroke-linecap="round"/></svg>',
+    on: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="8" width="14" height="11" rx="1.5" opacity=".45"/><rect x="7.5" y="4" width="14" height="11" rx="1.5"/><path d="M11 12.5l2.5-3 2 2 1.2-1.2 1.8 2.2" stroke-linecap="round"/></svg>',
+  };
+  function depthButton() {
+    return `<button class="icon-btn depth-btn" data-act="depth" aria-pressed="${depthOn}" title="Depth: ${depthOn ? "on" : "off"} (M)" aria-label="Depth ${depthOn ? "on" : "off"}">${depthOn ? DEPTH_ICON.on : DEPTH_ICON.off}</button>`;
+  }
+  function paintDepth() {
+    for (const b of document.querySelectorAll('[data-act="depth"]')) {
+      b.setAttribute("aria-pressed", String(depthOn));
+      b.setAttribute("aria-label", `Depth ${depthOn ? "on" : "off"}`);
+      b.title = `Depth: ${depthOn ? "on" : "off"} (M)`;
+      b.innerHTML = depthOn ? DEPTH_ICON.on : DEPTH_ICON.off;
+    }
+  }
+  function setDepth(on, quiet) {
+    depthOn = !!on;
+    store.set("gp-depth", depthOn ? "1" : "0");
+    paintDepth();
+    dispatchEvent(new CustomEvent("gp:depth", { detail: { on: depthOn } }));
+    if (!quiet && app() && app().toast) app().toast(depthOn ? (reduced() ? "Depth on, but your device asks for reduced motion, so photographs stay still" : "Depth on: each subject stands a little in front of its background as you move") : "Depth off");
+  }
+  document.addEventListener("click", (e) => { const b = e.target.closest && e.target.closest('[data-act="depth"]'); if (b) setDepth(!depthOn); });
+  addEventListener("keydown", (e) => {
+    if ((e.key !== "m" && e.key !== "M") || e.metaKey || e.ctrlKey || e.altKey || e.defaultPrevented) return;
+    const t = e.target, tag = (t.tagName || "").toLowerCase();
+    if (tag === "input" || tag === "textarea" || tag === "select" || t.isContentEditable) return;
+    setDepth(!depthOn);
+  });
 
   /* ---------- what a photograph is ---------- */
   const has = (x, re) => !!x && (re.test((x.tags || []).join(" | ")) || re.test(x.setting || ""));
@@ -237,7 +276,31 @@ void main(){
   gl_FragColor = vec4(col.rgb * (1.0 + shine), 1.0);
 }`;
   let liveSurfaces = 0;
+  // What a view gets back: it follows the Depth setting by itself, building, rebuilding or
+  // standing down its WebGL copy as the visitor switches depth on or off.
   function surface(img, x, o = {}) {
+    let inner = null, dead = false, auto = !!o.auto, hidden = false;
+    const ctl = { el: null, get depth() { return !!(inner && inner.depth); } };
+    const want = () => o.depth !== false && depthOn;
+    const build = () => {
+      if (inner || dead || !img.isConnected) return;
+      const made = make(img, x, Object.assign({}, o, { auto, depth: want() }));
+      if (!made.el) return;
+      inner = made; ctl.el = made.el;
+      if (hidden) made.hide(true);
+    };
+    const sync = () => { if (dead) return; if (inner) { inner.destroy(); inner = null; ctl.el = null; } build(); };
+    addEventListener("gp:depth", sync);
+    ctl.destroy = () => { dead = true; removeEventListener("gp:depth", sync); if (inner) inner.destroy(); inner = null; ctl.el = null; };
+    ctl.setPointer = (nx, ny) => { if (inner) inner.setPointer(nx, ny); };
+    ctl.setAuto = (on) => { auto = !!on; if (inner) inner.setAuto(on); };
+    ctl.ripple = (nx, ny, st) => { if (inner) inner.ripple(nx, ny, st); };
+    ctl.place = () => { if (inner) inner.place(); };
+    ctl.hide = (on) => { hidden = !!on; if (inner) inner.hide(on); };
+    build();
+    return ctl;
+  }
+  function make(img, x, o = {}) {
     const wantDepth = o.depth !== false, wantRipple = o.ripple && isWater(x);
     const ctl = { destroy() {}, setPointer() {}, el: null };
     if (reduced() || (!wantDepth && !wantRipple) || liveSurfaces > 3) return ctl;
@@ -248,7 +311,8 @@ void main(){
     liveSurfaces++;
     canvas.className = "fx-surface" + (o.cls ? " " + o.cls : "");
     canvas.setAttribute("aria-hidden", "true");
-    const S = { img, x, gl, canvas, raf: 0, alive: true, tex: null, dtex: null, hasDepth: 0, ready: false, ptr: { x: 0, y: 0 }, cur: { x: 0, y: 0 }, rip: [], ripN: 0, t0: performance.now(), auto: !!o.auto, idle: 0, visible: true, tilt: null };
+    const S = { img, x, gl, canvas, raf: 0, alive: true, tex: null, dtex: null, hasDepth: 0, ready: false, ptr: { x: 0, y: 0 }, cur: { x: 0, y: 0 }, rip: [], ripN: 0, t0: performance.now(), auto: !!o.auto && wantDepth, idle: 0, visible: true, tilt: null };
+    const amount = (o.amount || 0.022) * DEPTH_STRENGTH;
     const sh = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); return s; };
     const prog = gl.createProgram();
     gl.attachShader(prog, sh(gl.VERTEX_SHADER, VERT));
@@ -312,10 +376,11 @@ void main(){
       if (S.tilt) { tx = S.tilt.x; ty = S.tilt.y; }
       else if (S.auto && !S.pointerAt) { tx = Math.sin(t * 0.21) * 0.7; ty = Math.cos(t * 0.16) * 0.45; }
       S.cur.x += (tx - S.cur.x) * 0.06; S.cur.y += (ty - S.cur.y) * 0.06;
-      const amt = (o.amount || 0.022) * S.hasDepth;
+      // with Depth off the map only keeps ripples off the subject: nothing moves
+      const amt = wantDepth ? amount * S.hasDepth : 0;
       gl.uniform2f(U.off, -S.cur.x * amt, -S.cur.y * amt);
       gl.uniform1f(U.focus, o.focus != null ? o.focus : 0.62);
-      gl.uniform1f(U.zoom, S.hasDepth ? 1 + (o.amount || 0.022) * 0.9 : 1);
+      gl.uniform1f(U.zoom, S.hasDepth && wantDepth ? 1 + amount * 0.9 : 1);
       gl.uniform1f(U.hasDepth, S.hasDepth);
       gl.uniform1f(U.now, t);
       const arr = new Float32Array(32);
@@ -357,7 +422,7 @@ void main(){
       S.tilt = { x: Math.max(-1, Math.min(1, e.gamma / 22)), y: Math.max(-1, Math.min(1, (e.beta - 45) / 26)) };
       kick();
     };
-    if (o.tilt && !fine()) addEventListener("deviceorientation", onTilt, { passive: true });
+    if (o.tilt && wantDepth && !fine()) addEventListener("deviceorientation", onTilt, { passive: true });
     const io = "IntersectionObserver" in window ? new IntersectionObserver((es) => { S.visible = es[es.length - 1].isIntersecting; if (S.visible) kick(); }) : null;
     if (io) io.observe(img);
     const ro = "ResizeObserver" in window ? new ResizeObserver(() => place()) : null;
@@ -365,7 +430,7 @@ void main(){
     canvas.addEventListener("webglcontextlost", (e) => { e.preventDefault(); ctl.destroy(); });
 
     const srcUrl = o.src || img.currentSrc || img.src;
-    Promise.all([load(srcUrl), wantDepth ? depthUrl(x).then((u) => (u ? load(u).catch(() => null) : null)) : Promise.resolve(null)])
+    Promise.all([load(srcUrl), wantDepth || wantRipple ? depthUrl(x).then((u) => (u ? load(u).catch(() => null) : null)) : Promise.resolve(null)])
       .then(([im, dm]) => {
         if (!S.alive) return;
         if (!dm && !wantRipple) { ctl.destroy(); return; }
@@ -378,7 +443,7 @@ void main(){
 
     ctl.el = canvas;
     ctl.setPointer = (nx, ny) => { S.ptr.x = nx; S.ptr.y = ny; S.pointerAt = performance.now(); kick(); };
-    ctl.setAuto = (on) => { S.auto = !!on; kick(); };
+    ctl.setAuto = (on) => { S.auto = !!on && wantDepth; kick(); };
     ctl.ripple = (nx, ny, s = 1) => { if (!S.ready) return; S.rip[S.ripN % 8] = [nx, ny, (performance.now() - S.t0) / 1000, s]; S.ripN++; kick(); };
     ctl.place = place;
     ctl.hide = (on) => canvas.classList.toggle("hide", !!on);
@@ -408,5 +473,5 @@ void main(){
     }
   }
 
-  GP.fx = { arrive, develop, developIn, leak, unleak, play, surface, depthUrl, askTilt, isBacklit, isWater, habitat, liveStop };
+  GP.fx = { arrive, develop, developIn, leak, unleak, play, surface, depthUrl, askTilt, isBacklit, isWater, habitat, liveStop, depthButton, setDepth, get depthOn() { return depthOn; } };
 })(window.GP = window.GP || {});
