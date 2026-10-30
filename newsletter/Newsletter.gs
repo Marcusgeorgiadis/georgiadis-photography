@@ -372,6 +372,16 @@ const DISPLAY_ = "'Bodoni Moda', Didot, 'Bodoni 72', 'Bodoni MT', Georgia, 'Time
 const BODY_ = "'Source Sans 3', 'Source Sans Pro', 'Helvetica Neue', Helvetica, Arial, sans-serif";
 const DATA_ = "'IBM Plex Mono', Menlo, Consolas, 'Courier New', monospace";
 
+// The address the newsletter sends from. A reader who adds it to their contacts keeps every
+// dispatch out of their spam folder.
+function sender_() {
+  try { return Session.getEffectiveUser().getEmail() || ''; } catch (e) { return ''; }
+}
+function contactsLine_() {
+  const me = sender_();
+  return me ? 'To keep dispatches out of spam, add <a href="mailto:' + esc_(me) + '" style="color:' + MUTED_ + ';">' + esc_(me) + '</a> to your contacts.' : '';
+}
+
 function esc_(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 }
@@ -395,7 +405,6 @@ function frame_(o) {
     '<style>body{margin:0;padding:0}a{color:inherit}img{border:0;outline:none}' +
     '@media (max-width:620px){.wrap{width:100%!important}.pad{padding-left:24px!important;padding-right:24px!important}.h1{font-size:30px!important;line-height:34px!important}}</style>' +
     '</head><body style="margin:0;padding:0;background:' + DESK_ + ';">' +
-    '<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">' + esc_(o.preheader || '') + '</div>' +
     '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:' + DESK_ + ';"><tr><td align="center" style="padding:28px 12px 36px;">' +
     '<table role="presentation" class="wrap" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background:' + PAPER_ + ';border-radius:12px;">' +
     '<tr><td class="pad" style="padding:30px 40px 0;">' +
@@ -437,7 +446,8 @@ function dispatchEmail_(feed, outs, token) {
     '</td></tr>' +
     '<tr><td class="pad" style="padding:24px 40px 0;">' + button_(o.url, 'See the outing &rarr;') + '</td></tr>' + also;
   const footer = 'You asked for dispatches from Georgiadis Photography, a note whenever a new outing goes up. ' +
-    '<a href="' + esc_(unsub) + '" style="color:' + MUTED_ + ';">Unsubscribe</a> &middot; <a href="' + esc_(site) + '" style="color:' + MUTED_ + ';">Visit the gallery</a>';
+    '<a href="' + esc_(unsub) + '" style="color:' + MUTED_ + ';">Unsubscribe</a> &middot; <a href="' + esc_(site) + '" style="color:' + MUTED_ + ';">Visit the gallery</a>' +
+    (contactsLine_() ? '<br>' + contactsLine_() : '');
   const subject = more.length
     ? 'From the field: ' + (more.length + 1) + ' new outings, the latest ' + o.when
     : 'From the field · ' + o.when + ': ' + o.title;
@@ -451,7 +461,7 @@ function dispatchEmail_(feed, outs, token) {
     'See the outing: ' + o.url,
   ].concat(more.length ? [''].concat(['Also new:'], more.map((m) => '  ' + m.when + ' · ' + m.title + '  ' + m.url)) : [])
     .concat(['', '—', 'Georgiadis Photography · Wildlife of Central Florida', site, 'Unsubscribe: ' + unsub]).join('\n');
-  return { subject: subject, html: frame_({ title: subject, preheader: o.hook, body: body, footer: footer }), text: text };
+  return { subject: subject, html: frame_({ title: subject, body: body, footer: footer }), text: text };
 }
 
 // For an address that signs up again while it's already on the list.
@@ -468,7 +478,7 @@ function alreadyEmail_(token) {
   const footer = 'Rather not hear from us? <a href="' + esc_(unsub) + '" style="color:' + MUTED_ + ';">Unsubscribe</a>.';
   const subject = 'You\'re already subscribed to Georgiadis Photography';
   const text = ['You\'re already on the list', '', 'Someone, probably you, asked to subscribe this address again. Nothing needs doing: the next dispatch will arrive when a new outing goes up.', '', site, '', 'Unsubscribe: ' + unsub].join('\n');
-  return { subject: subject, html: frame_({ title: subject, preheader: 'Nothing needs doing.', body: body, footer: footer }), text: text };
+  return { subject: subject, html: frame_({ title: subject, body: body, footer: footer }), text: text };
 }
 
 // The one email an address gets before it confirms.
@@ -483,8 +493,9 @@ function confirmEmail_(feed, token) {
     '</td></tr>' +
     '<tr><td class="pad" style="padding:24px 40px 0;">' + button_(link, 'Confirm subscription') + '</td></tr>' +
     '<tr><td class="pad" style="padding:18px 40px 0;"><p style="margin:0;font-family:' + BODY_ + ';font-size:14px;line-height:22px;color:' + MUTED_ + ';">If the button doesn\'t work, open this link: <a href="' + esc_(link) + '" style="color:' + MUTED_ + ';word-break:break-all;">' + esc_(link) + '</a></p></td></tr>';
-  const footer = 'If you didn\'t ask for this, ignore this email: without a confirmation you won\'t hear from us again.';
+  const footer = 'If you didn\'t ask for this, ignore this email: without a confirmation you won\'t hear from us again.' +
+    (contactsLine_() ? '<br>' + contactsLine_() : '');
   const subject = 'Confirm your subscription to Georgiadis Photography';
   const text = ['Confirm your subscription', '', 'You asked for dispatches from Georgiadis Photography: a short note whenever a new outing goes up, with a link straight to its photographs.', '', 'Confirm: ' + link, '', 'If you didn\'t ask for this, ignore this email: without a confirmation you won\'t hear from us again.', '', '—', 'Georgiadis Photography · Wildlife of Central Florida', site].join('\n');
-  return { subject: subject, html: frame_({ title: subject, preheader: 'One tap and you\'ll hear when a new outing goes up.', body: body, footer: footer }), text: text };
+  return { subject: subject, html: frame_({ title: subject, body: body, footer: footer }), text: text };
 }

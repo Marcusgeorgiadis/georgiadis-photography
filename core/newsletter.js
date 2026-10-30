@@ -81,7 +81,7 @@
       .catch(() => say(f, "The newsletter couldn't be reached. Please try again.", "bad"))
       .finally(() => { btn.disabled = false; f.classList.remove("busy"); });
   }
-  const sent = (email) => `<div class="nl-sent" role="status"><b class="display">Check your inbox</b><p>We've sent a link to <span class="nl-addr">${H().esc(email)}</span>. Open it to confirm, and you'll hear from us when the next outing goes up.</p></div>`;
+  const sent = (email) => `<div class="nl-sent" role="status"><b class="display">Check your inbox</b><p>We've sent a link to <span class="nl-addr">${H().esc(email)}</span>. Open it to confirm, and you'll hear from us when the next outing goes up. Not there in a minute? Look in spam, and mark it "Not spam" so the dispatches find you.</p></div>`;
   document.addEventListener("submit", (e) => {
     const f = e.target.closest && e.target.closest(".nl-form");
     if (!f) return;
@@ -226,7 +226,7 @@
         store.set(KEY, "subscribed");
         paint();
         title("You're subscribed");
-        st.innerHTML = `<div class="nl-done"><p>${r.email ? `Dispatches will come to <span class="nl-addr">${h.esc(r.email)}</span>` : "Dispatches will come to your inbox"} whenever a new outing goes up. The latest is here already.</p><a class="btn primary" href="#/outings">Browse the outings ${h.ICON.arrow}</a></div>`;
+        st.innerHTML = `<div class="nl-done"><p>${r.email ? `Dispatches will come to <span class="nl-addr">${h.esc(r.email)}</span>` : "Dispatches will come to your inbox"} whenever a new outing goes up. The latest is here already.</p><p class="nl-tip">Add the address the dispatches come from to your contacts, and they'll never land in spam.</p><a class="btn primary" href="#/outings">Browse the outings ${h.ICON.arrow}</a></div>`;
       } else if (r && r.ok && r.state === "unsubscribed") {
         if (store.get(KEY) === "subscribed" || store.get(KEY) === "pending") store.set(KEY, "seen");
         paint();

@@ -477,6 +477,7 @@ body, .gp-head, .foot { transition: background-color 1200ms ease, color 800ms ea
 .nl-done p { margin: 0; color: var(--muted); font-size: 16.5px; line-height: 1.55; }
 .nl-done .btn { justify-self: start; }
 .nl-wait { margin: 0; color: var(--muted); font-size: 16px; }
+.nl-done p.nl-tip { font-size: 14px; }
 .nl-side-h { margin-bottom: 12px; }
 .nl-prev { display: grid; overflow: hidden; border-radius: 14px; border: 1px solid var(--hair); background: var(--surface); color: var(--ink); text-decoration: none; box-shadow: 0 24px 50px -34px rgba(0, 0, 0, 0.45); transition: transform 400ms var(--ease-out), box-shadow 400ms var(--ease-out); }
 .nl-prev:hover { transform: translateY(-3px); box-shadow: 0 30px 60px -32px rgba(0, 0, 0, 0.5); }
