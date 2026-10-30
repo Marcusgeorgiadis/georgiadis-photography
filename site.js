@@ -2,6 +2,9 @@
    Nikon/Public Gallery on Google Drive; data/gallery.json is rebuilt by the cloud job. */
 (function () {
   "use strict";
+  // The newsletter's web app (newsletter/Newsletter.gs, deployed by the site's owner). While
+  // this is empty the sign-up card, the envelope in the header and the newsletter page stay hidden.
+  const NEWSLETTER = "";
   const fill = (tpl, id, w) => tpl.replace("{id}", encodeURIComponent(id)).replace("{w}", String(w));
   function adapterFor(raw) {
     if (raw.images === "dev") {
@@ -23,6 +26,7 @@
       // a map of how near each part of the photograph is (tools/depth_maps.py)
       depth: (x) => "depth/" + encodeURIComponent(x.id) + ".webp",
       pageUrl: (kind, key) => base + (kind === "outing" ? "o/" : kind === "room" ? "r/" : "s/") + encodeURIComponent(key),
+      newsletter: NEWSLETTER,
     };
   }
   // a first visit opens through the viewfinder, which hunts for focus while the archive loads

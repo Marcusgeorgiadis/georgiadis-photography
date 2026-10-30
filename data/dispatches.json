@@ -1,0 +1,1150 @@
+{
+ "v": 1,
+ "site": {
+  "title": "Georgiadis Photography",
+  "tagline": "Wildlife of Central Florida",
+  "url": "https://marcusgeorgiadis.github.io/georgiadis-photography/"
+ },
+ "outings": [
+  {
+   "id": "1dWZ7s9p1TmXf6ld-0umg3jWNX2DlAz-x",
+   "no": 50,
+   "date": "2026-10-25",
+   "when": "25 October 2026",
+   "title": "Eurasian Collared-Dove & Double-crested Cormorant",
+   "type": "Birding MG EE",
+   "hook": "Eurasian Collared-Dove, Double-crested Cormorant and Eastern Gray Squirrel, in 6 frames.",
+   "frames": 6,
+   "speciesN": 4,
+   "species": [
+    "Eurasian Collared-Dove",
+    "Double-crested Cormorant",
+    "Eastern Gray Squirrel"
+   ],
+   "companions": [
+    "MG",
+    "EE"
+   ],
+   "url": "https://marcusgeorgiadis.github.io/georgiadis-photography/#/outings/1dWZ7s9p1TmXf6ld-0umg3jWNX2DlAz-x",
+   "cover": {
+    "url": "https://lh3.googleusercontent.com/d/1ti7mDXsZmm_6cH5o81w-bbJyRB3twPfx=w1200",
+    "width": 1200,
+    "height": 800,
+    "alt": "Eastern Gray Squirrel"
+   },
+   "accent": "#6f6939"
+  },
+  {
+   "id": "1b0RR6wjXbwSXnrWAt8G0RsyaI4cG0_7n",
+   "no": 49,
+   "date": "2026-10-20",
+   "when": "20 October 2026",
+   "title": "Tricolored Heron & Boat-tailed Grackle",
+   "type": "Birding MG EE",
+   "hook": "Tricolored Herons, Boat-tailed Grackles and a Great Egret.",
+   "frames": 6,
+   "speciesN": 3,
+   "species": [
+    "Tricolored Heron",
+    "Boat-tailed Grackle",
+    "Great Egret"
+   ],
+   "companions": [
+    "MG",
+    "EE"
+   ],
+   "url": "https://marcusgeorgiadis.github.io/georgiadis-photography/#/outings/1b0RR6wjXbwSXnrWAt8G0RsyaI4cG0_7n",
+   "cover": {
+    "url": "https://lh3.googleusercontent.com/d/1rd7ih-CC82Tc6ZgKvq2DG5Fdx2ottyIj=w1200",
+    "width": 1200,
+    "height": 800,
+    "alt": "Tricolored Heron"
+   },
+   "accent": "#236195"
+  },
+  {
+   "id": "1SRirEPCKJRnUumVy52Nm_m8BHhbRj7nt",
+   "no": 48,
+   "date": "2026-09-26",
+   "when": "26 September 2026",
+   "title": "Red-shouldered Hawk & Limpkin",
+   "type": "Birding MG EE",
+   "hook": "Red-shouldered Hawks in 22 frames, with Limpkins and alligators.",
+   "frames": 29,
+   "speciesN": 3,
+   "species": [
+    "Red-shouldered Hawk",
+    "Limpkin",
+    "American Alligator"
+   ],
+   "companions": [
+    "MG",
+    "EE"
+   ],
+   "url": "https://marcusgeorgiadis.github.io/georgiadis-photography/#/outings/1SRirEPCKJRnUumVy52Nm_m8BHhbRj7nt",
+   "cover": {
+    "url": "https://lh3.googleusercontent.com/d/1D_A-Xor11lReUBzysx-QC_Uf_xZZLgQA=w1200",
+    "width": 1200,
+    "height": 800,
+    "alt": "Red-shouldered Hawk"
+   },
+   "accent": "#6f6839"
+  },
+  {
+   "id": "1wEMtMCOhoBHcwz3fuy83ZkXB-clPmkHi",
+   "no": 47,
+   "date": "2026-08-23",
+   "when": "23 August 2026",
+   "title": "Halloween Pennant & Loggerhead Shrike",
+   "type": "Birding MG",
+   "hook": "Dragonflies take the lead: Halloween and Calico Pennants and a Carolina Saddlebags, plus a Loggerhead Shrike.",
+   "frames": 10,
+   "speciesN": 4,
+   "species": [
+    "Halloween Pennant",
+    "Loggerhead Shrike",
+    "Carolina Saddlebags",
+    "Calico Pennant"
+   ],
+   "companions": [
+    "MG"
+   ],
+   "url": "https://marcusgeorgiadis.github.io/georgiadis-photography/#/outings/1wEMtMCOhoBHcwz3fuy83ZkXB-clPmkHi",
+   "cover": {
+    "url": "https://lh3.googleusercontent.com/d/1Pav7qbUIXFje3ifQD2WC7JchvYCPK9QH=w1200",
+    "width": 1200,
+    "height": 800,
+    "alt": "Halloween Pennant"
+   },
+   "accent": "#235b95"
+  },
+  {
+   "id": "15MHUqRaZoKw34SomNTy8-ftk4Af6FvS5",
+   "no": 45,
+   "date": "2026-08-07",
+   "when": "7 August 2026",
+   "title": "American Goldfinch & Western Honey Bee",
+   "type": "Birding MG EE IE",
+   "hook": "A garden of pollinators and finches: American Goldfinches, honey bees, a bumble bee and an Indigo Bunting.",
+   "frames": 9,
+   "speciesN": 5,
+   "species": [
+    "American Goldfinch",
+    "Western Honey Bee",
+    "Indigo Bunting",
+    "Bumble Bee"
+   ],
+   "companions": [
+    "MG",
+    "EE",
+    "IE"
+   ],
+   "url": "https://marcusgeorgiadis.github.io/georgiadis-photography/#/outings/15MHUqRaZoKw34SomNTy8-ftk4Af6FvS5",
+   "cover": {
+    "url": "https://lh3.googleusercontent.com/d/1qyHAlYa4mQqNnRPXI0BM5CRqvX1311R0=w1200",
+    "width": 1200,
+    "height": 800,
+    "alt": "Western Honey Bee"
+   },
+   "accent": "#7c6b1d"
+  },
+  {
+   "id": "1ZsAAE3FSbf-FTeA7TlM5mmAGo-_K-hfK",
+   "no": 44,
+   "date": "2026-05-09",
+   "when": "9 May 2026",
+   "title": "Ring-necked Duck & Snail Kite",
+   "type": "Birding MG EE",
+   "hook": "Ring-necked Ducks, Snail Kites and Swallow-tailed Kites, with Northern Parulas, an American Redstart and a pair of Raccoons.",
+   "frames": 38,
+   "speciesN": 16,
+   "species": [
+    "Ring-necked Duck",
+    "Snail Kite",
+    "Northern Parula",
+    "Anhinga",
+    "Pearl Crescent",
+    "Raccoon"
+   ],
+   "companions": [
+    "MG",
+    "EE"
+   ],
+   "url": "https://marcusgeorgiadis.github.io/georgiadis-photography/#/outings/1ZsAAE3FSbf-FTeA7TlM5mmAGo-_K-hfK",
+   "cover": {
+    "url": "https://lh3.googleusercontent.com/d/1GIrJNsx7jViFwim4aFQ9Gb1PZO50ElkE=w1200",
+    "width": 1200,
+    "height": 800,
+    "alt": "Swallow-tailed Kite"
+   },
+   "accent": "#79683e"
+  },
+  {
+   "id": "1dJsc2QJL2yS62AmIURhe67rj5JfE-5Jf",
+   "no": 43,
+   "date": "2026-04-24",
+   "when": "24 April 2026",
+   "title": "American White Ibis & Great Blue Heron",
+   "type": "Birding MG EE",
+   "hook": "White Ibis and Great Blue Herons, with Egyptian Geese, Boat-tailed Grackles and Marsh Rabbits at the water's edge.",
+   "frames": 46,
+   "speciesN": 8,
+   "species": [
+    "American White Ibis",
+    "Great Blue Heron",
+    "Egyptian Goose",
+    "Tricolored Heron",
+    "Boat-tailed Grackle",
+    "Red-winged Blackbird"
+   ],
+   "companions": [
+    "MG",
+    "EE"
+   ],
+   "url": "https://marcusgeorgiadis.github.io/georgiadis-photography/#/outings/1dJsc2QJL2yS62AmIURhe67rj5JfE-5Jf",
+   "cover": {
+    "url": "https://lh3.googleusercontent.com/d/1XEdxQrnD67kWcYy18uP0KAxgJvy3qGKz=w1200",
+    "width": 1200,
+    "height": 800,
+    "alt": "American White Ibis"
+   },
+   "accent": "#236f95"
+  },
+  {
+   "id": "1DOhzCxpe5fKNJtfh55PmiriFEDJvtedY",
+   "no": 42,
+   "date": "2026-04-18",
+   "when": "18 April 2026",
+   "title": "Common Gallinule & American Alligator",
+   "type": "Birding MG",
+   "hook": "The archive's biggest day: 269 Finals of Common and Purple Gallinules with their chicks, alligators, Red-winged Blackbirds, Anhingas, Green Herons and night herons.",
+   "frames": 168,
+   "speciesN": 18,
+   "species": [
+    "Common Gallinule",
+    "American Alligator",
+    "Purple Gallinule",
+    "Anhinga",
+    "Red-winged Blackbird",
+    "Green Heron"
+   ],
+   "companions": [
+    "MG"
+   ],
+   "url": "https://marcusgeorgiadis.github.io/georgiadis-photography/#/outings/1DOhzCxpe5fKNJtfh55PmiriFEDJvtedY",
+   "cover": {
+    "url": "https://lh3.googleusercontent.com/d/1RwY1IeL_chZDzU8jcjIHLdHYd0DgRC0Y=w1200",
+    "width": 1200,
+    "height": 800,
+    "alt": "Common Gallinule"
+   },
+   "accent": "#6b6a1f"
+  },
+  {
+   "id": "1WDSQGP9NHnZc5zcI8eY50mAD1_GrMhq6",
+   "no": 41,
+   "date": "2026-04-10",
+   "when": "10 April 2026",
+   "title": "American White Ibis & Pileated Woodpecker",
+   "type": "Birding MG",
+   "hook": "American White Ibis, Pileated Woodpeckers and Little Blue Herons.",
+   "frames": 20,
+   "speciesN": 4,
+   "species": [
+    "American White Ibis",
+    "Pileated Woodpecker",
+    "Little Blue Heron",
+    "Tricolored Heron"
+   ],
+   "companions": [
+    "MG"
+   ],
+   "url": "https://marcusgeorgiadis.github.io/georgiadis-photography/#/outings/1WDSQGP9NHnZc5zcI8eY50mAD1_GrMhq6",
+   "cover": {
+    "url": "https://lh3.googleusercontent.com/d/15jpOBmg3TwkkT560RRSxEDdQwHyBPPHw=w1200",
+    "width": 1200,
+    "height": 800,
+    "alt": "Pileated Woodpecker"
+   },
+   "accent": "#5c6f39"
+  },
+  {
+   "id": "1SqgStcCbCinc42lbxo0B0dU0M5EgpdSs",
+   "no": 40,
+   "date": "2026-04-08",
+   "when": "8 April 2026",
+   "title": "Great Blue Heron & Grey Heron",
+   "type": "Birding MG",
+   "hook": "A study of Great Blue Herons, including white-plumaged birds.",
+   "frames": 28,
+   "speciesN": 2,
+   "species": [
+    "Great Blue Heron",
+    "Grey Heron"
+   ],
+   "companions": [
+    "MG"
+   ],
+   "url": "https://marcusgeorgiadis.github.io/georgiadis-photography/#/outings/1SqgStcCbCinc42lbxo0B0dU0M5EgpdSs",
+   "cover": {
+    "url": "https://lh3.googleusercontent.com/d/1nP0FI1TiwtkKoYYCA6Bs_31pko8WtQNR=w1200",
+    "width": 1200,
+    "height": 800,
+    "alt": "Great Blue Heron"
+   },
+   "accent": "#587425"
+  },
+  {
+   "id": "1VFUDfIYq5jxKAobGDmLscjYLTQEXyElp",
+   "no": 39,
+   "date": "2026-04-07",
+   "when": "7 April 2026",
+   "title": "Cattle Egret & Domestic Cattle",
+   "type": "Birding MG EE",
+   "hook": "Cattle Egrets living up to their name, feeding among the herd.",
+   "frames": 17,
+   "speciesN": 2,
+   "species": [
+    "Cattle Egret",
+    "Domestic Cattle"
+   ],
+   "companions": [
+    "MG",
+    "EE"
+   ],
+   "url": "https://marcusgeorgiadis.github.io/georgiadis-photography/#/outings/1VFUDfIYq5jxKAobGDmLscjYLTQEXyElp",
+   "cover": {
+    "url": "https://lh3.googleusercontent.com/d/1ueqUrjodtsQN1Tm4OOgXX3ha3XnSrKg8=w1200",
+    "width": 1200,
+    "height": 800,
+    "alt": "Cattle Egret"
+   },
+   "accent": "#6d6e2b"
+  },
+  {
+   "id": "17uIGqZ4NQJvIerZuBWy7gbOAg8kh-q8f",
+   "no": 38,
+   "date": "2026-03-27",
+   "when": "27 March 2026",
+   "title": "Osprey & Solitary Sandpiper",
+   "type": "Birding MG",
+   "hook": "Ospreys at work, plus a Solitary Sandpiper on the mud.",
+   "frames": 6,
+   "speciesN": 2,
+   "species": [
+    "Osprey",
+    "Solitary Sandpiper"
+   ],
+   "companions": [
+    "MG"
+   ],
+   "url": "https://marcusgeorgiadis.github.io/georgiadis-photography/#/outings/17uIGqZ4NQJvIerZuBWy7gbOAg8kh-q8f",
+   "cover": {
+    "url": "https://lh3.googleusercontent.com/d/1-e3iUGrItBlXPDuaqCvJwjqFjuCpx3pZ=w1200",
+    "width": 1200,
+    "height": 800,
+    "alt": "Osprey"
+   },
+   "accent": "#325986"
+  },
+  {
+   "id": "1kaYBcVKvXVGt0H14yAQsmZC60tdGrDzw",
+   "no": 37,
+   "date": "2026-03-25",
+   "when": "25 March 2026",
+   "title": "Little Blue Heron & Peninsula Cooter",
+   "type": "Birding MG",
+   "hook": "Peninsula Cooters basking, Little Blue Herons hunting, and river otters with a Belted Kingfisher.",
+   "frames": 17,
+   "speciesN": 7,
+   "species": [
+    "Little Blue Heron",
+    "Peninsula Cooter",
+    "North American River Otter",
+    "Belted Kingfisher",
+    "Northern Cardinal",
+    "American Alligator"
+   ],
+   "companions": [
+    "MG"
+   ],
+   "url": "https://marcusgeorgiadis.github.io/georgiadis-photography/#/outings/1kaYBcVKvXVGt0H14yAQsmZC60tdGrDzw",
+   "cover": {
+    "url": "https://lh3.googleusercontent.com/d/1n9Aj60JdjEElFraIPrXszhehXLnHr8Nm=w1200",
+    "width": 1200,
+    "height": 800,
+    "alt": "North American River Otter"
+   },
+   "accent": "#6e7029"
+  },
+  {
+   "id": "1ElzESCKZYvv70J3KgZ6b13JDCsAoNv1E",
+   "no": 36,
+   "date": "2026-03-23",
+   "when": "23 March 2026",
+   "title": "Blue Crab & Green Heron",
+   "type": "Birding MG",
+   "hook": "Blue Crabs in the shallows and a Green Heron watching them.",
+   "frames": 4,
+   "speciesN": 2,
+   "species": [
+    "Blue Crab",
+    "Green Heron"
+   ],
+   "companions": [
+    "MG"
+   ],
+   "url": "https://marcusgeorgiadis.github.io/georgiadis-photography/#/outings/1ElzESCKZYvv70J3KgZ6b13JDCsAoNv1E",
+   "cover": {
+    "url": "https://lh3.googleusercontent.com/d/1Y7--rIj605b78nxFrynWDyDHf5dyJsg5=w1200",
+    "width": 1200,
+    "height": 800,
+    "alt": "Green Heron"
+   },
+   "accent": "#796a3e"
+  },
+  {
+   "id": "19PCEFBU6PZ-ONf1NHfNvz6AgW4k6s6oK",
+   "no": 35,
+   "date": "2026-03-19",
+   "when": "19 March 2026",
+   "title": "Red-winged Blackbird & Belted Kingfisher",
+   "type": "Birding MG EE",
+   "hook": "Spring arrives: singing Red-winged Blackbirds, Great Crested Flycatchers, Palm Warblers and a water snake.",
+   "frames": 13,
+   "speciesN": 8,
+   "species": [
+    "Red-winged Blackbird",
+    "Belted Kingfisher",
+    "Palm Warbler",
+    "Great Crested Flycatcher",
+    "Common Starling",
+    "Pied-billed Grebe"
+   ],
+   "companions": [
+    "MG",
+    "EE"
+   ],
+   "url": "https://marcusgeorgiadis.github.io/georgiadis-photography/#/outings/19PCEFBU6PZ-ONf1NHfNvz6AgW4k6s6oK",
+   "cover": {
+    "url": "https://lh3.googleusercontent.com/d/1Rms8KR8SHp6rFxKtyY3oBjcBj7SfpXL3=w1200",
+    "width": 1200,
+    "height": 800,
+    "alt": "Belted Kingfisher"
+   },
+   "accent": "#586f39"
+  },
+  {
+   "id": "1wTkR0xo19sfSvCrseIraYcdImxV--MSB",
+   "no": 34,
+   "date": "2026-03-15",
+   "when": "15 March 2026",
+   "title": "Red-headed Woodpecker",
+   "type": "Birding MG EE",
+   "hook": "A focused set on Red-headed Woodpeckers.",
+   "frames": 10,
+   "speciesN": 1,
+   "species": [
+    "Red-headed Woodpecker"
+   ],
+   "companions": [
+    "MG",
+    "EE"
+   ],
+   "url": "https://marcusgeorgiadis.github.io/georgiadis-photography/#/outings/1wTkR0xo19sfSvCrseIraYcdImxV--MSB",
+   "cover": {
+    "url": "https://lh3.googleusercontent.com/d/1nHnFLngCk2XZRzKOBanmNXAbbg6P6HdM=w1200",
+    "width": 1200,
+    "height": 800,
+    "alt": "Red-headed Woodpecker"
+   },
+   "accent": "#3e5379"
+  },
+  {
+   "id": "1KuBlYRp5kKYITnjU1E5iHfECaMdVYv7Q",
+   "no": 33,
+   "date": "2026-03-07",
+   "when": "7 March 2026",
+   "title": "Reddish Egret & Yellow-crowned Night Heron",
+   "type": "Birding MG EE",
+   "hook": "Reddish Egrets dancing in the shallows and Yellow-crowned Night Herons, with Ospreys, gallinules and otters.",
+   "frames": 30,
+   "speciesN": 6,
+   "species": [
+    "Reddish Egret",
+    "Yellow-crowned Night Heron",
+    "Osprey",
+    "Common Gallinule",
+    "Neotropical Otter"
+   ],
+   "companions": [
+    "MG",
+    "EE"
+   ],
+   "url": "https://marcusgeorgiadis.github.io/georgiadis-photography/#/outings/1KuBlYRp5kKYITnjU1E5iHfECaMdVYv7Q",
+   "cover": {
+    "url": "https://lh3.googleusercontent.com/d/1wZMiSrcpjSMAMoypI1tnQld0wQbLjFM2=w1200",
+    "width": 1200,
+    "height": 800,
+    "alt": "Osprey"
+   },
+   "accent": "#315586"
+  },
+  {
+   "id": "1No_5T06e8AJnuL1-rHDgarSkKx8y57Cy",
+   "no": 32,
+   "date": "2026-02-23",
+   "when": "23 February 2026",
+   "title": "Red-bellied Woodpecker & Pileated Woodpecker",
+   "type": "Birding MG EE",
+   "hook": "A woodpecker day: fifteen frames of Red-bellied Woodpecker and three of Pileated.",
+   "frames": 18,
+   "speciesN": 2,
+   "species": [
+    "Red-bellied Woodpecker",
+    "Pileated Woodpecker"
+   ],
+   "companions": [
+    "MG",
+    "EE"
+   ],
+   "url": "https://marcusgeorgiadis.github.io/georgiadis-photography/#/outings/1No_5T06e8AJnuL1-rHDgarSkKx8y57Cy",
+   "cover": {
+    "url": "https://lh3.googleusercontent.com/d/1VaDh3sJ1OpZr7-5iC2fO3b3NcbxDd7v5=w1200",
+    "width": 1200,
+    "height": 800,
+    "alt": "Pileated Woodpecker"
+   },
+   "accent": "#6f6739"
+  },
+  {
+   "id": "1g2ChdR0LG4qkWUgOyyFrZRfHkwMtBi-_",
+   "no": 31,
+   "date": "2026-01-30",
+   "when": "30 January 2026",
+   "title": "Wood Stork",
+   "type": "Birding MG",
+   "hook": "Wood Storks, Green Herons, Little Blue Herons and a Great Egret.",
+   "frames": 6,
+   "speciesN": 1,
+   "species": [
+    "Wood Stork"
+   ],
+   "companions": [
+    "MG"
+   ],
+   "url": "https://marcusgeorgiadis.github.io/georgiadis-photography/#/outings/1g2ChdR0LG4qkWUgOyyFrZRfHkwMtBi-_",
+   "cover": {
+    "url": "https://lh3.googleusercontent.com/d/1D5Lp6QEJRoZm2QzBE7UsSl1c-VgHKa4-=w1200",
+    "width": 1200,
+    "height": 800,
+    "alt": "Wood Stork"
+   },
+   "accent": "#6f6839"
+  },
+  {
+   "id": "1Q_a1W4RlzLI_XW1wiex8Amel0W0Pru0y",
+   "no": 30,
+   "date": "2026-01-30",
+   "when": "30 January 2026",
+   "title": "Wood Stork & Green Heron",
+   "type": "Birding MG",
+   "hook": "Wood Storks feeding, with Green Herons and Little Blue Herons nearby.",
+   "frames": 19,
+   "speciesN": 3,
+   "species": [
+    "Wood Stork",
+    "Green Heron",
+    "Little Blue Heron"
+   ],
+   "companions": [
+    "MG"
+   ],
+   "url": "https://marcusgeorgiadis.github.io/georgiadis-photography/#/outings/1Q_a1W4RlzLI_XW1wiex8Amel0W0Pru0y",
+   "cover": {
+    "url": "https://lh3.googleusercontent.com/d/1Qm2A9iR9OKEw6A0s92_8d7hFehEa8r8e=w1200",
+    "width": 1200,
+    "height": 800,
+    "alt": "Green Heron"
+   },
+   "accent": "#79683e"
+  },
+  {
+   "id": "1awbosnHNLz_uUj5O5X2lfFXz83UFdUXQ",
+   "no": 29,
+   "date": "2026-01-25",
+   "when": "25 January 2026",
+   "title": "Roseate Spoonbill & Yellow-crowned Night Heron",
+   "type": "Birding MG",
+   "hook": "Roseate Spoonbills and Yellow-crowned Night Herons, alongside a collection of exotic birds including Grey Crowned Cranes, Southern Cassowaries and White-backed Vultures.",
+   "frames": 48,
+   "speciesN": 16,
+   "species": [
+    "Roseate Spoonbill",
+    "Yellow-crowned Night Heron",
+    "Grey Crowned Crane",
+    "White-backed Vulture",
+    "Wood Duck",
+    "Southern Cassowary"
+   ],
+   "companions": [
+    "MG"
+   ],
+   "url": "https://marcusgeorgiadis.github.io/georgiadis-photography/#/outings/1awbosnHNLz_uUj5O5X2lfFXz83UFdUXQ",
+   "cover": {
+    "url": "https://lh3.googleusercontent.com/d/1xQDZOOTcsN8e80KSMma87eB98P6RZzE0=w1200",
+    "width": 1200,
+    "height": 800,
+    "alt": "Roseate Spoonbill"
+   },
+   "accent": "#794b3e"
+  },
+  {
+   "id": "14uJX65UXWCq2eZq7rSuxt_DE7uk7X_UI",
+   "no": 28,
+   "date": "2026-01-13",
+   "when": "13 January 2026",
+   "title": "Pileated Woodpecker & Hooded Merganser",
+   "type": "Birding MG EE",
+   "hook": "A winter morning of Pileated Woodpeckers and Hooded Mergansers, with Northern Cardinals, Pied-billed Grebes and a Green Heron.",
+   "frames": 35,
+   "speciesN": 10,
+   "species": [
+    "Pileated Woodpecker",
+    "Hooded Merganser",
+    "Northern Cardinal",
+    "Pied-billed Grebe",
+    "Green Heron",
+    "Black-crowned Night Heron"
+   ],
+   "companions": [
+    "MG",
+    "EE"
+   ],
+   "url": "https://marcusgeorgiadis.github.io/georgiadis-photography/#/outings/14uJX65UXWCq2eZq7rSuxt_DE7uk7X_UI",
+   "cover": {
+    "url": "https://lh3.googleusercontent.com/d/1dD1htD7UKKlEyFD-ehsqNcxx-WYOL4oC=w1200",
+    "width": 1200,
+    "height": 800,
+    "alt": "Pileated Woodpecker"
+   },
+   "accent": "#7b663d"
+  },
+  {
+   "id": "1g_3GH68iyFxi4l0MIpQ1AQaFP3agUNBM",
+   "no": 27,
+   "date": "2025-11-29",
+   "when": "29 November 2025",
+   "title": "Anhinga & Double-crested Cormorant",
+   "type": "Birding Family Thanksgiving",
+   "hook": "The family Thanksgiving outing: Anhingas and Double-crested Cormorants drying their wings, with egrets and mixed flocks of wading birds.",
+   "frames": 40,
+   "speciesN": 8,
+   "species": [
+    "Anhinga",
+    "Double-crested Cormorant",
+    "Wading birds",
+    "Egret and ibis flock",
+    "Great Egret",
+    "Barred Owl"
+   ],
+   "companions": [],
+   "url": "https://marcusgeorgiadis.github.io/georgiadis-photography/#/outings/1g_3GH68iyFxi4l0MIpQ1AQaFP3agUNBM",
+   "cover": {
+    "url": "https://lh3.googleusercontent.com/d/1HrDbs9pPoZNaZOh8sC027zev1V6BbaHN=w1200",
+    "width": 1200,
+    "height": 800,
+    "alt": "Anhinga"
+   },
+   "accent": "#796b3e"
+  },
+  {
+   "id": "1raGNCPpjJvFDwpZoHsjBTrFbGnvScZaG",
+   "no": 26,
+   "date": "2025-11-15",
+   "when": "15 November 2025",
+   "title": "Rhesus Macaque & Double-crested Cormorant",
+   "type": "Birding MG EE",
+   "hook": "Rhesus Macaques along the river, with Double-crested Cormorants on the water.",
+   "frames": 19,
+   "speciesN": 2,
+   "species": [
+    "Rhesus Macaque",
+    "Double-crested Cormorant"
+   ],
+   "companions": [
+    "MG",
+    "EE"
+   ],
+   "url": "https://marcusgeorgiadis.github.io/georgiadis-photography/#/outings/1raGNCPpjJvFDwpZoHsjBTrFbGnvScZaG",
+   "cover": {
+    "url": "https://lh3.googleusercontent.com/d/1_4UqTKDVXW1qeXnUURk2L5P9R2l0Xabo=w1200",
+    "width": 1200,
+    "height": 800,
+    "alt": "Rhesus Macaque"
+   },
+   "accent": "#826436"
+  },
+  {
+   "id": "1c0J-k00kDTCQb9oSK7CYpeASqO_dd7eE",
+   "no": 25,
+   "date": "2025-11-15",
+   "when": "15 November 2025",
+   "title": "Rhesus Macaque & Double-crested Cormorant",
+   "type": "Birding MG EE",
+   "hook": "Rhesus Macaques along the river, with a Double-crested Cormorant.",
+   "frames": 19,
+   "speciesN": 2,
+   "species": [
+    "Rhesus Macaque",
+    "Double-crested Cormorant"
+   ],
+   "companions": [
+    "MG",
+    "EE"
+   ],
+   "url": "https://marcusgeorgiadis.github.io/georgiadis-photography/#/outings/1c0J-k00kDTCQb9oSK7CYpeASqO_dd7eE",
+   "cover": {
+    "url": "https://lh3.googleusercontent.com/d/16XOQFX0qn28Bt7F8rQzQ6IXOHYw8v-Qu=w1200",
+    "width": 1200,
+    "height": 800,
+    "alt": "Rhesus Macaque"
+   },
+   "accent": "#586d1c"
+  },
+  {
+   "id": "1nhboH7g_q_vVlYRyocSMpi_mJD9jWX7u",
+   "no": 24,
+   "date": "2025-11-06",
+   "when": "6 November 2025",
+   "title": "Black-crowned Night Heron",
+   "type": "Birding MG",
+   "hook": "Thirty frames devoted to Black-crowned Night Herons.",
+   "frames": 29,
+   "speciesN": 1,
+   "species": [
+    "Black-crowned Night Heron"
+   ],
+   "companions": [
+    "MG"
+   ],
+   "url": "https://marcusgeorgiadis.github.io/georgiadis-photography/#/outings/1nhboH7g_q_vVlYRyocSMpi_mJD9jWX7u",
+   "cover": {
+    "url": "https://lh3.googleusercontent.com/d/1arQUQPjYDAhdn9RuZ_4Hthhip_rDdPRP=w1200",
+    "width": 1200,
+    "height": 800,
+    "alt": "Black-crowned Night Heron"
+   },
+   "accent": "#794d3e"
+  },
+  {
+   "id": "1Y3APe9Trf63tev6nO6gzYJc59PE7IYno",
+   "no": 23,
+   "date": "2025-11-04",
+   "when": "4 November 2025",
+   "title": "Sanderling & Tern sp.",
+   "type": "Birding MG EE",
+   "hook": "A beach day: Sanderlings racing the surf, with Ruddy Turnstones, terns and a Laughing Gull.",
+   "frames": 35,
+   "speciesN": 5,
+   "species": [
+    "Sanderling",
+    "Ruddy Turnstone",
+    "Laughing Gull"
+   ],
+   "companions": [
+    "MG",
+    "EE"
+   ],
+   "url": "https://marcusgeorgiadis.github.io/georgiadis-photography/#/outings/1Y3APe9Trf63tev6nO6gzYJc59PE7IYno",
+   "cover": {
+    "url": "https://lh3.googleusercontent.com/d/19exwQYDtCzDcnSlYAtxif0LCLkybv7oO=w1200",
+    "width": 1200,
+    "height": 800,
+    "alt": "Sanderling"
+   },
+   "accent": "#956623"
+  },
+  {
+   "id": "1o2dEQpIDmis1CeG7Va3oy5Of1aRl0yv4",
+   "no": 21,
+   "date": "2025-10-26",
+   "when": "26 October 2025",
+   "title": "Little Blue Heron & Great Blue Heron",
+   "type": "Birding MG",
+   "hook": "Little Blue and Great Blue Herons, Pied-billed Grebes, and North American River Otters: a lively late-October wetland.",
+   "frames": 48,
+   "speciesN": 15,
+   "species": [
+    "Little Blue Heron",
+    "Great Blue Heron",
+    "North American River Otter",
+    "Pied-billed Grebe",
+    "Tricolored Heron",
+    "Mottled Duck"
+   ],
+   "companions": [
+    "MG"
+   ],
+   "url": "https://marcusgeorgiadis.github.io/georgiadis-photography/#/outings/1o2dEQpIDmis1CeG7Va3oy5Of1aRl0yv4",
+   "cover": {
+    "url": "https://lh3.googleusercontent.com/d/1UGO-SQl-4KhLvSXZdQt0-CYoS0fowxk-=w1200",
+    "width": 1200,
+    "height": 800,
+    "alt": "Great Blue Heron"
+   },
+   "accent": "#697434"
+  },
+  {
+   "id": "1iZrvSDbs5SGJ0741YIbCm-eg-YlELDZQ",
+   "no": 20,
+   "date": "2025-10-23",
+   "when": "23 October 2025",
+   "title": "Wood Duck & Black-bellied Whistling-Duck",
+   "type": "Birding MG",
+   "hook": "Whistling-ducks and Wood Ducks, Roseate Spoonbills, a Pileated Woodpecker and Turkey Vultures overhead: one of the most varied days of the autumn.",
+   "frames": 38,
+   "speciesN": 16,
+   "species": [
+    "Wood Duck",
+    "Black-bellied Whistling-Duck",
+    "Roseate Spoonbill",
+    "Pileated Woodpecker",
+    "Turkey Vulture",
+    "Bird flock"
+   ],
+   "companions": [
+    "MG"
+   ],
+   "url": "https://marcusgeorgiadis.github.io/georgiadis-photography/#/outings/1iZrvSDbs5SGJ0741YIbCm-eg-YlELDZQ",
+   "cover": {
+    "url": "https://lh3.googleusercontent.com/d/1Oa4HQUb6CVVdfzbTgFTlc2-fz5nMdXtA=w1200",
+    "width": 1200,
+    "height": 800,
+    "alt": "Wood Duck"
+   },
+   "accent": "#796a3e"
+  },
+  {
+   "id": "17FUA_XSGhLkZZNRsa3OJ33dXvAiW2L8Q",
+   "no": 19,
+   "date": "2025-10-20",
+   "when": "20 October 2025",
+   "title": "Barred Owl & Great Blue Heron",
+   "type": "Birding MG SG",
+   "hook": "An outing defined by a Barred Owl: fifteen frames of it, with egrets and herons along the water.",
+   "frames": 26,
+   "speciesN": 7,
+   "species": [
+    "Barred Owl",
+    "Great Blue Heron",
+    "Red-bellied Woodpecker",
+    "Little Blue Heron",
+    "Northern Cardinal",
+    "Tricolored Heron"
+   ],
+   "companions": [
+    "MG",
+    "SG"
+   ],
+   "url": "https://marcusgeorgiadis.github.io/georgiadis-photography/#/outings/17FUA_XSGhLkZZNRsa3OJ33dXvAiW2L8Q",
+   "cover": {
+    "url": "https://lh3.googleusercontent.com/d/1p5Dn9dA9iuOnY3C_0YJPvWIpMoSeH6J4=w1200",
+    "width": 1200,
+    "height": 800,
+    "alt": "Great Blue Heron"
+   },
+   "accent": "#3e6679"
+  },
+  {
+   "id": "1B_uj1PfTS2XRTyCznRlAkIP3mn-zJeYV",
+   "no": 18,
+   "date": "2025-10-19",
+   "when": "19 October 2025",
+   "title": "Red-shouldered Hawk & Yellow-crowned Night Heron",
+   "type": "Birding MG EE",
+   "hook": "Red-shouldered Hawks and Yellow-crowned Night Herons, with warblers and gnatcatchers moving through the trees.",
+   "frames": 23,
+   "speciesN": 11,
+   "species": [
+    "Red-shouldered Hawk",
+    "Yellow-crowned Night Heron",
+    "Common Yellowthroat",
+    "Green Heron",
+    "Tricolored Heron",
+    "Blue-gray Gnatcatcher"
+   ],
+   "companions": [
+    "MG",
+    "EE"
+   ],
+   "url": "https://marcusgeorgiadis.github.io/georgiadis-photography/#/outings/1B_uj1PfTS2XRTyCznRlAkIP3mn-zJeYV",
+   "cover": {
+    "url": "https://lh3.googleusercontent.com/d/14-AuilMZ12INLEtTOAY5d8JPwhH5qa7y=w1200",
+    "width": 1200,
+    "height": 800,
+    "alt": "Green Heron"
+   },
+   "accent": "#79643e"
+  },
+  {
+   "id": "1MbHdfijO_GE7EYr3Tc_7LNHKOy71DZX8",
+   "no": 17,
+   "date": "2025-10-18",
+   "when": "18 October 2025",
+   "title": "Yellow-crowned Night Heron & Belted Kingfisher",
+   "type": "Birding MG EE",
+   "hook": "Yellow-crowned Night Herons and an active Belted Kingfisher, with White Ibis, both night herons and a passing raptor.",
+   "frames": 19,
+   "speciesN": 8,
+   "species": [
+    "Yellow-crowned Night Heron",
+    "Belted Kingfisher",
+    "American White Ibis",
+    "Wading bird flock",
+    "Great Blue Heron",
+    "Black-crowned Night Heron"
+   ],
+   "companions": [
+    "MG",
+    "EE"
+   ],
+   "url": "https://marcusgeorgiadis.github.io/georgiadis-photography/#/outings/1MbHdfijO_GE7EYr3Tc_7LNHKOy71DZX8",
+   "cover": {
+    "url": "https://lh3.googleusercontent.com/d/1l1FNEzHotlQOtuksEMAijyU3lFdY2jqL=w1200",
+    "width": 1200,
+    "height": 800,
+    "alt": "Yellow-crowned Night Heron"
+   },
+   "accent": "#656f39"
+  },
+  {
+   "id": "1VOjqHspjwb-vLPIGWL67SqP-GdYnPizK",
+   "no": 16,
+   "date": "2025-10-17",
+   "when": "17 October 2025",
+   "title": "Muscovy Duck & Mottled Duck",
+   "type": "Birding MG EE",
+   "hook": "Mostly Muscovy Ducks, with a couple of Mottled Ducks and a Great Egret.",
+   "frames": 15,
+   "speciesN": 3,
+   "species": [
+    "Muscovy Duck",
+    "Mottled Duck",
+    "Great Egret"
+   ],
+   "companions": [
+    "MG",
+    "EE"
+   ],
+   "url": "https://marcusgeorgiadis.github.io/georgiadis-photography/#/outings/1VOjqHspjwb-vLPIGWL67SqP-GdYnPizK",
+   "cover": {
+    "url": "https://lh3.googleusercontent.com/d/1rH1D1E9VRNOqwCEYKOzzd2z3-I0Wgu9J=w1200",
+    "width": 1200,
+    "height": 800,
+    "alt": "Muscovy Duck"
+   },
+   "accent": "#8a6a2a"
+  },
+  {
+   "id": "1mZAsOTHInP-UJMUCrWfl1BuUckq5KBwb",
+   "no": 15,
+   "date": "2025-10-17",
+   "when": "17 October 2025",
+   "title": "Great Egret & Tricolored Heron",
+   "type": "Birding MG",
+   "hook": "Great Egrets and Tricolored Herons dominate this outing, with Anhingas, Common Gallinules and Four-spotted Pennant dragonflies around the pond.",
+   "frames": 54,
+   "speciesN": 11,
+   "species": [
+    "Great Egret",
+    "Tricolored Heron",
+    "Anhinga",
+    "Common Gallinule",
+    "Four-spotted Pennant",
+    "Little Blue Heron"
+   ],
+   "companions": [
+    "MG"
+   ],
+   "url": "https://marcusgeorgiadis.github.io/georgiadis-photography/#/outings/1mZAsOTHInP-UJMUCrWfl1BuUckq5KBwb",
+   "cover": {
+    "url": "https://lh3.googleusercontent.com/d/1Z7gei73LwzkZhYy4ZCq1g2lm51_LH6xB=w1200",
+    "width": 1200,
+    "height": 800,
+    "alt": "Great Egret"
+   },
+   "accent": "#796f3e"
+  },
+  {
+   "id": "1Lz2kZNGoCYu5aThurudUyl4NvKZX2tFl",
+   "no": 12,
+   "date": "2025-10-15",
+   "when": "15 October 2025",
+   "title": "Green Iguana & Little Blue Heron",
+   "type": "Birding MG",
+   "hook": "Green Iguanas basking over the water stole the show, alongside Mottled Ducks, herons and a Belted Kingfisher.",
+   "frames": 28,
+   "speciesN": 6,
+   "species": [
+    "Green Iguana",
+    "Little Blue Heron",
+    "Mottled Duck",
+    "Belted Kingfisher",
+    "Great Blue Heron",
+    "Double-crested Cormorant"
+   ],
+   "companions": [
+    "MG"
+   ],
+   "url": "https://marcusgeorgiadis.github.io/georgiadis-photography/#/outings/1Lz2kZNGoCYu5aThurudUyl4NvKZX2tFl",
+   "cover": {
+    "url": "https://lh3.googleusercontent.com/d/1G55vO9dOYw-apCeVRceeBYasOBJ5gM3D=w1200",
+    "width": 1200,
+    "height": 800,
+    "alt": "Mottled Duck"
+   },
+   "accent": "#79653e"
+  },
+  {
+   "id": "1DlsxSk0a20RMRgB19sbepfMVf7uz3TD7",
+   "no": 11,
+   "date": "2025-10-14",
+   "when": "14 October 2025",
+   "title": "Green Heron & Anhinga",
+   "type": "Birding MG",
+   "hook": "Green Herons in abundance, with Anhingas, Limpkins and Yellow-crowned Night Herons; Eastern Phoebes and Common Yellowthroats mark the start of the season.",
+   "frames": 59,
+   "speciesN": 15,
+   "species": [
+    "Green Heron",
+    "Anhinga",
+    "Limpkin",
+    "Yellow-crowned Night Heron",
+    "Eastern Phoebe",
+    "Tricolored Heron"
+   ],
+   "companions": [
+    "MG"
+   ],
+   "url": "https://marcusgeorgiadis.github.io/georgiadis-photography/#/outings/1DlsxSk0a20RMRgB19sbepfMVf7uz3TD7",
+   "cover": {
+    "url": "https://lh3.googleusercontent.com/d/18igIrZVL2dsdI2Qk7wb4Xp42R9MfG7pT=w1200",
+    "width": 1200,
+    "height": 800,
+    "alt": "Anhinga"
+   },
+   "accent": "#795e3e"
+  },
+  {
+   "id": "1p-EA5X8jaDb650AUhuB7AmdDeng9O26D",
+   "no": 9,
+   "date": "2025-10-13",
+   "when": "13 October 2025",
+   "title": "American White Ibis & Palm Warbler",
+   "type": "Birding MG",
+   "hook": "A busy day with flocks of American White Ibis, newly arrived Palm Warblers and starlings, plus Anhingas and Wood Ducks on the water.",
+   "frames": 62,
+   "speciesN": 17,
+   "species": [
+    "American White Ibis",
+    "Palm Warbler",
+    "Common Starling",
+    "Anhinga",
+    "Wood Duck",
+    "Pileated Woodpecker"
+   ],
+   "companions": [
+    "MG"
+   ],
+   "url": "https://marcusgeorgiadis.github.io/georgiadis-photography/#/outings/1p-EA5X8jaDb650AUhuB7AmdDeng9O26D",
+   "cover": {
+    "url": "https://lh3.googleusercontent.com/d/1d2OZeWYTVlDacrKpQny7FvwS92L3DvKZ=w1200",
+    "width": 1200,
+    "height": 797,
+    "alt": "Palm Warbler"
+   },
+   "accent": "#79613e"
+  },
+  {
+   "id": "1yhmfrN8qm8lXbUeYBWb0PbBvhnI7YioS",
+   "no": 8,
+   "date": "2025-10-12",
+   "when": "12 October 2025",
+   "title": "American White Ibis & Green Heron",
+   "type": "Birding MG",
+   "hook": "Wood Duck, American Alligator, White Ibis and Green Heron: a compact portrait of a Florida wetland.",
+   "frames": 4,
+   "speciesN": 4,
+   "species": [
+    "American White Ibis",
+    "Green Heron",
+    "Wood Duck",
+    "American Alligator"
+   ],
+   "companions": [
+    "MG"
+   ],
+   "url": "https://marcusgeorgiadis.github.io/georgiadis-photography/#/outings/1yhmfrN8qm8lXbUeYBWb0PbBvhnI7YioS",
+   "cover": {
+    "url": "https://lh3.googleusercontent.com/d/11Yy7SwvBje5tI9tfLJrF3PvEWeuZsYoy=w1200",
+    "width": 1200,
+    "height": 800,
+    "alt": "American Alligator"
+   },
+   "accent": "#6e7435"
+  },
+  {
+   "id": "1HX4pKA3WHoWfxWByp_vBDNlSeVEMTw9s",
+   "no": 7,
+   "date": "2025-10-12",
+   "when": "12 October 2025",
+   "title": "Osprey",
+   "type": "Birding MG",
+   "hook": "A ten-frame study of a single subject: an Osprey.",
+   "frames": 10,
+   "speciesN": 1,
+   "species": [
+    "Osprey"
+   ],
+   "companions": [
+    "MG"
+   ],
+   "url": "https://marcusgeorgiadis.github.io/georgiadis-photography/#/outings/1HX4pKA3WHoWfxWByp_vBDNlSeVEMTw9s",
+   "cover": {
+    "url": "https://lh3.googleusercontent.com/d/1x_Bq-PDh58lQRhR5MrSoftYh1xB4NdDM=w1200",
+    "width": 1200,
+    "height": 800,
+    "alt": "Osprey"
+   },
+   "accent": "#796a3e"
+  },
+  {
+   "id": "1B79JID3CHGTdwhdZ8x6z9vZuuchkHGY6",
+   "no": 6,
+   "date": "2025-10-12",
+   "when": "12 October 2025",
+   "title": "Green Heron & American White Ibis",
+   "type": "Birding MG",
+   "hook": "Green Herons hunting the margins, with White Ibis, a Wood Duck and an alligator for company.",
+   "frames": 4,
+   "speciesN": 3,
+   "species": [
+    "Green Heron",
+    "American White Ibis",
+    "Bird flock"
+   ],
+   "companions": [
+    "MG"
+   ],
+   "url": "https://marcusgeorgiadis.github.io/georgiadis-photography/#/outings/1B79JID3CHGTdwhdZ8x6z9vZuuchkHGY6",
+   "cover": {
+    "url": "https://lh3.googleusercontent.com/d/10ChKiKtk7QsjlvLTQVHF6GuBgq7XJaEY=w1200",
+    "width": 1200,
+    "height": 800,
+    "alt": "Green Heron"
+   },
+   "accent": "#795d3e"
+  }
+ ]
+}

@@ -31,21 +31,23 @@ The site is static (GitHub Pages) and rebuilds itself:
 - **Exhibition rooms**: the camera follows the bird and focus pulls between slides in the player; B turns the lights down in a room and each print gets its own lamp.
 - **Journal as a field notebook**: the year as a colour barcode, then month spreads with handwritten lines, taped prints and new species, inked as they turn into view. Every outing can also be read as a story (`#/story/<outing>`): the sky moving with the clock, each bird arriving in turn, with sound.
 - **Hover previews**: with a mouse, rest on a link to a species, outing, room or plate for a card with its photograph.
+- **Dispatches by email** (`#/newsletter`): a short email whenever a new outing goes up, with its best photograph and a link straight to the outing. Offered once to each visitor in a small card, and kept in the header (the envelope) and the footer. Run by a Google Apps Script; see [newsletter/README.md](newsletter/README.md) to set it up.
 - **Link previews**: shared links (`p/<photo>`, `s/<species>`, `o/<outing>`, `r/<room>`) are small pages whose previews show that exact photograph, then open it in the gallery.
 
 ## Layout
 
 | Path | What it is |
 | --- | --- |
-| `core/` | Shared engine: `gallery.css`, `extras.css` and `pages.css`, `model.js` (species, bursts, outings, rooms, search), `app.js` (shell and views), `viewer.js` (zoom viewer), `visitor.js` (favourites, new since last visit), `home.js`, `rooms.js` (exhibitions and the full-screen player), `universe.js`, `lens.js` (viewfinder, loupe), `cabinet.js`, `treeoflife.js`, `calls.js`, `quiz.js`; `effects.css` and `atlas.css`, `sky.js` (sun, moon, the live sky), `tint.js` (colours from the photograph), `fx.js` (arrival, darkroom, light leaks, bursts, depth and water), `soundscape.js`, `intro.js`, `shot.js` (how it was shot, the sky that moment), `peek.js` (hover previews), `marsh.js`, `nightsky.js`, `plates.js`, `notebook.js` (barcode, field notebook), `story.js` |
+| `core/` | Shared engine: `gallery.css`, `extras.css` and `pages.css`, `model.js` (species, bursts, outings, rooms, search), `app.js` (shell and views), `viewer.js` (zoom viewer), `visitor.js` (favourites, new since last visit), `home.js`, `rooms.js` (exhibitions and the full-screen player), `universe.js`, `lens.js` (viewfinder, loupe), `cabinet.js`, `treeoflife.js`, `calls.js`, `quiz.js`; `effects.css` and `atlas.css`, `sky.js` (sun, moon, the live sky), `tint.js` (colours from the photograph), `fx.js` (arrival, darkroom, light leaks, bursts, depth and water), `soundscape.js`, `intro.js`, `shot.js` (how it was shot, the sky that moment), `peek.js` (hover previews), `marsh.js`, `nightsky.js`, `plates.js`, `notebook.js` (barcode, field notebook), `story.js`, `newsletter.js` (the sign-up card and page; public site only) |
 | `site.js`, `index.template.html` | The public site |
 | `p/`, `s/`, `o/`, `r/` | Link-preview pages (built) |
 | `depth/` | A small depth map for each photograph (built by `depth_maps.py`) |
 | `audio/calls/` | Call clips and their sonograms (built by `fetch_calls.py`) |
 | `workshop/` | The private Workshop: the same engine plus sorting with Claude, ID fixes and publish controls |
-| `data/` | `gallery.json` (built), `calls.json` (recording credits), field notes, outing summaries, taxonomy |
+| `data/` | `gallery.json` (built), `dispatches.json` (built: the outings feed the newsletter reads), `calls.json` (recording credits), field notes, outing summaries, taxonomy |
 | `tools/` | `build_site.py`, `og_pages.js`, `fetch_calls.py`, `depth_maps.py`, `nikon_previews.py`, `nikon_enrich.py`, `dev_server.py` |
 | `drive-sync/` | The Apps Script that keeps the public copies current |
+| `newsletter/` | The Apps Script that keeps the newsletter's list and emails each new outing, and how to set it up |
 
 ## Bird calls
 

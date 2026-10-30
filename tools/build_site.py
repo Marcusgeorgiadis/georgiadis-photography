@@ -10,6 +10,7 @@ repository's notes and taxonomy, then writes:
   index.html          from index.template.html, with link-preview tags filled in
   p/ s/ o/ r/         one small link-preview page per photograph, species, outing and room
                       (tools/og_pages.js; needs Node)
+  data/dispatches.json the outings feed the newsletter reads (also tools/og_pages.js)
   audio/calls/        calls for species new since the last build (tools/fetch_calls.py;
                       needs ffmpeg, skipped without it or with --no-calls)
   depth/              a depth map for each new photograph (tools/depth_maps.py; installs
@@ -401,7 +402,7 @@ def cmd_build(a):
     if depth.get("written") or depth.get("removed"):
         changed = True
     pages = og_pages(repo, site.get("url") or a.base) if not a.dev else {"skipped": "dev build"}
-    if any((pages.get(k) or {}).get("written") or (pages.get(k) or {}).get("removed") for k in ("p", "s", "o", "r")):
+    if any((pages.get(k) or {}).get("written") or (pages.get(k) or {}).get("removed") for k in ("p", "s", "o", "r", "feed")):
         changed = True
     n = len(live)
     print(json.dumps({"calls": calls_run, "depth": depth, "pages": pages, "photos": n, "outings": len(out_folders), "missingPublicCopy": missing, "bytes": len(body.encode()), "changed": changed, "manifestComplete": (manifest or {}).get("complete"), "manifestError": (manifest or {}).get("error")}))

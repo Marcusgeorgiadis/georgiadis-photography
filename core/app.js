@@ -211,6 +211,7 @@
     ${GP.calls && GP.calls.available() ? GP.calls.button() : ""}
     ${GP.scape ? GP.scape.button() : ""}
     ${GP.fx ? GP.fx.depthButton() : ""}
+    ${GP.newsletter ? GP.newsletter.button() : ""}
     <button class="icon-btn" data-act="theme" title="Light or dark" aria-label="Switch light or dark">${ICON.moon}</button>
     <button class="icon-btn" data-act="keys" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">${ICON.keys}</button>
   </div>
@@ -220,6 +221,7 @@ ${footer(nav)}
 <button class="to-top icon-btn" data-act="top" aria-label="Back to top" title="Back to top">${ICON.up}</button>`;
     themeIcon();
     if (GP.sky) GP.sky.start();
+    if (GP.newsletter) { GP.newsletter.paint(); GP.newsletter.watch(); }
     const head = $(".gp-head", A.root);
     if (head && "ResizeObserver" in window) {
       if (A.headRO) A.headRO.disconnect();
@@ -245,6 +247,7 @@ ${footer(nav)}
     <button class="link" data-act="exhibit">Play an exhibition</button></div>
   <div class="foot-col"><h3 class="sc">The archive</h3>
     <p class="mono">${st.photos ? `${fmtN(st.photos)} photographs<br>${fmtN(st.species)} species · ${fmtN(st.outings)} outings<br>Updated ${esc(fmtDate(s.updated || st.last))}` : ""}</p>
+    ${GP.newsletter ? GP.newsletter.footLink() : ""}
     ${hasCalls ? `<p class="foot-small">Bird calls are recordings by iNaturalist contributors, shared under Creative Commons licences and credited beside each one.</p>` : ""}</div>
 </div><div class="wrap foot-base"><span>© ${new Date().getFullYear()} ${esc(s.title || "Georgiadis Photography")}</span><span>Press <kbd>?</kbd> for keyboard shortcuts</span></div></footer>`;
   }
