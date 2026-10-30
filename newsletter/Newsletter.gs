@@ -90,6 +90,36 @@ function sendNewsletterTest() {
   Logger.log('Sent both to %s.', me);
 }
 
+/** Confirms the addresses you added yourself (sign-ups whose source is "owner"), so they needn't click the link. */
+function confirmAddedByOwner() {
+  const book = book_();
+  let n = 0;
+  book.list.forEach((rec) => {
+    if (rec.status === 'pending' && rec.source === 'owner') {
+      rec.status = 'confirmed';
+      rec.confirmed = new Date();
+      book.save(rec);
+      n++;
+    }
+  });
+  Logger.log('Confirmed %s address%s you added.', n, n === 1 ? '' : 'es');
+}
+
+/** Sends the newest outing on the site to everyone confirmed, even if it was on the site before the newsletter began. */
+function announceLatest() {
+  const feed = fetchFeed_();
+  if (!feed || !feed.outings.length) throw new Error('The site\'s outings feed could not be read.');
+  const props = PropertiesService.getScriptProperties();
+  const state = JSON.parse(props.getProperty('STATE') || '{}');
+  if (state.issue) throw new Error('A dispatch is still going out. Try again in an hour.');
+  const o = feed.outings[0];
+  state.started = state.started || Date.now();
+  state.issue = { id: 'i' + Date.now(), outings: [o.id] };
+  props.setProperty('STATE', JSON.stringify(state));
+  checkForNewOutings_(false);
+  Logger.log('Sent "%s" (%s).', o.title, o.when);
+}
+
 /** Announces any outing waiting to settle right away, instead of after SETTLE_HOURS. */
 function sendWaitingNow() {
   checkForNewOutings_(true);

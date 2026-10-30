@@ -4,7 +4,7 @@
   "use strict";
   // The newsletter's web app (newsletter/Newsletter.gs, deployed by the site's owner). While
   // this is empty the sign-up card, the envelope in the header and the newsletter page stay hidden.
-  const NEWSLETTER = "";
+  const NEWSLETTER = "https://script.google.com/macros/s/AKfycbw_QMentu71iI-TCa3Vak9uTnjNF9lahuNUAqIsnMn-gRwhQ8B9RZ8X0tFt9v2xZMY3/exec";
   const fill = (tpl, id, w) => tpl.replace("{id}", encodeURIComponent(id)).replace("{w}", String(w));
   function adapterFor(raw) {
     if (raw.images === "dev") {

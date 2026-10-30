@@ -20,6 +20,8 @@ Visitors can ask for **dispatches by email**: a short note whenever a new outing
 
 ## Day to day
 
+- **Adding people yourself.** Sign them up with the form, giving `owner` as the source, and run `confirmAddedByOwner` to confirm them without waiting for them to click.
+- **Sending the latest outing again.** `announceLatest` sends the newest outing on the site to everyone confirmed, even one that was up before the newsletter began.
 - **Send straight away.** To announce a waiting outing without the six-hour wait, run `sendWaitingNow`. The wait itself is a script property, `SETTLE_HOURS` (Project Settings → Script properties).
 - **How many a day.** A free Google account can send about 100 emails a day. A longer list is no problem: the rest go out the next day, picking up where they stopped.
 - **Other settings** (all optional script properties): `SENDER_NAME` (the name mail comes from), `REPLY_TO` (where replies go, if not this account), `SITE_URL` (the public site).
