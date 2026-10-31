@@ -15,6 +15,7 @@
   const FINALS_RE = /^finals?\b/i;
   const RAW_RE = /\braws?\b/i;
   const PUBLIC_RE = /^public gallery$/i;
+  const LIB_RE = /^workshop library$/i; // where the Workshop saves its library for the publish job
   const RAW_EXT = /\.(nef|nrw|dng|cr2|cr3|crw|arw|srf|sr2|raf|orf|rw2|pef|srw|x3f|3fr|iiq|erf|mef|mos|kdc|dcr|xmp)$/i;
   const DECODABLE = /^image\/(jpeg|jpg|png|webp|gif)$/i;
   const GROUPS = { bird: "Birds", mammal: "Mammals", reptile: "Reptiles", amphibian: "Amphibians", fish: "Fish", insect: "Insects", spider: "Spiders", other: "Other wildlife", none: "No wildlife" };
@@ -47,6 +48,7 @@
     cap: { db: null, mcp: null, assets: null, sample: null, perms: null, images: false, maxImages: 1, ready: false },
     folders: new Map(), previews: new Map(), enrichDocs: new Map(), notesSp: {}, notesOut: {}, taxonomy: null, site: {},
     collections: new Map(), job: null, cloud: null, library: null, publish: null,
+    previewDocs: new Map(), notesDocs: {}, export: null, libraryErr: "",
     loaded: { folders: false, library: false }, started: false, run: null, lastNote: "", scanError: "", cloudErr: "",
     fullUrls: new Map(), opinions: new Map(), eye: "rare", confirm: null,
   };
@@ -446,6 +448,7 @@
   <section class="ws-card"><h2>Public site</h2>
     <p>${W.publish && W.publish.at ? `Last published ${esc(ago(W.publish.at))}${W.publish.photos ? ` with ${plural(W.publish.photos, "photograph")}` : ""}.` : "Not published yet."}${W.publish && W.publish.error ? ` <span class="err">${esc(W.publish.error)}</span>` : ""}</p>
     ${W.publish && W.publish.manifest ? `<p>Drive copies: ${plural(W.publish.manifest.total || 0, "photo")} in Nikon › Public Gallery${W.publish.manifest.complete ? "" : " (still copying)"}${W.publish.manifest.error ? `. ${esc(W.publish.manifest.error)}` : ""}.</p>` : ""}
+    <p>${W.libraryErr ? `<span class="err">The library couldn't be saved to Drive for the publish job: ${esc(W.libraryErr)}</span>` : W.export && W.export.at ? `Library saved to Drive for the publish job ${esc(ago(W.export.at))}.` : "The library is saved to Drive for the publish job once it has loaded."}</p>
     ${W.site.url ? `<p><a href="${esc(W.site.url)}" target="_blank" rel="noopener">${esc(W.site.url.replace(/^https?:\/\//, ""))}</a></p>` : ""}
     <div class="acts"><a class="btn" href="#/publish">Settings</a><button class="btn primary" data-ws="publish"${W.cap.mcp && W.cap.db ? "" : " disabled"}>Publish now</button></div></section>
 </div>
@@ -595,6 +598,75 @@ ${fresh.length ? `<section class="sec"><div class="sec-h"><h2>Sorted this week</
     const work = async () => { while (i < items.length) { const it = items[i++]; await fn(it); } };
     await Promise.all(Array.from({ length: Math.min(n, items.length) }, work));
   }
+  /* ---------- the library, saved to Drive for the publish job ---------- */
+  // The publish job builds the public site from this copy: tools/workshop_library.py reads it with
+  // the job's own Drive key, as build_site.py reads the Public Gallery's manifest. It is saved a
+  // little after anything changes, only when something has, and the copy before goes to the trash.
+  const LIB_FOLDER = "Workshop library", LIB_NAME = "workshop-library.json.gz";
+  const LIB_NEEDS = ["folders", "previews", "enrich", "collections", "notesSp", "notesOut", "site", "taxonomy", "library", "export"];
+  const X = { timer: 0, busy: false };
+  function libraryCopy() {
+    const all = (m) => Object.fromEntries([...m.entries()].sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0)));
+    const meta = {};
+    for (const [k, v] of [["site", W.site], ["taxonomy", W.taxonomy], ["library", W.library], ["publish", W.publish], ["cloud", W.cloud]]) if (v && Object.keys(v).length) meta[k] = v;
+    const notes = {};
+    for (const k of ["species", "outings"]) if (W.notesDocs[k]) notes[k] = W.notesDocs[k];
+    return { folders: all(W.folders), previews: all(W.previewDocs), enrich: all(W.enrichDocs), collections: all(W.collections), notes, meta };
+  }
+  function fnv(str) {
+    let h = 0x811c9dc5;
+    for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+    return (h >>> 0).toString(16);
+  }
+  async function gzipBase64(text) {
+    const buf = new Uint8Array(await new Response(new Blob([text]).stream().pipeThrough(new CompressionStream("gzip"))).arrayBuffer());
+    let bin = "";
+    for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode.apply(null, buf.subarray(i, i + 0x8000));
+    return { b64: btoa(bin), bytes: buf.length };
+  }
+  // Editors only (assets is theirs alone): a viewer's own Drive connector never gets a copy.
+  function scheduleLibrarySave(delay = 15000) {
+    if (!W.cap.mcp || !W.cap.db || !W.cap.assets || typeof CompressionStream === "undefined") return;
+    clearTimeout(X.timer);
+    X.timer = setTimeout(saveLibrary, delay);
+  }
+  async function libraryFolder() {
+    if (W.export && W.export.folderId) return W.export.folderId;
+    const found = await listAll(`parentId = '${NIKON_ID}' and title = '${LIB_FOLDER}' and mimeType = '${FOLDER}'`);
+    if (found.length) return found[0].id;
+    const res = await drive("create_file", { title: LIB_FOLDER, parentId: NIKON_ID, contentMimeType: FOLDER });
+    const p = (res && res.payload) || {};
+    if (!p.id) throw new Error("The library folder couldn't be made in Drive.");
+    return p.id;
+  }
+  async function saveLibrary() {
+    if (X.busy) return;
+    if (W.run) { scheduleLibrarySave(30000); return; } // a scan or a sort writes a lot: save once it's done
+    if (!LIB_NEEDS.every((k) => W.loaded[k]) || !W.folders.size) return;
+    const cols = libraryCopy();
+    const hash = fnv(JSON.stringify(cols));
+    if (W.export && W.export.hash === hash) return;
+    X.busy = true;
+    try {
+      const at = new Date().toISOString();
+      const { b64, bytes } = await gzipBase64(JSON.stringify({ v: 1, at, collections: cols }));
+      const folderId = await libraryFolder();
+      const res = await drive("create_file", { title: LIB_NAME, parentId: folderId, contentMimeType: "application/gzip", base64Content: b64, disableConversionToGoogleType: true });
+      const p = (res && res.payload) || {};
+      if (!p.id) throw new Error("Drive didn't keep the copy.");
+      const prev = W.export && W.export.fileId;
+      const docs = Object.fromEntries(Object.entries(cols).map(([k, v]) => [k, Object.keys(v).length]));
+      await W.cap.db.doc("meta/export").set({ fileId: p.id, folderId, hash, at, bytes, docs });
+      if (prev && prev !== p.id) drive("trash_file", { fileId: prev }).catch(() => {});
+      W.libraryErr = "";
+    } catch (e) {
+      W.libraryErr = e && e.code ? driveErrText(e) : String((e && e.message) || e);
+      console.warn("Saving the library to Drive:", e);
+    } finally {
+      X.busy = false;
+      paintWorkshop();
+    }
+  }
   function driveErrText(e, name = DRIVE) {
     switch (e && e.code) {
       case "needs_reauth": return `${name} needs reconnecting. Reconnect it in claude.ai Settings › Connectors, then try again.`;
@@ -644,7 +716,7 @@ ${fresh.length ? `<section class="sec"><div class="sec-h"><h2>Sorted this week</
     paintRun();
     try {
       // The public copies live inside the Nikon folder too; they are never Finals of their own.
-      const outings = (await listAll(`parentId = '${NIKON_ID}' and mimeType = '${FOLDER}'`)).filter((o) => !RAW_RE.test(o.title || "") && !PUBLIC_RE.test((o.title || "").trim()));
+      const outings = (await listAll(`parentId = '${NIKON_ID}' and mimeType = '${FOLDER}'`)).filter((o) => !RAW_RE.test(o.title || "") && !PUBLIC_RE.test((o.title || "").trim()) && !LIB_RE.test((o.title || "").trim()));
       const finals = [], skipped = [];
       W.run.total = outings.length;
       await pool(outings, 3, async (o) => {
@@ -1112,24 +1184,27 @@ Reply with only JSON: {"frames": [{"n": 1, "group": string, "common": string, "s
     const err = () => {};
     db.collection("folders").limit(1000).onSnapshot((snap) => {
       W.folders = new Map(snap.docs.map((d) => [d.id, d.data()]));
-      W.loaded.folders = true; refresh(); maybeAutoScan();
+      W.loaded.folders = true; refresh(); maybeAutoScan(); scheduleLibrarySave();
     }, () => { W.loaded.folders = true; W.scanError = "The saved index couldn't be loaded. Reload the page."; refresh(true); });
     db.collection("previews").limit(1000).onSnapshot((snap) => {
+      W.previewDocs = new Map(snap.docs.map((d) => [d.id, d.data()]));
+      W.loaded.previews = true; scheduleLibrarySave();
       const m = new Map();
       const docs = snap.docs.slice().sort((a, b) => String(a.data().at || "").localeCompare(String(b.data().at || "")));
       for (const d of docs) for (const [pid, pv] of Object.entries(d.data().photos || {})) m.set(pid, pv);
       W.previews = m; refresh();
     }, err);
-    db.collection("enrich").limit(1000).onSnapshot((snap) => { W.enrichDocs = new Map(snap.docs.map((d) => [d.id, d.data()])); refresh(); }, err);
-    db.collection("collections").limit(200).onSnapshot((snap) => { W.collections = new Map(snap.docs.map((d) => [d.id, d.data()])); refresh(); }, err);
+    db.collection("enrich").limit(1000).onSnapshot((snap) => { W.enrichDocs = new Map(snap.docs.map((d) => [d.id, d.data()])); W.loaded.enrich = true; refresh(); scheduleLibrarySave(); }, err);
+    db.collection("collections").limit(200).onSnapshot((snap) => { W.collections = new Map(snap.docs.map((d) => [d.id, d.data()])); W.loaded.collections = true; refresh(); scheduleLibrarySave(); }, err);
     db.collection("jobs").orderBy("at", "desc").limit(1).onSnapshot((snap) => { W.job = snap.docs[0] ? snap.docs[0].data() : null; paintWorkshop(); }, err);
-    db.doc("notes/species").onSnapshot((s) => { W.notesSp = (s.exists && s.data().notes) || {}; refresh(); }, err);
-    db.doc("notes/outings").onSnapshot((s) => { W.notesOut = (s.exists && s.data().notes) || {}; refresh(); }, err);
-    db.doc("meta/taxonomy").onSnapshot((s) => { W.taxonomy = s.exists ? s.data() : {}; refresh(); }, err);
-    db.doc("meta/site").onSnapshot((s) => { W.site = s.exists ? s.data() : {}; refresh(); }, err);
+    db.doc("notes/species").onSnapshot((s) => { W.notesSp = (s.exists && s.data().notes) || {}; W.notesDocs.species = s.exists ? s.data() : null; W.loaded.notesSp = true; refresh(); scheduleLibrarySave(); }, err);
+    db.doc("notes/outings").onSnapshot((s) => { W.notesOut = (s.exists && s.data().notes) || {}; W.notesDocs.outings = s.exists ? s.data() : null; W.loaded.notesOut = true; refresh(); scheduleLibrarySave(); }, err);
+    db.doc("meta/taxonomy").onSnapshot((s) => { W.taxonomy = s.exists ? s.data() : {}; W.loaded.taxonomy = true; refresh(); scheduleLibrarySave(); }, err);
+    db.doc("meta/site").onSnapshot((s) => { W.site = s.exists ? s.data() : {}; W.loaded.site = true; refresh(); scheduleLibrarySave(); }, err);
     db.doc("meta/cloud").onSnapshot((s) => { W.cloud = s.exists ? s.data() : null; paintWorkshop(); }, err);
-    db.doc("meta/publish").onSnapshot((s) => { W.publish = s.exists ? s.data() : null; paintWorkshop(); paintPublish(); }, err);
-    db.doc("meta/library").onSnapshot((s) => { W.library = s.exists ? s.data() : null; W.loaded.library = true; paintWorkshop(); maybeAutoScan(); }, () => { W.loaded.library = true; });
+    db.doc("meta/publish").onSnapshot((s) => { W.publish = s.exists ? s.data() : null; paintWorkshop(); paintPublish(); scheduleLibrarySave(); }, err);
+    db.doc("meta/library").onSnapshot((s) => { W.library = s.exists ? s.data() : null; W.loaded.library = true; paintWorkshop(); maybeAutoScan(); scheduleLibrarySave(); }, () => { W.loaded.library = true; });
+    db.doc("meta/export").onSnapshot((s) => { W.export = s.exists ? s.data() : null; W.loaded.export = true; paintWorkshop(); scheduleLibrarySave(); }, () => { W.loaded.export = true; });
   }
   boot();
 })(window.GP = window.GP || {});

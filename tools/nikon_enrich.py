@@ -18,7 +18,7 @@ from PIL import Image, ImageFilter, ImageOps
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import nikon_previews as NP  # noqa: E402
 
-CHUNK = 120  # photos per enrich document, keeps each well under the 256 KiB limit
+CHUNK = 30  # photos per enrich document: small enough to send to the Workshop's database in one write
 
 
 def exif_of(m):
@@ -116,7 +116,8 @@ def cmd_enrich(a):
                 have[pid] = True
     jobs = []
     for fid, f in folders.items():
-        ids = [pid for pid in (f.get("photos") or {}) if pid not in have]
+        # hidden photos never reach the public site, so they need no camera data
+        ids = [pid for pid, p in (f.get("photos") or {}).items() if pid not in have and not ((p.get("ov") or {}).get("hidden"))]
         if not ids:
             continue
         # One listing call per Finals folder brings camera data and thumbnail links.

@@ -5,7 +5,7 @@ Wildlife of Central Florida: a gallery of the Finals from the Nikon archive.
 The site is static (GitHub Pages) and rebuilds itself:
 
 1. **Google Drive.** `drive-sync/PublicGallerySync.gs` runs every 30 minutes in Google Apps Script. It copies every Finals photo from the Nikon folder into `Nikon/Public Gallery` (shared as "anyone with the link"), keeps the copies in step with the originals, and writes `manifest.json` there. RAW folders are never touched.
-2. **The cloud job.** A scheduled job reads the manifest and the private Workshop's library (species IDs, ratings, hidden photos, notes), adds camera data for new photos, and runs `tools/build_site.py`, which writes `data/gallery.json`, `index.html`, the link-preview pages and the calls of any new species here.
+2. **The cloud job.** A scheduled job reads the manifest and the private Workshop's library (species IDs, ratings, hidden photos, notes), which the Workshop saves to `Nikon/Workshop library` in Drive whenever it changes (`tools/workshop_library.py` reads it), adds camera data for new photos, and runs `tools/build_site.py`, which writes `data/gallery.json`, `index.html`, the link-preview pages and the calls of any new species here.
 3. **The site.** `index.html` loads `core/` (the shared gallery engine) and `site.js`, which shows the public copies straight from Google Drive.
 
 ## What's in the gallery

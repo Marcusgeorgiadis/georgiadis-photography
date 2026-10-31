@@ -227,10 +227,11 @@ def cmd_docs(a):
     keys = sorted(entries)
     writes = []
     os.makedirs(os.path.join(a.out, "docs"), exist_ok=True)
-    for k, i in enumerate(range(0, len(keys), 1200)):
+    # 200 photos a document keeps each one small enough to send in one database write
+    for k, i in enumerate(range(0, len(keys), 200)):
         doc_id = f"run-{run}-{k}"
         path = os.path.join(a.out, "docs", doc_id + ".json")
-        json.dump({"at": at, "photos": {pid: entries[pid] for pid in keys[i:i + 1200]}}, open(path, "w"))
+        json.dump({"at": at, "photos": {pid: entries[pid] for pid in keys[i:i + 200]}}, open(path, "w"))
         writes.append({"op": "set", "collection": "previews", "doc_id": doc_id, "file_path": path})
     missing = [m for pid, m in manifest.items() if pid not in assets]
     job = {"at": at, "made": len(entries), "failed": len(failures) + len(missing),
