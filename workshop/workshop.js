@@ -500,6 +500,7 @@
   function selected() { return GP.app.selection.map((id) => model().byId.get(id)).filter(Boolean); }
   function applySelection(f) {
     const xs = selected(), common = $("#ws-sel-sp", f).value.trim().slice(0, 80);
+    if (xs.length && GP.app.holdView) GP.app.holdView(null, xs.flatMap((x) => (x.burst ? x.burst.frames : [x])).map((x) => x.id));
     if (!xs.length) { toast("Select some photos first."); return; }
     if (!common) { toast("Type a species to apply."); return; }
     saveId(xs, common, "", $("#ws-sel-group", f).value).then(() => { GP.app.clearSelection(); paintSel(); });
@@ -508,6 +509,8 @@
   /* ---------- workshop page actions ---------- */
   function onWorkshopAction(a, b) {
     const xs = selected();
+    // a change to the selection rebuilds the page: hold it on a photo the change doesn't touch
+    if (/^sel-(rate|hide|explicit|revert|collect)$/.test(a) && xs.length && GP.app.holdView) GP.app.holdView(null, xs.flatMap((x) => (x.burst ? x.burst.frames : [x])).map((x) => x.id));
     switch (a) {
       case "sel-rate": if (xs.length) saveMany(xs, () => ({ ov: { rating: +b.dataset.n } })).then(() => toast(`${plural(xs.length, "photo")} rated ${"★".repeat(+b.dataset.n)}`), (e) => toast(dbErrText(e))); break;
       case "sel-hide": if (xs.length) toggleHidden(xs); break;

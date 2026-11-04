@@ -1223,22 +1223,27 @@ ${footer(nav)}
   // merge, split or move between rows, so the same scroll position can land somewhere else. The
   // page is held on a tile instead: the one an action asked for (holdView), or else the one in
   // the middle of the screen, back at the same height on screen.
+  // Every tile on screen, nearest the middle first (the one an action asked for ahead of them
+  // all): after the rebuild the page is held on the first of them that is still there, so a
+  // change that takes tiles away (a rating under a rating filter, a species under a search, a
+  // fix in one of the Workshop's lists) still leaves the page where it was.
   function viewAnchor() {
-    const vh = innerHeight, tiles = $$("#gp-main [data-id]");
-    const want = A.hold && Date.now() - A.hold.at < 10000 ? A.hold.id : null;
+    const vh = innerHeight, tiles = $$("#gp-main [data-id]"), out = [];
+    const live = A.hold && Date.now() - A.hold.at < 10000 ? A.hold : null;
+    const want = live && live.id, avoid = (live && live.avoid) || new Set();
     if (want) {
       const el = tiles.find((t) => t.dataset.id === want || (t.dataset.frames || "").split(",").includes(want));
       const r = el && el.getBoundingClientRect();
-      if (r && r.bottom > 0 && r.top < vh) return { id: want, top: r.top };
+      if (r && r.bottom > 0 && r.top < vh) out.push({ id: want, top: r.top, d: -1 });
     }
-    let best = null, bd = Infinity;
     for (const t of tiles) {
       const r = t.getBoundingClientRect();
       if (!r.height || r.bottom < 0 || r.top > vh) continue;
-      const d = Math.abs(r.top + r.height / 2 - vh / 2);
-      if (d < bd) { bd = d; best = { id: t.dataset.id, top: r.top }; }
+      // the photos just changed may move or go (a re-sort, a filter): never hold on them
+      if (avoid.has(t.dataset.id) || (t.dataset.frames || "").split(",").some((i) => avoid.has(i))) continue;
+      out.push({ id: t.dataset.id, top: r.top, d: Math.abs(r.top + r.height / 2 - vh / 2) });
     }
-    return best;
+    return out.length ? out.sort((a, b) => a.d - b.d) : null;
   }
   function findTile(id) {
     const tiles = $$("#gp-main [data-id]");
@@ -1250,8 +1255,12 @@ ${footer(nav)}
   }
   function holdAnchor(an) {
     if (!an) return;
-    const el = findTile(an.id);
-    if (el) window.scrollBy(0, el.getBoundingClientRect().top - an.top);
+    // the action's own tile may now show elsewhere (a burst it joined): only that one is followed
+    // to where its burst shows; the others count only where they still are
+    for (const c of an) {
+      const el = c.d < 0 ? findTile(c.id) : $$("#gp-main [data-id]").find((t) => t.dataset.id === c.id);
+      if (el) { window.scrollBy(0, el.getBoundingClientRect().top - c.top); return; }
+    }
   }
   function update(raw) {
     A.raw = raw || A.raw;
@@ -1267,12 +1276,13 @@ ${footer(nav)}
     window.scrollTo(0, y);
     holdAnchor(an);
     requestAnimationFrame(() => holdAnchor(an));
-    A.hold = null;
     if (cur && GP.viewer.refresh) GP.viewer.refresh(A.model);
   }
   // Sensitive photographs a visitor has chosen to see, for this visit.
   function reveal(ids) { for (const id of [].concat(ids)) if (id) A.revealed.add(id); }
-  function holdView(id) { A.hold = id ? { id, at: Date.now() } : null; }
+  // An action about to change photos says which tile to keep in place (id: a burst it joined),
+  // and which photos it changes (avoid: never hold the page on them, they may move or go).
+  function holdView(id, avoid) { A.hold = id || avoid ? { id: id || null, avoid: new Set(avoid || []), at: Date.now() } : null; }
   function setSelecting(on) {
     A.selecting = !!on;
     if (!on) A.sel.clear();
