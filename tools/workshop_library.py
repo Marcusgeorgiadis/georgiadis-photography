@@ -66,13 +66,16 @@ def add_published(out, published):
 
 
 def cmd_local(a):
+    import folder_parts
+    # a big outing is kept across several documents; the tools read it whole
+    folder_parts.merge_dir(a.dir)
     d = os.path.join(a.dir, "folders")
     if not os.path.isdir(d) or not any(f.endswith(".json") for f in os.listdir(d)):
         sys.exit(f"No folders in {a.dir}: read the Workshop's database there first.")
     counts = {}
     for name in sorted(os.listdir(a.dir)):
         sub = os.path.join(a.dir, name)
-        if os.path.isdir(sub):
+        if os.path.isdir(sub) and name != "folder_parts.json":
             for f in os.listdir(sub):
                 if f.endswith(".json"):
                     json.load(open(os.path.join(sub, f)))  # fail loudly on a broken file

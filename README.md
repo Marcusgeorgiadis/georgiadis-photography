@@ -42,6 +42,7 @@ The site is static (GitHub Pages) and rebuilds itself:
 | `p/`, `s/`, `o/`, `r/` | Link-preview pages (built) |
 | `depth/` | A small depth map for each photograph (built by `depth_maps.py`) |
 | `audio/calls/` | Call clips and their sonograms (built by `fetch_calls.py`) |
+| `tools/folder_parts.py` | Big outings are kept across several database documents (`folders/<id>`, `folders/<id>@2`, …), each under 180 KiB of the database's 256 KiB limit; the Workshop and the publish job read them whole and write through the same rule |
 | `workshop/` | The private Workshop: the same engine plus sorting with Claude, ID fixes, burst grouping by hand (Select, then Join bursts or Split burst; in the viewer, Take out of this burst or Automatic grouping), Explicit marks (blurred on the site until a visitor clicks to see them, and never used as a cover, on the home page or in the automatic exhibitions) and publish controls |
 | `data/` | `gallery.json` (built), `dispatches.json` (built: the outings feed the newsletter reads), `calls.json` (recording credits), field notes, outing summaries, taxonomy |
 | `tools/` | `build_site.py`, `og_pages.js`, `fetch_calls.py`, `depth_maps.py`, `nikon_previews.py`, `nikon_enrich.py`, `dev_server.py` |

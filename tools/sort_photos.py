@@ -17,7 +17,8 @@ looking:
   apply --db MERGED --library DB --out DIR
         Tidies the answers exactly as the Workshop does, puts them in the merged dump (so this
         run's build has them), and writes the Workshop's updates: DIR/writes/<folder>.json and
-        DIR/batch.json, one {"op": "update", "collection": "folders", "doc_id", "file_path"}
+        DIR/batch.json, {"op": "update" | "set", "collection": "folders", "doc_id", "file_path"}
+        entries (a big outing is kept in parts, tools/folder_parts.py; parts to create come first)
         per folder, adding to each photo its identification and its preview (assets.tsv lists
         "<preview path><TAB><asset id>" for the previews the job uploaded). A photo without a
         preview goes to the site only, since the Workshop shows photos by their preview. A
@@ -311,6 +312,8 @@ def cmd_apply(a):
             patch.update({"a": assets[pid], "w": p["w"], "h": p["h"]})
         patches.setdefault(p["fid"], {})[pid] = patch
     os.makedirs(os.path.join(a.out, "writes"), exist_ok=True)
+    import folder_parts
+    layout = folder_parts.load_layout(a.library)
     batch, ids, site_only = [], 0, 0
     for fid, ps in patches.items():
         f = merged.get(fid)
@@ -324,19 +327,22 @@ def cmd_apply(a):
         if not ps:
             continue
         lib = library.get(fid)
+        # An outing can be kept across several documents (tools/folder_parts.py): each change goes
+        # to the part holding its photo, and new or growing photos to a part with room, so no
+        # document outgrows the database's limit.
+        known = (lib or {}).get("photos") or {}
+        doc_photos = {}
+        for pid, patch in ps.items():
+            # a photo the Workshop hasn't indexed yet goes with its file details, as its own scan would
+            base = {} if pid in known else {k: v for k, v in f["photos"][pid].items() if k in ("n", "t", "s", "m", "sub")}
+            doc_photos[pid] = dict(base, **patch)
+        full = {pid: dict(known.get(pid) or {}, **doc_photos[pid]) for pid in doc_photos}
         if lib is None:
             # a folder the Workshop hasn't indexed yet: send it whole, so it can be created
-            doc = {k: f[k] for k in ("outing", "outingId", "chain", "dateLabel", "date") if k in f}
-            doc["photos"] = {pid: dict(f["photos"][pid]) for pid in ps}
+            meta = {k: f[k] for k in ("outing", "outingId", "chain", "dateLabel", "date") if k in f}
+            batch += folder_parts.plan_writes(fid, None, doc_photos, full, meta=meta, out_dir=a.out)
         else:
-            doc = {"photos": {}}
-            for pid, patch in ps.items():
-                # a photo the Workshop hasn't indexed yet goes with its file details, as its own scan would
-                base = {} if pid in (lib.get("photos") or {}) else {k: v for k, v in f["photos"][pid].items() if k in ("n", "t", "s", "m", "sub")}
-                doc["photos"][pid] = dict(base, **patch)
-        wp = os.path.join(os.path.abspath(a.out), "writes", fid + ".json")
-        json.dump(doc, open(wp, "w"))
-        batch.append({"op": "update", "collection": "folders", "doc_id": fid, "file_path": wp, "new": lib is None})
+            batch += folder_parts.plan_writes(fid, layout.get(fid) or {fid: {"ids": sorted(known), "bytes": folder_parts.size(lib)}}, doc_photos, full, out_dir=a.out)
         ids += len(ps)
     json.dump(batch, open(os.path.join(a.out, "batch.json"), "w"), indent=1)
     missing = [pid for pid in plan if pid not in answers]

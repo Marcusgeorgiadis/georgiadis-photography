@@ -48,7 +48,7 @@
     cap: { db: null, mcp: null, assets: null, sample: null, perms: null, images: false, maxImages: 1, ready: false },
     folders: new Map(), previews: new Map(), enrichDocs: new Map(), notesSp: {}, notesOut: {}, taxonomy: null, site: {},
     collections: new Map(), job: null, cloud: null, library: null, publish: null,
-    previewDocs: new Map(), notesDocs: {}, export: null, libraryErr: "",
+    previewDocs: new Map(), notesDocs: {}, export: null, libraryErr: "", parts: new Map(), where: new Map(),
     loaded: { folders: false, library: false }, started: false, run: null, lastNote: "", scanError: "", cloudErr: "",
     fullUrls: new Map(), opinions: new Map(), eye: "rare", confirm: null,
   };
@@ -116,11 +116,110 @@
   /* ---------- database writes ---------- */
   const chains = new Map();
   // One write at a time per folder document.
-  function writeFolder(fid, photos) {
-    const run = () => W.cap.db.doc("folders/" + fid).update({ photos });
+  /* ---------- outing records, kept in parts ---------- */
+  // One database document holds at most 256 KiB, and Claude's notes on each photo take about
+  // 1 KB, so a big outing doesn't fit in one (the 18 April outing, 269 photos, reached 252 KiB and
+  // refused every further change). An outing is kept across as many documents as it needs:
+  // folders/<fid> holds the outing and some of its photos, folders/<fid>@2, @3, ... hold
+  // {partOf: fid, photos} for the rest. W.folders is always the outing whole; every write goes
+  // through writeFolder (a change to some photos) or layOut (the outing whole), which keep each
+  // part under PART_BUDGET. The publish job reads and writes the same way (tools/folder_parts.py).
+  const PART_BUDGET = 180 * 1024;
+  const enc = new TextEncoder();
+  const bytes = (v) => enc.encode(JSON.stringify(v)).length;
+  const partBase = (id) => String(id).split("@")[0];
+  const partNo = (id) => { const m = /@(\d+)$/.exec(id); return m ? +m[1] : 1; };
+  const byPart = (a, b) => (partBase(a) < partBase(b) ? -1 : partBase(a) > partBase(b) ? 1 : partNo(a) - partNo(b));
+  const isObj = (v) => !!v && typeof v === "object" && !Array.isArray(v);
+  // as the database merges an update: nested objects merge, anything else replaces
+  function mergeInto(a, b) {
+    const out = Object.assign({}, a);
+    for (const [k, v] of Object.entries(b)) out[k] = isObj(v) && isObj(a && a[k]) ? mergeInto(a[k], v) : v;
+    return out;
+  }
+  function setFolders(entries) {
+    const parts = new Map(), where = new Map(), folders = new Map();
+    for (const [id, data] of entries.slice().sort((a, b) => byPart(a[0], b[0]))) {
+      const fid = partBase(id);
+      (parts.get(fid) || parts.set(fid, new Map()).get(fid)).set(id, data);
+      for (const pid of Object.keys(data.photos || {})) where.set(pid, id);
+    }
+    for (const [fid, ps] of parts) {
+      const photos = {};
+      for (const data of ps.values()) Object.assign(photos, data.photos || {});
+      const meta = Object.assign({}, ps.get(fid) || {});
+      delete meta.photos; delete meta.partOf;
+      folders.set(fid, Object.assign(meta, { photos }));
+    }
+    W.parts = parts; W.where = where; W.folders = folders;
+  }
+  // one write at a time to each outing's documents
+  function inChain(fid, run) {
     const p = (chains.get(fid) || Promise.resolve()).then(run, run);
     chains.set(fid, p.catch(() => {}));
     return p;
+  }
+  // A change to some photos of an outing: each to the part that holds it, unless a part would
+  // outgrow its budget, in which case the outing is laid out afresh across its parts.
+  function writeFolder(fid, photos) {
+    return inChain(fid, async () => {
+      const parts = W.parts.get(fid);
+      if (!parts || !W.folders.get(fid)) return W.cap.db.doc("folders/" + fid).update({ photos });
+      const byDoc = new Map();
+      for (const [pid, pt] of Object.entries(photos)) {
+        const d = W.where.get(pid) || fid;
+        (byDoc.get(d) || byDoc.set(d, {}).get(d))[pid] = pt;
+      }
+      if ([...byDoc].some(([d, pt]) => bytes(parts.get(d) || {}) + bytes(pt) > PART_BUDGET)) {
+        const cur = W.folders.get(fid), next = Object.assign({}, cur, { photos: Object.assign({}, cur.photos) });
+        for (const [pid, pt] of Object.entries(photos)) next.photos[pid] = mergeInto(cur.photos[pid] || {}, pt);
+        return layOut(fid, next);
+      }
+      for (const [d, pt] of byDoc) {
+        await W.cap.db.doc("folders/" + d).update({ photos: pt });
+        // keep the local copy current until the database's own update arrives
+        parts.set(d, mergeInto(parts.get(d) || {}, { photos: pt }));
+      }
+    });
+  }
+  // The outing whole, across as many parts as it needs. Photos stay in the part they're in while
+  // it has room, so a change rewrites as little as it can; parts that gain photos are written
+  // before the parts those photos leave, so none is ever missing in between.
+  async function layOut(fid, doc) {
+    const db = W.cap.db, old = W.parts.get(fid) || new Map();
+    const photos = doc.photos || {}, meta = Object.assign({}, doc);
+    delete meta.photos; delete meta.partOf;
+    const docs = new Map(), room = new Map();
+    const open = (d, base) => { docs.set(d, {}); room.set(d, base); };
+    open(fid, bytes(meta) + 64);
+    for (const d of [...old.keys()].filter((d) => d !== fid).sort(byPart)) open(d, 64);
+    let nextNo = Math.max(1, ...[...docs.keys()].map(partNo)) + 1;
+    const put = (pid, d) => {
+      const c = bytes(photos[pid]) + pid.length + 8;
+      if (room.get(d) + c > PART_BUDGET) return false;
+      docs.get(d)[pid] = photos[pid]; room.set(d, room.get(d) + c);
+      return true;
+    };
+    const rest = [];
+    for (const pid of Object.keys(photos).sort()) { const d = W.where.get(pid); if (!(d && docs.has(d) && put(pid, d))) rest.push(pid); }
+    for (const pid of rest) if (![...docs.keys()].some((d) => put(pid, d))) { const d = fid + "@" + nextNo++; open(d, 64); put(pid, d); }
+    const body = (d) => (d === fid ? Object.assign({}, meta, { photos: docs.get(d) }) : { partOf: fid, photos: docs.get(d) });
+    const count = (d) => Object.keys(docs.get(d) || {}).length;
+    const gain = (d) => count(d) - Object.keys((old.get(d) || {}).photos || {}).length;
+    for (const d of [...docs.keys()].sort((a, b) => gain(b) - gain(a))) {
+      if (d !== fid && !count(d)) continue;
+      const prev = old.get(d), next = body(d);
+      if (!prev || stable(prev) !== stable(next)) await db.doc("folders/" + d).set(next);
+    }
+    for (const d of old.keys()) if (d !== fid && !count(d)) await db.doc("folders/" + d).delete();
+    const mirror = new Map();
+    for (const d of docs.keys()) if (d === fid || count(d)) { mirror.set(d, body(d)); for (const pid of Object.keys(docs.get(d))) W.where.set(pid, d); }
+    W.parts.set(fid, mirror);
+    W.folders.set(fid, Object.assign({}, meta, { photos }));
+  }
+  async function deleteFolder(fid) {
+    for (const d of [...(W.parts.get(fid) || new Map([[fid, null]])).keys()]) await W.cap.db.doc("folders/" + d).delete();
+    W.parts.delete(fid); W.folders.delete(fid);
   }
   const savePhoto = (x, patch) => writeFolder(x.fid, { [x.id]: patch });
   async function saveMany(xs, patchFor) {
@@ -129,7 +228,7 @@
     await Promise.all([...by].map(([fid, photos]) => writeFolder(fid, photos)));
   }
   function dbErrText(e) {
-    if (e && e.code === "invalid_argument") return "You don't have permission to change this gallery.";
+    if (e && e.code === "invalid_argument") return W.cap.assets ? "The gallery's database refused that change" + (e.message ? `: ${String(e.message).slice(0, 140)}` : ".") : "You don't have permission to change this gallery.";
     if (e && e.code === "quota_exceeded") return "The gallery's database is full.";
     return "Couldn't save that change. Try again in a moment.";
   }
@@ -869,9 +968,9 @@ ${fresh.length ? `<section class="sec"><div class="sec-h"><h2>Sorted this week</
       const dateSrc = f.chain.slice(1).reverse().map(parseDate).find(Boolean) || parseDate(f.outing)
         || (f.files.length ? (f.files.map((x) => x.t).filter(Boolean).sort()[0] || "").slice(0, 10) || null : null);
       const doc = JSON.parse(JSON.stringify({ outing: f.outing, outingId: f.outingId, chain: f.chain.length ? f.chain : [f.outing], dateLabel: f.chain.length > 1 ? f.chain[f.chain.length - 1] : "", date: dateSrc, photos }));
-      if (!prev || stable(prev) !== stable(doc)) await db.doc("folders/" + f.id).set(doc);
+      if (!prev || stable(prev) !== stable(doc)) await inChain(f.id, () => layOut(f.id, doc));
     }
-    for (const fid of W.folders.keys()) if (!seen.has(fid)) await db.doc("folders/" + fid).delete();
+    for (const fid of [...W.folders.keys()]) if (!seen.has(fid)) await inChain(fid, () => deleteFolder(fid));
     return { added, bigAdded };
   }
 
@@ -1271,7 +1370,7 @@ Reply with only JSON: {"frames": [{"n": 1, "group": string, "common": string, "s
     if (!db) { noDb(); return; }
     const err = () => {};
     db.collection("folders").limit(1000).onSnapshot((snap) => {
-      W.folders = new Map(snap.docs.map((d) => [d.id, d.data()]));
+      setFolders(snap.docs.map((d) => [d.id, d.data()]));
       W.loaded.folders = true; refresh(); maybeAutoScan(); scheduleLibrarySave();
     }, () => { W.loaded.folders = true; W.scanError = "The saved index couldn't be loaded. Reload the page."; refresh(true); });
     db.collection("previews").limit(1000).onSnapshot((snap) => {
