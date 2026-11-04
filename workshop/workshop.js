@@ -352,7 +352,7 @@
   // marks the photograph on screen.
   function toggleExplicit(xs, one) {
     if (!xs.length) { toast("Select some photos first."); return; }
-    const all = one ? xs : [...new Set(xs.flatMap((x) => (x.burst ? x.burst.frames : [x])))];
+    const all = one ? xs : [...new Set(xs.flatMap((x) => (x.burst && !GP.app.burstsExpanded ? x.burst.frames : [x])))];
     const on = !all.every((x) => x.explicit);
     if (!one && GP.app.holdView) GP.app.holdView(xs[0].id);
     saveMany(all, () => ({ ov: { explicit: on || null } })).then(() => {
@@ -372,7 +372,7 @@
   // A selected burst stands for all its frames. Joining gives every frame one key (ov.burst
   // "g:<lead id>"), so the model keeps them together whatever their timing; "solo" keeps a frame
   // on its own; null goes back to grouping by time.
-  const framesOf = (xs) => [...new Set(xs.flatMap((x) => (x.burst ? x.burst.frames : [x])))];
+  const framesOf = (xs) => [...new Set(xs.flatMap((x) => (x.burst && !GP.app.burstsExpanded ? x.burst.frames : [x])))];
   function joinBursts(xs) {
     const all = framesOf(xs);
     if (all.length < 2) { toast("Select two or more photos or bursts to join."); return; }
@@ -500,7 +500,7 @@
   function selected() { return GP.app.selection.map((id) => model().byId.get(id)).filter(Boolean); }
   function applySelection(f) {
     const xs = selected(), common = $("#ws-sel-sp", f).value.trim().slice(0, 80);
-    if (xs.length && GP.app.holdView) GP.app.holdView(null, xs.flatMap((x) => (x.burst ? x.burst.frames : [x])).map((x) => x.id));
+    if (xs.length && GP.app.holdView) GP.app.holdView(null, xs.flatMap((x) => (x.burst && !GP.app.burstsExpanded ? x.burst.frames : [x])).map((x) => x.id));
     if (!xs.length) { toast("Select some photos first."); return; }
     if (!common) { toast("Type a species to apply."); return; }
     saveId(xs, common, "", $("#ws-sel-group", f).value).then(() => { GP.app.clearSelection(); paintSel(); });
@@ -510,7 +510,7 @@
   function onWorkshopAction(a, b) {
     const xs = selected();
     // a change to the selection rebuilds the page: hold it on a photo the change doesn't touch
-    if (/^sel-(rate|hide|explicit|revert|collect)$/.test(a) && xs.length && GP.app.holdView) GP.app.holdView(null, xs.flatMap((x) => (x.burst ? x.burst.frames : [x])).map((x) => x.id));
+    if (/^sel-(rate|hide|explicit|revert|collect)$/.test(a) && xs.length && GP.app.holdView) GP.app.holdView(null, xs.flatMap((x) => (x.burst && !GP.app.burstsExpanded ? x.burst.frames : [x])).map((x) => x.id));
     switch (a) {
       case "sel-rate": if (xs.length) saveMany(xs, () => ({ ov: { rating: +b.dataset.n } })).then(() => toast(`${plural(xs.length, "photo")} rated ${"★".repeat(+b.dataset.n)}`), (e) => toast(dbErrText(e))); break;
       case "sel-hide": if (xs.length) toggleHidden(xs); break;

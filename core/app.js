@@ -44,6 +44,8 @@
   /* ---------- icons ---------- */
   const I = (d, extra = "") => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ${extra}>${d}</svg>`;
   const ICON = {
+    burstsGrouped: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><rect x="7.5" y="3.5" width="12" height="12" rx="1.5" opacity=".45"/><rect x="5.5" y="5.5" width="12" height="12" rx="1.5" opacity=".7"/><rect x="3.5" y="7.5" width="12" height="12" rx="1.5" fill="var(--bg, #fff)"/></svg>',
+    burstsOpen: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="8" height="7" rx="1.3"/><rect x="13" y="4" width="8" height="7" rx="1.3"/><rect x="3" y="13" width="8" height="7" rx="1.3"/><rect x="13" y="13" width="8" height="7" rx="1.3"/></svg>',
     eyeOff: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l18 18"/><path d="M10.6 5.1A9.8 9.8 0 0 1 12 5c5 0 9 4.5 10 7-.4 1-1.3 2.4-2.6 3.7M6.6 6.6C4.6 7.9 3.1 9.9 2 12c1 2.5 5 7 10 7 1.7 0 3.3-.5 4.7-1.3"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>',
     search: I('<circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/>'),
     play: I('<path d="M7 5.5v13l11-6.5z"/>'),
@@ -69,7 +71,7 @@
   };
 
   /* ---------- state ---------- */
-  const A = { revealed: new Set(), model: null, adapter: null, site: {}, workshop: null, ctx: new Map(), ctxN: 0, sel: new Set(), selecting: false, lastKey: "", timers: [], views: [], scrollMem: new Map(), traverse: false, rendered: false };
+  const A = { expand: (() => { try { return sessionStorage.getItem("gp-bursts") === "open"; } catch (e) { return false; } })(), revealed: new Set(), model: null, adapter: null, site: {}, workshop: null, ctx: new Map(), ctxN: 0, sel: new Set(), selecting: false, lastKey: "", timers: [], views: [], scrollMem: new Map(), traverse: false, rendered: false };
   const BUCKETS = [360, 540, 720, 960, 1280, 1600, 2048, 2560];
   const bucket = (px) => BUCKETS.find((b) => b >= px) || BUCKETS[BUCKETS.length - 1];
   const dpr = () => Math.min(2, window.devicePixelRatio || 1);
@@ -79,12 +81,14 @@
   }
   function rowH() { return parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--rowh")) || 240; }
   function regCtx(list) { const k = "c" + ++A.ctxN; A.ctx.set(k, list); return k; }
+  const ctxBase = new Map(); // grid context -> the list (and its parts) it was drawn from, before opening bursts
 
   /* ---------- components ---------- */
   // a tile flicks through at most this many frames of a burst; the viewer shows them all
   const SCRUB_MAX = 10;
   function tile(x, o = {}) {
-    const b = x.burst, fr = b ? GP.model.framesOf(b, A.ff) : [], stack = o.stacks !== false && fr.length > 1;
+    const b = x.burst, fr = b ? GP.model.framesOf(b, A.ff) : [], loose = A.expand && o.stacks !== false && fr.length > 1;
+    const stack = !loose && o.stacks !== false && fr.length > 1;
     const hov = fr.slice(0, SCRUB_MAX);
     // sensitive (marked in the Workshop): blurred until clicked once; any frame marked veils the tile
     const veiled = (x.explicit || hov.some((f) => f.explicit)) && !(stack ? hov : [x]).every((f) => !f.explicit || A.revealed.has(f.id));
@@ -99,11 +103,24 @@
     const fav = V && V.isFav(x.id), fresh = V && !o.noNew && V.isNew(x.id);
     const marks = V ? `<span class="fav" aria-hidden="true">${ICON.heartOn}</span>${fresh ? `<span class="new-pill">New</span>` : ""}` : "";
     const veil = veiled ? `<span class="veil" aria-hidden="true">${ICON.eyeOff}<b>Sensitive</b><span>May be upsetting · click to show</span></span>` : "";
-    return `<button class="tile${stack ? " burst" : ""}${veiled ? " veiled" : ""}${A.sel.has(x.id) ? " sel" : ""}${fav ? " is-fav" : ""}" data-id="${esc(x.id)}"${stack ? ` data-frames="${esc(hov.map((f) => f.id).join(","))}"` : ""} style="--ar:${x.ar.toFixed(3)}" aria-label="${esc((veiled ? "Sensitive photograph, may be upsetting; activate to show. " : "") + titleOf(x) + ", " + fmtDate(x.t) + (fav ? ", in your favourites" : ""))}">${lq}<img src="${esc(src(x, w))}" alt="" loading="lazy" decoding="async" draggable="false" style="--fx:${(x.fp[0] * 100).toFixed(1)}%;--fy:${(x.fp[1] * 100).toFixed(1)}%">${veil}<span class="cap"><b>${esc(titleOf(x))}</b><span>${esc(sub)}</span></span>${badge}${scrub}${sel}${marks}</button>`;
+    return `<button class="tile${stack ? " burst" : ""}${loose ? " loose" : ""}${veiled ? " veiled" : ""}${A.sel.has(x.id) ? " sel" : ""}${fav ? " is-fav" : ""}" data-id="${esc(x.id)}"${stack ? ` data-frames="${esc(hov.map((f) => f.id).join(","))}"` : ""}${loose ? ` data-burst="${esc(fr[0].id)}" data-k="${fr.indexOf(x) + 1}"` : ""} style="--ar:${x.ar.toFixed(3)}" aria-label="${esc((veiled ? "Sensitive photograph, may be upsetting; activate to show. " : "") + titleOf(x) + ", " + fmtDate(x.t) + (fav ? ", in your favourites" : ""))}">${lq}<img src="${esc(src(x, w))}" alt="" loading="lazy" decoding="async" draggable="false" style="--fx:${(x.fp[0] * 100).toFixed(1)}%;--fy:${(x.fp[1] * 100).toFixed(1)}%">${veil}${loose ? `<span class="bk" aria-hidden="true">${fr.indexOf(x) + 1}<i>/</i>${fr.length}</span>` : ""}<span class="cap"><b>${esc(titleOf(x))}</b><span>${esc(sub)}</span></span>${badge}${scrub}${sel}${marks}</button>`;
+  }
+  // With bursts opened (the header's bursts button, or X), a list's burst tiles give way to every
+  // frame of the burst, each a tile of its own, in the burst's order; the viewer steps them as
+  // single photographs.
+  function expand(list, o = {}) {
+    if (!A.expand || o.stacks === false) return list;
+    const out = [];
+    for (const x of list) {
+      const fr = x.burst ? GP.model.framesOf(x.burst, A.ff) : [];
+      if (fr.length > 1) out.push(...fr); else out.push(x);
+    }
+    return out;
   }
   function flow(list, o = {}) {
-    const k = regCtx(list);
-    return `<div class="flow" data-ctx="${k}">${list.map((x) => tile(x, o)).join("")}</div>`;
+    const all = expand(list, o), k = regCtx(all);
+    ctxBase.set(k, { list, o });
+    return `<div class="flow" data-ctx="${k}">${all.map((x) => tile(x, o)).join("")}</div>`;
   }
   function cover(x, w, cls = "", alt = "") {
     if (!x) return `<span class="ph"></span>`;
@@ -219,6 +236,7 @@
     ${GP.calls && GP.calls.available() ? GP.calls.button() : ""}
     ${GP.scape ? GP.scape.button() : ""}
     ${GP.fx ? GP.fx.depthButton() : ""}
+    ${burstButton()}
     ${GP.newsletter ? GP.newsletter.button() : ""}
     <button class="icon-btn" data-act="theme" title="Light or dark" aria-label="Switch light or dark">${ICON.moon}</button>
     <button class="icon-btn" data-act="keys" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">${ICON.keys}</button>
@@ -338,6 +356,7 @@ ${footer(nav)}
     A.viewAC = new AbortController();
     const signal = A.viewAC.signal;
     A.ctx.clear();
+    ctxBase.clear();
     const main = $("#gp-main");
     const [v, a, b] = r.parts;
     $$(".gp-nav a").forEach((n) => n.toggleAttribute("aria-current", false));
@@ -582,15 +601,16 @@ ${footer(nav)}
   }
   function galleryResults(list, sq, sort, all, query) {
     const understood = sq.terms.length ? `<div class="understood chips" aria-label="Understood as">${sq.terms.map((t, i) => `<button class="chip" data-drop="${i}" title="Remove" aria-pressed="true">${esc(t.label)} ×</button>`).join("")}</div>` : "";
-    const head = `<div class="result-line"><span class="count" aria-live="polite">${plural(list.length, all ? "frame" : "photograph")}${query ? "" : all ? "" : " · bursts stacked"}</span>${understood}</div>`;
+    const head = `<div class="result-line"><span class="count" aria-live="polite">${plural(list.length, all ? "frame" : "photograph")}${query ? "" : all ? "" : A.expand ? " · bursts opened" : " · bursts stacked"}</span>${understood}</div>`;
     if (!list.length) return head + `<div class="empty"><h2>Nothing matches yet</h2><p>Try fewer words, or a species, month, behaviour or colour: “egrets”, “March”, “fishing”, “golden hour”, “red”.</p></div>`;
     if ((sort === "new" || sort === "old") && !query) {
       const groups = [];
       for (const x of list) { const g = groups[groups.length - 1]; if (g && g.fid === x.oid) g.items.push(x); else groups.push({ fid: x.oid, items: [x] }); }
-      const k = regCtx(list);
-      return head + groups.map((g) => {
+      const k = regCtx(expand(list, { stacks: !all }));
+      ctxBase.set(k, { list, o: { stacks: !all }, parts: groups.map((g) => g.items) });
+      return head + groups.map((g, gi) => {
         const o = A.model.outingById.get(g.fid);
-        return `<section class="sec"><div class="sec-h"><h2><a href="#/outings/${esc(g.fid)}" style="text-decoration:none">${esc(fmtDate(o ? o.date : g.items[0].t))}</a></h2><span class="meta">${esc(o ? o.type : "")} · ${plural(g.items.length, all ? "frame" : "photograph")}${o ? " · " + plural(o.species.length, "species", "species") : ""}</span></div><div class="flow" data-ctx="${k}">${g.items.map((x) => tile(x, { stacks: !all })).join("")}</div></section>`;
+        return `<section class="sec"><div class="sec-h"><h2><a href="#/outings/${esc(g.fid)}" style="text-decoration:none">${esc(fmtDate(o ? o.date : g.items[0].t))}</a></h2><span class="meta">${esc(o ? o.type : "")} · ${plural(g.items.length, all ? "frame" : "photograph")}${o ? " · " + plural(o.species.length, "species", "species") : ""}</span></div><div class="flow" data-ctx="${k}" data-part="${gi}">${expand(g.items, { stacks: !all }).map((x) => tile(x, { stacks: !all })).join("")}</div></section>`;
       }).join("");
     }
     return head + `<div style="margin-top:14px">${flow(list, { stacks: !all })}</div>`;
@@ -605,7 +625,7 @@ ${footer(nav)}
     $$(".facet-row [data-r]").forEach((c) => c.setAttribute("aria-pressed", String(+(q.get("r") || 0) === +c.dataset.r)));
     $$(".facet-row [data-all]").forEach((c) => c.setAttribute("aria-pressed", String(all)));
     const so = $("#gp-sort"); if (so) so.value = sort;
-    flip(res, () => { A.ctx.clear(); res.innerHTML = galleryResults(list, sq, sort, all, query); markLoaded(res); });
+    flip(res, () => { A.ctx.clear(); ctxBase.clear(); res.innerHTML = galleryResults(list, sq, sort, all, query); markLoaded(res); });
   }
   // A murmuration: when the gallery re-sorts, the tiles that stay fly to their new places along
   // curving paths that all bank the same way, in a wave across the screen, dipping as they go;
@@ -1022,11 +1042,137 @@ ${footer(nav)}
     const el = $(`.tile[data-id="${CSS.escape(id)}"] img`);
     openList(list, Math.max(0, list.indexOf(x)), el);
   }
+  /* ---------- bursts, grouped or opened ---------- */
+  function regrid() {
+    const done = new Set();
+    // photographs already on screen stay sharp in their new tiles (no fade-in again); only frames
+    // appearing for the first time develop in
+    const ready = new Set($$("#gp-main .tile img").filter((i) => i.complete && i.naturalWidth).map((i) => i.getAttribute("src")));
+    for (const el of $$("#gp-main .flow[data-ctx]")) {
+      const k = el.dataset.ctx, base = ctxBase.get(k);
+      if (!base) continue;
+      if (!done.has(k)) { A.ctx.set(k, expand(base.list, base.o)); done.add(k); }
+      const items = base.parts ? base.parts[+el.dataset.part] || [] : base.list;
+      el.innerHTML = expand(items, base.o).map((x) => tile(x, base.o)).join("");
+      for (const img of el.querySelectorAll(".tile img")) if (ready.has(img.getAttribute("src"))) { img.classList.add("in", "now"); img.dataset.arrived = "1"; }
+      markLoaded(el);
+    }
+    for (const c of $$("#gp-main .result-line .count")) c.textContent = c.textContent.replace(/bursts (stacked|opened)/, A.expand ? "bursts opened" : "bursts stacked");
+  }
+  function burstButton() {
+    const on = A.expand;
+    return `<button class="icon-btn gp-bursts" data-act="bursts" aria-pressed="${on}" title="${on ? "Group bursts" : "Show every frame of every burst"} (X)" aria-label="${on ? "Group bursts again" : "Show every frame of every burst on its own"}">${on ? ICON.burstsOpen : ICON.burstsGrouped}</button>`;
+  }
+  function paintBurstButton() {
+    for (const b of $$('[data-act="bursts"]')) b.outerHTML = burstButton();
+  }
+  // Opening: each burst's frames deal out from where its tile was, one after another, each
+  // settling into place with a little turn; the tiles around them glide to make room.
+  // Grouping: the frames gather back into the first, which takes them with a small catch.
+  function toggleBursts(on = !A.expand) {
+    if (on === A.expand) return;
+    const main = $("#gp-main"), vh = innerHeight, still = reduced();
+    const near = (r) => r.bottom > -120 && r.top < vh + 120 && r.width > 0;
+    const before = new Map(), ghosts = [];
+    for (const t of $$("#gp-main .tile[data-id]")) {
+      const r = t.getBoundingClientRect();
+      if (near(r)) before.set(t.dataset.id, r);
+    }
+    // grouping: copies of the frames about to go, to fly home once the page is rebuilt
+    if (!on && !still) {
+      for (const t of $$("#gp-main .tile.loose[data-burst]")) {
+        if (t.dataset.burst === t.dataset.id) continue;
+        const r = before.get(t.dataset.id);
+        if (!r) continue;
+        const g = t.cloneNode(true);
+        g.classList.add("tile-ghost");
+        g.removeAttribute("data-id");
+        Object.assign(g.style, { left: r.left + "px", top: r.top + "px", width: r.width + "px", height: r.height + "px" });
+        ghosts.push({ g, home: t.dataset.burst, k: +t.dataset.k || 1 });
+      }
+    }
+    const an = viewAnchor();
+    A.expand = on;
+    try { sessionStorage.setItem("gp-bursts", on ? "open" : "grouped"); } catch (e) { /* private window */ }
+    paintBurstButton();
+    if (main) {
+      regrid();
+      holdAnchor(an);
+    }
+    toast(on ? "Bursts opened: every frame on its own" : "Bursts grouped");
+    if (still || !main) return;
+    const EASE = "cubic-bezier(.16, 1, .3, 1)";
+    const seed = (n) => { const v = Math.sin(n * 127.1 + 311.7) * 43758.5453; return v - Math.floor(v); };
+    let i = 0;
+    for (const t of $$("#gp-main .tile[data-id]")) {
+      const r = t.getBoundingClientRect();
+      if (!near(r)) continue;
+      const id = t.dataset.id, was = before.get(id);
+      i++;
+      if (was) {
+        // a tile that was there already glides to its new place
+        const dx = was.left - r.left, dy = was.top - r.top, sx = was.width / r.width, sy = was.height / r.height;
+        if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(sx - 1) < 0.01) continue;
+        t.animate([{ transformOrigin: "0 0", transform: `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})` }, { transformOrigin: "0 0", transform: "none" }], { duration: 640, easing: EASE });
+        if (on && t.classList.contains("loose") && t.dataset.burst === id) {
+          // the first frame lets the others go: a soft lift
+          t.animate([{ boxShadow: "0 0 0 0 rgba(0,0,0,0)" }, { boxShadow: "0 18px 40px -18px rgba(0,0,0,.45)", offset: 0.35 }, { boxShadow: "0 0 0 0 rgba(0,0,0,0)" }], { duration: 900, easing: "ease-out" });
+        }
+        continue;
+      }
+      // a frame dealt out of its burst: it starts on top of where the burst's tile was
+      const from = on && t.dataset.burst ? before.get(t.dataset.burst) : null;
+      const k = +t.dataset.k || 1;
+      if (from) {
+        const dx = from.left - r.left, dy = from.top - r.top, sx = from.width / r.width, sy = from.height / r.height;
+        const turn = (seed(k + i) - 0.5) * 14;
+        t.style.zIndex = String(40 - Math.min(30, k));
+        const a = t.animate([
+          { transformOrigin: "50% 50%", transform: `translate(${dx}px, ${dy}px) scale(${sx * 0.96}, ${sy * 0.96}) rotate(${turn * 0.4}deg)`, opacity: 0, boxShadow: "0 30px 60px -20px rgba(0,0,0,.55)" },
+          { opacity: 1, offset: 0.18 },
+          { transformOrigin: "50% 50%", transform: `translate(${dx * 0.12}px, ${dy * 0.12 - 10}px) scale(1.02) rotate(${turn}deg)`, boxShadow: "0 26px 50px -22px rgba(0,0,0,.5)", offset: 0.72 },
+          { transformOrigin: "50% 50%", transform: "none", opacity: 1, boxShadow: "0 0 0 0 rgba(0,0,0,0)" },
+        ], { duration: 760, delay: Math.min(9, k - 1) * 55, easing: EASE, fill: "backwards" });
+        a.onfinish = () => { t.style.zIndex = ""; };
+      } else {
+        // anything else new to the screen fades up into place
+        t.animate([{ opacity: 0, transform: "translateY(14px) scale(.98)" }, { opacity: 1, transform: "none" }], { duration: 520, delay: Math.min(240, i * 12), easing: EASE, fill: "backwards" });
+      }
+    }
+    // grouping: the frames fly home and tuck in behind the tile that keeps them
+    if (ghosts.length) {
+      const caught = new Set();
+      for (const { g, home, k } of ghosts) {
+        const h = $(`#gp-main .tile[data-id="${CSS.escape(home)}"]`);
+        const hr = h && h.getBoundingClientRect();
+        document.body.appendChild(g);
+        if (!hr || !near(hr)) {
+          g.animate([{ opacity: 1 }, { opacity: 0, transform: "scale(.94)" }], { duration: 320, easing: "ease-in" }).onfinish = () => g.remove();
+          continue;
+        }
+        const gr = g.getBoundingClientRect();
+        const dx = hr.left - gr.left, dy = hr.top - gr.top, sx = hr.width / gr.width, sy = hr.height / gr.height;
+        const turn = (seed(k * 3.1) - 0.5) * 12, delay = Math.min(9, Math.max(0, k - 2)) * 40;
+        const a = g.animate([
+          { transformOrigin: "0 0", transform: "none", opacity: 1, boxShadow: "0 0 0 0 rgba(0,0,0,0)" },
+          { transformOrigin: "0 0", transform: `translate(${dx * 0.55}px, ${dy * 0.55 - 14}px) scale(${1 + (sx - 1) * 0.55}, ${1 + (sy - 1) * 0.55}) rotate(${turn}deg)`, opacity: 1, boxShadow: "0 26px 50px -22px rgba(0,0,0,.5)", offset: 0.5 },
+          { transformOrigin: "0 0", transform: `translate(${dx}px, ${dy}px) scale(${sx}, ${sy}) rotate(${turn * 0.2}deg)`, opacity: 0, boxShadow: "0 0 0 0 rgba(0,0,0,0)" },
+        ], { duration: 620, delay, easing: "cubic-bezier(.5, 0, .2, 1)", fill: "both" });
+        a.onfinish = () => {
+          g.remove();
+          if (caught.has(home)) return;
+          caught.add(home);
+          h.animate([{ transform: "scale(1)" }, { transform: "scale(1.035)", offset: 0.35 }, { transform: "scale(1)" }], { duration: 420, easing: "cubic-bezier(.3, 1.6, .5, 1)" });
+        };
+      }
+    }
+  }
   function onClick(e) {
     const act = e.target.closest("[data-act]");
     if (act && A.root.contains(act)) {
       const a = act.dataset.act;
       if (a === "theme") toggleTheme();
+      else if (a === "bursts") toggleBursts();
       else if (a === "exhibit") exhibit();
       else if (a === "search") goSearch();
       else if (a === "keys") showKeys();
@@ -1145,7 +1291,7 @@ ${footer(nav)}
     let d = $("#gp-keys");
     if (!d) {
       d = document.createElement("dialog"); d.id = "gp-keys"; d.className = "gp-keys";
-      const rows = [["/", "Search"], ["← →", "Previous or next photograph"], ["↑ ↓", "Frames within a burst"], ["I", "Specimen label"], ["Z", "Zoom to full resolution"], ["0", "Fit to screen"], ["F", "Full screen"], ["D", "Download the original"], ["Shift", "Hold over a photograph for a loupe; scroll to change its power"], ["C", "Play the bird's call (in the viewer)"], ["L", "Add to or remove from your favourites (in the viewer)"], ["P", "Play the photographs from here as an exhibition (in the viewer)"], ["V", "Play a burst as it was shot (in the viewer)"], A.workshop ? ["H", "Hide from or show on the public site (in the viewer)"] : ["H", "How it was shot, and the sky that moment (in the viewer)"], ["B", "Lights down (in an exhibition room)"], ["Space", "Play or pause the day (in A day in the marsh)"], ["R", "Surprise me: a random photograph"], ["E", "Play an exhibition"], ["S", "Sound on or off: the marsh, the pines, the surf"], ["M", "Depth on or off: each subject stands a little in front of its background"], ["T", "Light or dark"], ["Esc", "Close"]];
+      const rows = [["/", "Search"], ["← →", "Previous or next photograph"], ["↑ ↓", "Frames within a burst"], ["X", "Open every burst, or group them again"], ["I", "Specimen label"], ["Z", "Zoom to full resolution"], ["0", "Fit to screen"], ["F", "Full screen"], ["D", "Download the original"], ["Shift", "Hold over a photograph for a loupe; scroll to change its power"], ["C", "Play the bird's call (in the viewer)"], ["L", "Add to or remove from your favourites (in the viewer)"], ["P", "Play the photographs from here as an exhibition (in the viewer)"], ["V", "Play a burst as it was shot (in the viewer)"], A.workshop ? ["H", "Hide from or show on the public site (in the viewer)"] : ["H", "How it was shot, and the sky that moment (in the viewer)"], ["B", "Lights down (in an exhibition room)"], ["Space", "Play or pause the day (in A day in the marsh)"], ["R", "Surprise me: a random photograph"], ["E", "Play an exhibition"], ["S", "Sound on or off: the marsh, the pines, the surf"], ["M", "Depth on or off: each subject stands a little in front of its background"], ["T", "Light or dark"], ["Esc", "Close"]];
       d.innerHTML = `<form method="dialog"><h2 class="display">Keyboard</h2><dl>${rows.map(([k, v]) => `<dt><kbd>${k}</kbd></dt><dd>${v}</dd>`).join("")}</dl><button class="btn">Close</button></form>`;
       document.body.appendChild(d);
     }
@@ -1162,6 +1308,7 @@ ${footer(nav)}
     else if (e.key === "e" || e.key === "E") exhibit();
     else if (e.key === "t" || e.key === "T") toggleTheme();
     else if (e.key === "r" || e.key === "R") surprise();
+    else if (e.key === "x" || e.key === "X") toggleBursts();
     else if ((e.key === "s" || e.key === "S") && GP.scape) GP.scape.toggle();
   }
   let lastY = 0;
@@ -1292,7 +1439,7 @@ ${footer(nav)}
 
   const helpers = { esc, tile, flow, cover, chip, spCard, chapterRow, pageHead, specimenTag, fmtDate, fmtShort, fmtTime, fmtN, plural, titleOf, exposure, src, ICON, regCtx, toast, hbars, table, svgBars, pageUrl, shareBtn, sharePage };
   GP.app = {
-    start, update, setSelecting, toast, helpers, holdView, reveal, isRevealed: (x) => !x || !x.explicit || A.revealed.has(x.id),
+    start, update, setSelecting, toast, helpers, holdView, toggleBursts, get burstsExpanded() { return A.expand; }, reveal, isRevealed: (x) => !x || !x.explicit || A.revealed.has(x.id),
     get model() { return A.model; }, get site() { return A.site; }, get adapter() { return A.adapter; }, get workshop() { return A.workshop; },
     get selection() { return [...A.sel]; }, get frameFilter() { return A.ff || null; }, clearSelection() { A.sel.clear(); $$(".tile.sel").forEach((t) => t.classList.remove("sel")); },
     setQuery, parseHash, hashFor, exhibit, toggleTheme, openById, openList, surprise, route: () => { A.lastKey = ""; route(); },

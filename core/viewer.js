@@ -89,6 +89,8 @@
     V.i = Math.max(0, Math.min(V.list.length - 1, i));
     V.frame = null;
     V.ff = GP.app.frameFilter;
+    // a list from opened bursts already holds every frame: step them as single photographs
+    V.loose = !!GP.app.burstsExpanded;
     const wasOpen = V.open;
     V.open = true;
     V.el.hidden = false;
@@ -437,7 +439,7 @@ ${ws && ws.infoExtra ? ws.infoExtra(x) : ""}`;
   function step(d) {
     if (V.liveStop) { V.liveStop(); V.liveStop = null; }
     const x = cur(), fr = framesOf(x);
-    if (fr.length > 1) {
+    if (fr.length > 1 && !V.loose) {
       const i = fr.indexOf(x) + d;
       if (i >= 0 && i < fr.length) { V.frame = fr[i]; show({}); return; }
     }
@@ -445,7 +447,7 @@ ${ws && ws.infoExtra ? ws.infoExtra(x) : ""}`;
     if (V.list.length < 2 || n < 0 || n >= V.list.length) { nudge(d); return; }
     V.i = n;
     const nf = framesOf(V.list[n]);
-    V.frame = nf.length > 1 ? nf[d > 0 ? 0 : nf.length - 1] : null;
+    V.frame = nf.length > 1 && !V.loose ? nf[d > 0 ? 0 : nf.length - 1] : null;
     show({ dir: d });
   }
   function frame(d) {

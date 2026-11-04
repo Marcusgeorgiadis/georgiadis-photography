@@ -167,6 +167,16 @@ img.veiled-img { filter: blur(22px) brightness(0.8) !important; }
 .vw-veil span { font-size: 15px; opacity: 0.85; }
 .vw-veil .btn { margin-top: 6px; }
 .vw-strip button.veiled img { filter: blur(6px); }
+/* bursts opened: each frame a tile of its own, with its place in the burst */
+.tile .bk { position: absolute; top: 10px; right: 10px; z-index: 2; font: 500 10.5px/1 var(--f-data); letter-spacing: 0.04em; color: #fff; padding: 4px 7px; border-radius: 999px; background: rgba(0, 0, 0, 0.42); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); pointer-events: none; opacity: 0.85; transition: opacity var(--t-fast); }
+.tile .bk i { font-style: normal; opacity: 0.6; padding: 0 1px; }
+.tile.loose:hover .bk { opacity: 1; }
+.gp-selecting .tile .bk { right: auto; left: 10px; }
+.tile.loose[data-k="1"]::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; z-index: 2; background: var(--accent); opacity: 0.85; border-radius: 2px 0 0 2px; pointer-events: none; }
+.tile img.now { transition: none !important; }
+.tile-ghost { position: fixed !important; margin: 0 !important; z-index: 45; pointer-events: none; flex: none !important; }
+.tile-ghost img { opacity: 1 !important; filter: none !important; transform: none !important; }
+.gp-bursts[aria-pressed="true"] { color: var(--accent); }
 /* a burst frame of another shape: whole, over a soft copy of itself */
 .tile img.fit { object-fit: contain; }
 .tile .scrub-bg { position: absolute; inset: -16px; background: center / cover no-repeat var(--bg-2); filter: blur(16px) brightness(0.85) saturate(1.1); pointer-events: none; }
