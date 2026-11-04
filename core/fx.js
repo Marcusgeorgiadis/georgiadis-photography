@@ -2,7 +2,7 @@
    - arrive: a photograph comes into focus from its subject outward, over its blurred preview.
    - develop: a print develops in the tray (the Journal, a slideshow's first frame).
    - leak: backlit and silhouetted frames get light drifting across their edges.
-   - live: a burst plays as the moment it was, frame by frame at the real interval.
+   - live: a burst plays frame by frame, at a beat slow enough to see each one.
    - surface: a WebGL copy of a photograph that floats the subject in front of its background
      (from a depth map made at build time) as the pointer moves or the phone tilts, and lets
      water ripple where the pointer touches it. The depth is a visitor's choice, off until they
@@ -143,14 +143,10 @@
   function unleak(host) { const el = host && host.querySelector(":scope > .fx-leak"); if (el) el.remove(); }
 
   /* ---------- living photographs ---------- */
-  function cadence(fr) {
-    // the real gaps between frames, kept between a quick flicker and a deliberate beat
-    return fr.map((f, i) => {
-      const n = fr[i + 1];
-      const d = n && f.secs != null && n.secs != null ? (n.secs - f.secs) * 1000 : 260;
-      return Math.max(110, Math.min(620, d || 260));
-    });
-  }
+  // An even, unhurried beat: long enough to look at each frame. (The real gaps, a tenth of a
+  // second or so, flickered past too fast to see.)
+  const FRAME_MS = 950, HOLD_MS = 1800;
+  function cadence(fr) { return fr.map(() => FRAME_MS); }
   function preload(urls) {
     return Promise.all(urls.map((u) => new Promise((res) => { const im = new Image(); im.decoding = "async"; im.onload = () => (im.decode ? im.decode().catch(() => {}) : Promise.resolve()).then(() => res(true)); im.onerror = () => res(false); im.src = u; })));
   }
@@ -172,8 +168,8 @@
       if (o.onFrame) o.onFrame(i, f);
       const last = i === fr.length - 1;
       i = (i + 1) % fr.length;
-      if (last && o.once) { t = setTimeout(() => finish(), 900); return; }
-      t = setTimeout(step, last ? 1100 : gaps[i - 1 < 0 ? fr.length - 1 : i - 1]);
+      if (last && o.once) { t = setTimeout(() => finish(), HOLD_MS); return; }
+      t = setTimeout(step, last ? HOLD_MS : gaps[i - 1 < 0 ? fr.length - 1 : i - 1]);
     };
     const finish = () => {
       if (stopped) return;

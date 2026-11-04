@@ -326,7 +326,13 @@ main { min-height: 70vh; }
 .vw-next { right: 8px; }
 .vw-bottom { position: absolute; left: 18px; right: 18px; bottom: max(16px, env(safe-area-inset-bottom, 0px)); display: flex; align-items: flex-end; gap: 14px; }
 .vw-badge { font-family: var(--f-data); font-size: 11px; letter-spacing: 0.04em; background: rgba(0, 0, 0, 0.45); padding: 6px 10px; border-radius: 2px; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
-.vw-strip { margin-left: auto; display: flex; gap: 4px; max-width: 60vw; overflow-x: auto; scrollbar-width: none; padding: 2px; }
+.vw-frames { margin-left: auto; display: flex; align-items: center; gap: 6px; min-width: 0; }
+.vw-frames[hidden] { display: none; }
+.vw-fstep { flex: none; width: 34px; height: 34px; display: grid; place-items: center; padding: 0; border: 1px solid rgba(255, 255, 255, 0.22); border-radius: 50%; background: rgba(0, 0, 0, 0.45); color: #fff; cursor: pointer; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); transition: background var(--t-fast), opacity var(--t-fast); }
+.vw-fstep svg { width: 16px; height: 16px; }
+.vw-fstep:hover:not(:disabled) { background: rgba(0, 0, 0, 0.7); }
+.vw-fstep:disabled { opacity: 0.3; cursor: default; }
+.vw-strip { display: flex; gap: 4px; max-width: 60vw; overflow-x: auto; scrollbar-width: none; padding: 2px; }
 .vw-strip button { flex: none; width: 54px; height: 40px; border: 0; padding: 0; opacity: 0.55; cursor: pointer; border-radius: 2px; overflow: hidden; outline: 1px solid transparent; transition: opacity var(--t-fast); }
 .vw-strip button.on { opacity: 1; outline: 2px solid #fff; outline-offset: 1px; }
 .vw-strip img { width: 100%; height: 100%; object-fit: cover; }

@@ -36,7 +36,7 @@
     </div>
     <button class="vw-nav vw-prev" data-v="prev" aria-label="Previous photograph">${I.left}</button>
     <button class="vw-nav vw-next" data-v="next" aria-label="Next photograph">${I.right}</button>
-    <div class="vw-bottom"><span class="vw-badge mono" aria-live="polite"></span><div class="vw-strip" role="listbox" aria-label="Frames in this burst"></div></div>
+    <div class="vw-bottom"><span class="vw-badge mono" aria-live="polite"></span><div class="vw-frames" hidden><button class="vw-fstep" data-v="fprev" title="Previous frame (↑)" aria-label="Previous frame">${I.left}</button><div class="vw-strip" role="listbox" aria-label="Frames in this burst"></div><button class="vw-fstep" data-v="fnext" title="Next frame (↓)" aria-label="Next frame">${I.right}</button></div></div>
     <div class="vw-mini" hidden><img alt=""><i></i></div>
   </div>
 </div>
@@ -187,9 +187,10 @@
     const lb = $('[data-v="live"]', V.el);
     const burst = x.burst && x.burst.size >= 2;
     if (lb) lb.hidden = !burst;
-    // a burst opens by playing once, as the moment it was; a still floats in front of its background
-    if (burst && !V.frame && x.burst.size >= 3 && !reduced()) V.fxT = setTimeout(() => { if (tok === V.token) live(true); }, 650);
-    else V.fxT = setTimeout(() => {
+    // a burst opens still, to step through frame by frame (LIVE or V plays it); a still floats in
+    // front of its background
+    if (burst) return;
+    V.fxT = setTimeout(() => {
       if (tok !== V.token || V.k > 1.01) return;
       V.surf = GP.fx.surface(V.img, x, { listen: V.stage, ripple: true, amount: 0.016, cls: "vw-surface", src: V.large, onReady: () => sync() });
       sync();
@@ -272,9 +273,9 @@
     if (hh.q.get("p") && hh.q.get("p") !== x.id) { hh.q.set("p", x.id); history.replaceState(history.state, "", GP.app.hashFor(hh.parts, hh.q)); }
   }
   function strip(x) {
-    const s = $(".vw-strip", V.el), b = x.burst;
-    if (!b || b.size < 2) { s.hidden = true; s.innerHTML = ""; return; }
-    s.hidden = false;
+    const s = $(".vw-strip", V.el), b = x.burst, box = $(".vw-frames", V.el);
+    if (!b || b.size < 2) { box.hidden = true; s.innerHTML = ""; return; }
+    box.hidden = false;
     const h = H();
     s.innerHTML = b.frames.map((f, i) => `<button role="option" data-frame="${i}" class="${f === x ? "on" : ""}" aria-selected="${f === x}" aria-label="Frame ${i + 1} of ${b.size}"><img src="${h.esc(h.src(f, 160))}" alt="" loading="lazy"></button>`).join("");
     const on = s.querySelector(".on");
@@ -411,10 +412,11 @@ ${ws && ws.infoExtra ? ws.infoExtra(x) : ""}`;
     show({ dir: d });
   }
   function frame(d) {
+    if (V.liveStop) { V.liveStop(); V.liveStop = null; }
     const x = cur(), b = x.burst;
     if (!b || b.size < 2) return;
-    const i = b.frames.indexOf(x) + d;
-    if (i < 0 || i >= b.size) return;
+    // round and round: from the last frame the next is the first
+    const i = (b.frames.indexOf(x) + d + b.size) % b.size;
     V.frame = b.frames[i];
     show({});
   }
@@ -597,6 +599,7 @@ ${ws && ws.infoExtra ? ws.infoExtra(x) : ""}`;
     else if (v === "fav") fav();
     else if (v === "play") playFrom();
     else if (v === "live") live(false);
+    else if (v === "fprev" || v === "fnext") { if (V.liveStop) live(false); frame(v === "fnext" ? 1 : -1); }
     else if (v === "download") { const d = GP.app.adapter.download && GP.app.adapter.download(cur()); if (d && typeof d !== "string") { e.preventDefault(); Promise.resolve(d).then((u) => { if (u) window.open(u, "_blank", "noopener"); }); } }
   }
   function colourName(hex) {
