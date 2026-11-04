@@ -236,6 +236,25 @@ def og_pages(repo, base):
         return {"error": p.stdout[-400:]}
 
 
+def stamp_assets(page, repo):
+    """Give each local stylesheet and script a fingerprint of its contents (?v=...), so a visitor's
+    browser fetches a file again the moment it changes instead of showing a cached copy for a
+    while; unchanged files keep their address and stay cached. A link to a missing file is
+    dropped rather than left to fail."""
+    import hashlib
+
+    def one(m):
+        attr, path = m.group(1), m.group(2)
+        f = os.path.join(repo, path)
+        if not os.path.isfile(f):
+            return ""
+        v = hashlib.sha1(open(f, "rb").read()).hexdigest()[:10]
+        return f'{attr}="{path}?v={v}"'
+    page = re.sub(r'(href|src)="((?:core|workshop)/[^"?#]+\.(?:css|js)|site\.js)(?:\?v=[0-9a-f]+)?"', one, page)
+    # a script or stylesheet tag left without its file: remove the empty tag
+    return re.sub(r'<script >\s*</script>\n?|<link rel="stylesheet" >\n?', "", page)
+
+
 def prune(d, keep):
     return {k: d[k] for k in keep if k in d and d[k] not in (None, "", [])}
 
@@ -367,7 +386,7 @@ def cmd_build(a):
         desc = site_out["intro"] or (f"{n_photos:,} wildlife photographs" if n_photos else "Wildlife photographs") + " from Central Florida's wetlands and woods."
         og = data["urls"]["image"].format(id=public_ids[best[1]], w=1600) if best and best[1] in public_ids else ""
         page = page.replace("{{title}}", html.escape(site_out["title"])).replace("{{description}}", html.escape(desc)).replace("{{og_image}}", html.escape(og))
-        open(os.path.join(repo, "index.html"), "w").write(page)
+        open(os.path.join(repo, "index.html"), "w").write(stamp_assets(page, repo))
     if a.report:
         syn = taxonomy.get("synonyms") or {}
         names, counts = {}, {}
