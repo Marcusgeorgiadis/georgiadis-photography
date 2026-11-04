@@ -8,6 +8,11 @@ with the service-account key (as build_site.py reads the Public Gallery's manife
 it into the dump the other tools read: DIR/<collection>/<doc id>.json, one document's data each.
 
   fetch --out DIR [--published FILE] [--file COPY]
+  local --dir DIR [--published FILE]
+
+local checks a dump the job read straight from the Workshop's database (ArtifactData "list" with
+out_dir DIR, one call per collection), the preferred route: the Workshop's own Drive copy is too big
+for the Drive connector to accept, so it can't save one.
 
 --published adds the camera data of the photographs already on the public site (from the site's
 data/gallery.json) as the oldest enrich document, so photos the job enriched since the Workshop
@@ -47,6 +52,36 @@ def newest_copy(drive, api):
     return f, r.content
 
 
+def add_published(out, published):
+    if not (published and os.path.exists(published)):
+        return 0
+    enrich = (json.load(open(published)).get("enrich") or {})
+    if not enrich:
+        return 0
+    os.makedirs(os.path.join(out, "enrich"), exist_ok=True)
+    # "at" sorts first, so every real enrich document overrides it
+    with open(os.path.join(out, "enrich", "_published.json"), "w") as fh:
+        json.dump({"at": "", "photos": enrich}, fh)
+    return len(enrich)
+
+
+def cmd_local(a):
+    d = os.path.join(a.dir, "folders")
+    if not os.path.isdir(d) or not any(f.endswith(".json") for f in os.listdir(d)):
+        sys.exit(f"No folders in {a.dir}: read the Workshop's database there first.")
+    counts = {}
+    for name in sorted(os.listdir(a.dir)):
+        sub = os.path.join(a.dir, name)
+        if os.path.isdir(sub):
+            for f in os.listdir(sub):
+                if f.endswith(".json"):
+                    json.load(open(os.path.join(sub, f)))  # fail loudly on a broken file
+            counts[name] = sum(f.endswith(".json") for f in os.listdir(sub))
+    published = add_published(a.dir, a.published)
+    at = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
+    print(json.dumps({"at": at, "ageHours": 0, "docs": counts, "publishedEnrich": published}))
+
+
 def cmd_fetch(a):
     if a.file:
         meta, blob = {}, open(a.file, "rb").read()
@@ -75,15 +110,7 @@ def cmd_fetch(a):
                     json.dump(data, fh)
                 n += 1
         counts[name] = n
-    published = 0
-    if a.published and os.path.exists(a.published):
-        enrich = (json.load(open(a.published)).get("enrich") or {})
-        if enrich:
-            os.makedirs(os.path.join(a.out, "enrich"), exist_ok=True)
-            # "at" sorts first, so every real enrich document overrides it
-            with open(os.path.join(a.out, "enrich", "_published.json"), "w") as fh:
-                json.dump({"at": "", "photos": enrich}, fh)
-            published = len(enrich)
+    published = add_published(a.out, a.published)
     at = lib.get("at") or meta.get("modifiedTime")
     age = None
     try:
@@ -100,8 +127,11 @@ def main():
     f.add_argument("--out", required=True)
     f.add_argument("--published")
     f.add_argument("--file")
+    l = sub.add_parser("local")
+    l.add_argument("--dir", required=True)
+    l.add_argument("--published")
     a = ap.parse_args()
-    {"fetch": cmd_fetch}[a.cmd](a)
+    {"fetch": cmd_fetch, "local": cmd_local}[a.cmd](a)
 
 
 if __name__ == "__main__":

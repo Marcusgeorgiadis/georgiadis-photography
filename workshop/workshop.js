@@ -448,7 +448,6 @@
   <section class="ws-card"><h2>Public site</h2>
     <p>${W.publish && W.publish.at ? `Last published ${esc(ago(W.publish.at))}${W.publish.photos ? ` with ${plural(W.publish.photos, "photograph")}` : ""}.` : "Not published yet."}${W.publish && W.publish.error ? ` <span class="err">${esc(W.publish.error)}</span>` : ""}</p>
     ${W.publish && W.publish.manifest ? `<p>Drive copies: ${plural(W.publish.manifest.total || 0, "photo")} in Nikon › Public Gallery${W.publish.manifest.complete ? "" : " (still copying)"}${W.publish.manifest.error ? `. ${esc(W.publish.manifest.error)}` : ""}.</p>` : ""}
-    <p>${W.libraryErr ? `<span class="err">The library couldn't be saved to Drive for the publish job: ${esc(W.libraryErr)}</span>` : W.export && W.export.at ? `Library saved to Drive for the publish job ${esc(ago(W.export.at))}.` : !W.cap.mcp || !W.cap.assets ? `<span class="err">This view can't save the library to Drive for the publish job. Open the Workshop on claude.ai in a web browser, signed in as its owner.</span>` : W.librarySaving ? "Saving the library to Drive for the publish job…" : "The library is saved to Drive for the publish job once it has loaded."}</p>
     ${W.site.url ? `<p><a href="${esc(W.site.url)}" target="_blank" rel="noopener">${esc(W.site.url.replace(/^https?:\/\//, ""))}</a></p>` : ""}
     <div class="acts"><a class="btn" href="#/publish">Settings</a><button class="btn primary" data-ws="publish"${W.cap.mcp && W.cap.db ? "" : " disabled"}>Publish now</button></div></section>
 </div>
@@ -625,8 +624,11 @@ ${fresh.length ? `<section class="sec"><div class="sec-h"><h2>Sorted this week</
     return { b64: btoa(bin), bytes: buf.length };
   }
   // Editors only (assets is theirs alone): a viewer's own Drive connector never gets a copy.
+  // Off: the copy is too big for the Drive connector to accept, so the publish job now reads the
+  // Workshop's database directly. Kept so it can come back if the connector's limit rises.
+  const LIBRARY_SAVE = false;
   function scheduleLibrarySave(delay = 15000) {
-    if (!W.cap.mcp || !W.cap.db || !W.cap.assets || typeof CompressionStream === "undefined") return;
+    if (!LIBRARY_SAVE || !W.cap.mcp || !W.cap.db || !W.cap.assets || typeof CompressionStream === "undefined") return;
     clearTimeout(X.timer);
     X.timer = setTimeout(saveLibrary, delay);
   }
