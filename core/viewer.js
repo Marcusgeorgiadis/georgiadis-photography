@@ -260,8 +260,9 @@
     if (d && typeof d === "string") { dl.href = d; dl.setAttribute("download", x.name); } else dl.removeAttribute("href");
     $$('[data-v="share"]', V.el).forEach((b) => { b.hidden = !shareUrl(x); });
     paintFav(x);
-    $(".vw-prev", V.el).hidden = V.list.length < 2;
-    $(".vw-next", V.el).hidden = V.list.length < 2;
+    const steps = V.list.length > 1 || (x.burst && x.burst.size > 1);
+    $(".vw-prev", V.el).hidden = !steps;
+    $(".vw-next", V.el).hidden = !steps;
     strip(x);
     badge();
     renderInfo(x);
@@ -411,6 +412,23 @@ ${ws && ws.infoExtra ? ws.infoExtra(x) : ""}`;
     V.i = n; V.frame = null;
     show({ dir: d });
   }
+  // Left and right (keys, side arrows, swipes): through every frame of a burst first, then on to
+  // the next photograph. Coming into a burst forwards starts at its first frame, backwards at its
+  // last, so nothing in it is skipped either way.
+  function step(d) {
+    if (V.liveStop) { V.liveStop(); V.liveStop = null; }
+    const x = cur(), b = x && x.burst;
+    if (b && b.size > 1) {
+      const i = b.frames.indexOf(x) + d;
+      if (i >= 0 && i < b.size) { V.frame = b.frames[i]; show({}); return; }
+    }
+    const n = V.i + d;
+    if (V.list.length < 2 || n < 0 || n >= V.list.length) { nudge(d); return; }
+    V.i = n;
+    const nb = V.list[n].burst;
+    V.frame = nb && nb.size > 1 ? nb.frames[d > 0 ? 0 : nb.size - 1] : null;
+    show({ dir: d });
+  }
   function frame(d) {
     if (V.liveStop) { V.liveStop(); V.liveStop = null; }
     const x = cur(), b = x.burst;
@@ -500,7 +518,7 @@ ${ws && ws.infoExtra ? ws.infoExtra(x) : ""}`;
     if (!g.moved) { tap(e, g); return; }
     const v = velocity(g.samples);
     if (V.k > 1.01) { inertia(v); return; }
-    if (g.axis === "x" && V.list.length > 1 && (Math.abs(dx) > 70 || Math.abs(v.x) > 0.5)) { go(dx < 0 ? 1 : -1); return; }
+    if (g.axis === "x" && (V.list.length > 1 || (cur().burst && cur().burst.size > 1)) && (Math.abs(dx) > 70 || Math.abs(v.x) > 0.5)) { step(dx < 0 ? 1 : -1); return; }
     if (g.axis === "y" && (dy > 110 || v.y > 0.7)) { close(); return; }
     apply(260);
   }
@@ -551,7 +569,7 @@ ${ws && ws.infoExtra ? ws.infoExtra(x) : ""}`;
     const r = V.stage.getBoundingClientRect();
     if (!e.ctrlKey && V.k <= 1.01 && Math.abs(e.deltaX) > Math.abs(e.deltaY) * 1.5 && Math.abs(e.deltaX) > 30) {
       // a sideways trackpad swipe pages through
-      if (!V.wheelLock) { V.wheelLock = true; go(e.deltaX > 0 ? 1 : -1); setTimeout(() => (V.wheelLock = false), 450); }
+      if (!V.wheelLock) { V.wheelLock = true; step(e.deltaX > 0 ? 1 : -1); setTimeout(() => (V.wheelLock = false), 450); }
       return;
     }
     if (!e.ctrlKey && V.k > 1.01 && e.deltaMode === 0 && Math.abs(e.deltaX) > 0) {
@@ -590,8 +608,8 @@ ${ws && ws.infoExtra ? ws.infoExtra(x) : ""}`;
     }
     const v = b.dataset.v;
     if (v === "close") close();
-    else if (v === "prev") go(-1);
-    else if (v === "next") go(1);
+    else if (v === "prev") step(-1);
+    else if (v === "next") step(1);
     else if (v === "info") toggleInfo();
     else if (v === "zoom") toggleZoom();
     else if (v === "fs") fullscreen();
@@ -703,8 +721,8 @@ ${ws && ws.infoExtra ? ws.infoExtra(x) : ""}`;
     if (tag === "input" || tag === "textarea" || tag === "select") { if (e.key === "Escape") e.target.blur(); return; }
     const k = e.key;
     if (k === "Escape") { if (V.k > 1.02) fit(true); else close(); }
-    else if (k === "ArrowRight") go(1);
-    else if (k === "ArrowLeft") go(-1);
+    else if (k === "ArrowRight") step(1);
+    else if (k === "ArrowLeft") step(-1);
     else if (k === "ArrowDown") frame(1);
     else if (k === "ArrowUp") frame(-1);
     else if (k === "i" || k === "I") toggleInfo();
