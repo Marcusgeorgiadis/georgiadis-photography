@@ -376,7 +376,7 @@
   function joinBursts(xs) {
     const all = framesOf(xs);
     if (all.length < 2) { toast("Select two or more photos or bursts to join."); return; }
-    if (new Set(all.map((x) => x.fid)).size > 1) { toast("A burst can only join photos from the same outing."); return; }
+    if (new Set(all.map((x) => x.oid || x.fid)).size > 1) { toast("A burst can only join photos from the same outing."); return; }
     // the lead stays the lead of the biggest burst in the selection
     const big = xs.filter((x) => x.burst).sort((a, b) => b.burst.size - a.burst.size)[0];
     const lead = (big && big.burst.hero) || all[0];

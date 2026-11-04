@@ -338,7 +338,7 @@ ${h.specimenTag(x)}
 ${GP.shot ? GP.shot.panel(x) + GP.shot.almanac(x) : ""}
 ${pal}
 <div class="acts">${dl ? `<a class="btn primary" data-v="download" ${typeof dl === "string" ? `href="${h.esc(dl)}" download="${h.esc(x.name)}"` : ""} target="_blank" rel="noopener">${h.ICON.download} Download original</a>` : ""}${shareUrl(x) ? `<button class="btn" data-v="share">${h.ICON.share} Share</button>` : ""}</div>
-<div class="acts">${sp ? `<a class="btn ghost" href="#/species/${h.esc(sp.slug)}">All ${h.esc(sp.name)} ${h.ICON.arrow}</a>` : ""}<a class="btn ghost" href="#/outings/${h.esc(x.fid)}">This outing ${h.ICON.arrow}</a></div>
+<div class="acts">${sp ? `<a class="btn ghost" href="#/species/${h.esc(sp.slug)}">All ${h.esc(sp.name)} ${h.ICON.arrow}</a>` : ""}<a class="btn ghost" href="#/outings/${h.esc(x.oid || x.fid)}">This outing ${h.ICON.arrow}</a></div>
 ${moreLike(x)}
 ${ws && ws.infoExtra ? ws.infoExtra(x) : ""}`;
     if (GP.shot && V.el.classList.contains("info")) GP.shot.mount(V.info);
@@ -729,7 +729,7 @@ ${ws && ws.infoExtra ? ws.infoExtra(x) : ""}`;
     const add = (y) => { const k = y.burst ? y.burst.id : y.id; if (seen.has(k) || out.length >= n) return; seen.add(k); out.push(y); };
     const s = x.spKey ? m.speciesByKey.get(x.spKey) : null;
     if (s) {
-      const other = s.heroes.filter((y) => y.fid !== x.fid), same = s.heroes.filter((y) => y.fid === x.fid);
+      const other = s.heroes.filter((y) => y.oid !== x.oid), same = s.heroes.filter((y) => y.oid === x.oid);
       other.slice(0, 4).forEach(add); same.slice(0, 5 - out.length).forEach(add);
     }
     const pool = m.heroes.filter((y) => y.spKey !== x.spKey && (y.group === x.group || x.group === "scene"));

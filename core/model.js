@@ -249,11 +249,29 @@
     const duplicates = [];
     for (const list of byKey.values()) {
       if (list.length < 2) continue;
-      list.sort((a, b) => String(b.modified).localeCompare(String(a.modified)));
+      // the copy carrying your edits (IDs, ratings, bursts) is the one shown; then the newest
+      const edited = (x) => (x.raw && x.raw.ov && Object.keys(x.raw.ov).some((k) => x.raw.ov[k] != null) ? 1 : 0);
+      list.sort((a, b) => edited(b) - edited(a) || String(b.modified).localeCompare(String(a.modified)));
       for (const d of list.slice(1)) { d.dupOf = list[0].id; }
       list[0].dups = list.slice(1).map((d) => d.id);
       duplicates.push(list);
     }
+    // One outing per trip. A dated outing folder can hold more than one Finals folder (two exports,
+    // "Finals Auto DXO" and "Finals Auto LR", or a second batch); they are one outing, under the
+    // folder that sorts first, so the day's photos and bursts stay together. x.fid stays the
+    // photo's own Finals folder (where its record lives); x.oid is its outing.
+    // A trip is its outing type and date (a "Keepers" folder inside a day's folder is that day);
+    // a folder without a date stays on its own. The trip is listed under its own date folder's
+    // Finals (a label that is a date), the biggest of those (so it keeps the id, link and
+    // newsletter record the main folder already had), then the first by id.
+    const tripKey = (fid, f) => { const d = String(f.date || "").trim(); return d ? String(f.outing || "").trim().toLowerCase() + "|" + d : "folder:" + fid; };
+    const trips = new Map();
+    for (const fid of Object.keys(raw.folders || {}).sort()) { const k = tripKey(fid, raw.folders[fid]); (trips.get(k) || trips.set(k, []).get(k)).push(fid); }
+    const oidOf = new Map();
+    const dated = (fid) => (/^\d/.test(String((raw.folders[fid] || {}).dateLabel || "")) ? 0 : 1);
+    const files = (fid) => Object.keys((raw.folders[fid] || {}).photos || {}).length;
+    for (const fids of trips.values()) { const lead = fids.slice().sort((a, b) => dated(a) - dated(b) || files(b) - files(a) || (a < b ? -1 : 1))[0]; for (const fid of fids) oidOf.set(fid, lead); }
+    for (const x of photos) x.oid = oidOf.get(x.fid) || x.fid;
     const allIncludingDups = photos;
     if (opts.dedupe !== false) photos = photos.filter((x) => !x.dupOf);
     const byId = new Map(allIncludingDups.map((x) => [x.id, x]));
@@ -264,7 +282,7 @@
     const byTime = (a, b) => (a.secs ?? 0) - (b.secs ?? 0) || (a.frame ?? 0) - (b.frame ?? 0) || natural(a.name, b.name);
     const byFolder = new Map(), joined = new Map();
     for (const x of photos) {
-      (byFolder.get(x.fid) || byFolder.set(x.fid, []).get(x.fid)).push(x);
+      (byFolder.get(x.oid) || byFolder.set(x.oid, []).get(x.oid)).push(x);
       if (x.burstMark.startsWith("g:")) (joined.get(x.burstMark) || joined.set(x.burstMark, []).get(x.burstMark)).push(x);
     }
     const bursts = [];
@@ -297,6 +315,8 @@
     // 5. outings: each dated folder is one outing
     const outings = [];
     for (const [fid, f] of Object.entries(raw.folders || {})) {
+      if (oidOf.get(fid) !== fid) continue; // a further Finals folder of a trip listed under its first
+      const members = [...oidOf].filter(([, o]) => o === fid).map(([m]) => m);
       const list = (byFolder.get(fid) || []).slice();
       if (!list.length) continue;
       const sp = new Map();
@@ -308,14 +328,15 @@
       const companions = String(f.outing || "").replace(/^birding\s*/i, "").split(/\s+/).filter((w) => /^[A-Z]{2}$/.test(w));
       outings.push({
         id: fid, type: f.outing || "", date: f.date || "", label: f.dateLabel || "", photos: list, heroes: hs,
-        species: top, cover, note: notesOut[fid] || "",
+        species: top, cover, note: notesOut[fid] || members.map((m) => notesOut[m]).find(Boolean) || "", folders: members,
         title: top.length ? top.slice(0, 2).map((s) => s.name).join(" & ") : (f.outing || "Outing"),
         companions, slug: fid,
       });
     }
     outings.sort((a, b) => a.date.localeCompare(b.date) || natural(a.type, b.type));
     outings.forEach((o, i) => { o.no = i + 1; });
-    const outingById = new Map(outings.map((o) => [o.id, o]));
+    // every Finals folder of a trip finds its outing, so older links keep working
+    const outingById = new Map(outings.flatMap((o) => o.folders.map((m) => [m, o])));
 
     // 6. species
     const spMap = new Map();
@@ -329,7 +350,7 @@
         spMap.set(x.spKey, s);
       }
       s.photos.push(x);
-      s.outings.add(x.fid);
+      s.outings.add(x.oid);
       if (x.month) s.months[x.month - 1]++;
       if (x.unsure) s.unsureN++;
       for (const b of x.behaviours) s.behaviours.set(b, (s.behaviours.get(b) || 0) + 1);

@@ -85,7 +85,7 @@
   function layoutYear(items, model) {
     const outings = model.outings.filter((o) => o.photos.length);
     const byFid = new Map();
-    items.forEach((it, k) => { (byFid.get(it.x.fid) || byFid.set(it.x.fid, []).get(it.x.fid)).push(k); });
+    items.forEach((it, k) => { const o = it.x.oid || it.x.fid; (byFid.get(o) || byFid.set(o, []).get(o)).push(k); });
     const W = 4, pos = new Array(items.length), labels = [];
     let x = 0, lastMonth = "";
     const marks = [];

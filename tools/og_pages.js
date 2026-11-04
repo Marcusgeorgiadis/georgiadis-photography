@@ -137,7 +137,12 @@ function feed() {
   // in them: a portrait session with the family dog stays on the site but isn't news from the field
   const named = (o) => o.species.filter((s1) => !/\bsp\.?$/i.test(s1.name || "")).slice().sort((a, b) => b.n - a.n);
   const isWild = (s1) => { const sp = m.speciesByKey.get(s1.key); return !sp || sp.wild !== false; };
-  const wild = m.outings.filter((o) => o.species.some(isWild) && o.photos.length >= 3 && o.cover);
+  // The newsletter announces any outing it hasn't seen in this feed before, so the feed never
+  // reaches further back than it already has: when outings merge (two Finals folders of one trip)
+  // or go, older ones moving into the newest 40 would otherwise be announced as if new.
+  let floor = "";
+  try { const prev = JSON.parse(fs.readFileSync(path.join(repo, "data", "dispatches.json"), "utf8")); floor = (prev.outings || []).map((o) => o.date).filter(Boolean).sort()[0] || ""; } catch (e) { /* first feed */ }
+  const wild = m.outings.filter((o) => o.species.some(isWild) && o.photos.length >= 3 && o.cover && (!floor || o.date >= floor));
   const outings = wild.slice(-40).reverse().map((o) => {
     const cover = o.heroes.filter((x) => x.spKey && !x.unsure && !x.explicit).sort((a, b) => (b.ar >= 1.3) - (a.ar >= 1.3) || b.score - a.score)[0] || o.cover;
     const img = image(cover, 1200);

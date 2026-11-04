@@ -113,7 +113,7 @@
     const near = (x) => { const d = Math.abs(doy(x.month, x.day) - t); return Math.min(d, 365 - d); };
     const list = m.life.map((s) => {
       const hits = s.photos.filter((x) => x.month && near(x) <= 21);
-      return { s, n: new Set(hits.map((x) => x.fid)).size, hits: hits.length };
+      return { s, n: new Set(hits.map((x) => x.oid || x.fid)).size, hits: hits.length };
     }).filter((e) => e.n).sort((a, b) => b.n - a.n || b.hits - a.hits);
     return { L, t, list };
   }

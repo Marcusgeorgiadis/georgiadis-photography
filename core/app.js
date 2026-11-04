@@ -121,7 +121,7 @@
     add("Date", esc(fmtDate(x.t)));
     if (x.hasTime) add("Time", esc(fmtTime(x) + (x.light ? " · " + x.light : "")));
     if (!opts.short) {
-      add("Outing", `<a href="#/outings/${esc(x.fid)}">${esc(x.outing)}</a>`);
+      add("Outing", `<a href="#/outings/${esc(x.oid || x.fid)}">${esc(x.outing)}</a>`);
       if (x.sexAge) add("Sex · age", esc(x.sexAge));
       if (x.behavior) add("Behaviour", esc(x.behavior));
       if (x.exif.cam) add("Camera", esc(x.exif.cam));
@@ -586,7 +586,7 @@ ${footer(nav)}
     if (!list.length) return head + `<div class="empty"><h2>Nothing matches yet</h2><p>Try fewer words, or a species, month, behaviour or colour: “egrets”, “March”, “fishing”, “golden hour”, “red”.</p></div>`;
     if ((sort === "new" || sort === "old") && !query) {
       const groups = [];
-      for (const x of list) { const g = groups[groups.length - 1]; if (g && g.fid === x.fid) g.items.push(x); else groups.push({ fid: x.fid, items: [x] }); }
+      for (const x of list) { const g = groups[groups.length - 1]; if (g && g.fid === x.oid) g.items.push(x); else groups.push({ fid: x.oid, items: [x] }); }
       const k = regCtx(list);
       return head + groups.map((g) => {
         const o = A.model.outingById.get(g.fid);
