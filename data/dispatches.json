@@ -7,6 +7,31 @@
  },
  "outings": [
   {
+   "id": "1usaZ95vx8edv2pouG10t7fzm4Ygv6IqH",
+   "no": 51,
+   "date": "2026-10-29",
+   "when": "29 October 2026",
+   "title": "Osprey",
+   "type": "Birding MG",
+   "hook": "An October morning at a snag-studded lake edge spent almost entirely with one Osprey, which perched, stretched and landed through 23 frames.",
+   "frames": 23,
+   "speciesN": 1,
+   "species": [
+    "Osprey"
+   ],
+   "companions": [
+    "MG"
+   ],
+   "url": "https://marcusgeorgiadis.github.io/georgiadis-photography/#/outings/1usaZ95vx8edv2pouG10t7fzm4Ygv6IqH",
+   "cover": {
+    "url": "https://lh3.googleusercontent.com/d/1nyNIQPesdqQugDnhPGV5EDNlQ9vK5j9i=w1200",
+    "width": 1200,
+    "height": 800,
+    "alt": "Osprey"
+   },
+   "accent": "#2b588c"
+  },
+  {
    "id": "1dWZ7s9p1TmXf6ld-0umg3jWNX2DlAz-x",
    "no": 50,
    "date": "2026-10-25",
@@ -71,11 +96,12 @@
    "type": "Birding MG EE",
    "hook": "Red-shouldered Hawks in 22 frames, with Limpkins and alligators.",
    "frames": 29,
-   "speciesN": 3,
+   "speciesN": 4,
    "species": [
     "Red-shouldered Hawk",
     "Limpkin",
-    "American Alligator"
+    "American Alligator",
+    "Anhinga"
    ],
    "companions": [
     "MG",
@@ -1118,33 +1144,6 @@
     "alt": "Osprey"
    },
    "accent": "#796a3e"
-  },
-  {
-   "id": "1B79JID3CHGTdwhdZ8x6z9vZuuchkHGY6",
-   "no": 6,
-   "date": "2025-10-12",
-   "when": "12 October 2025",
-   "title": "Green Heron & American White Ibis",
-   "type": "Birding MG",
-   "hook": "Green Herons hunting the margins, with White Ibis, a Wood Duck and an alligator for company.",
-   "frames": 4,
-   "speciesN": 3,
-   "species": [
-    "Green Heron",
-    "American White Ibis",
-    "Bird flock"
-   ],
-   "companions": [
-    "MG"
-   ],
-   "url": "https://marcusgeorgiadis.github.io/georgiadis-photography/#/outings/1B79JID3CHGTdwhdZ8x6z9vZuuchkHGY6",
-   "cover": {
-    "url": "https://lh3.googleusercontent.com/d/10ChKiKtk7QsjlvLTQVHF6GuBgq7XJaEY=w1200",
-    "width": 1200,
-    "height": 800,
-    "alt": "Green Heron"
-   },
-   "accent": "#795d3e"
   }
  ]
 }
