@@ -181,7 +181,8 @@
     preload(urls).then(() => { if (!stopped) { i = 0; step(); } });
     return finish;
   }
-  // Galleries: rest the pointer on a burst and it plays; moving across it still scrubs.
+  // Galleries no longer play a burst on hover: moving the pointer across a tile scrubs its frames
+  // (app.js). liveStop stays for anything that still started one.
   const LIVE = { tile: null, stop: null, t: 0 };
   function liveStop() {
     clearTimeout(LIVE.t);
@@ -190,40 +191,6 @@
     if (LIVE.tile) { LIVE.tile.classList.remove("living"); const x = app().model.byId.get(LIVE.tile.dataset.id); LIVE.tile.querySelectorAll(".scrub i").forEach((el, k) => el.classList.toggle("on", x && x.burst && x.burst.frames[k] === x)); }
     LIVE.tile = null; LIVE.stop = null;
   }
-  function liveStart(t) {
-    if (LIVE.tile !== t || LIVE.stop) return;
-    const x = app().model.byId.get(t.dataset.id), img = t.querySelector("img");
-    if (!x || !img) return;
-    t._i = null; t._frame = null;
-    t.classList.add("living");
-    const w = t.getBoundingClientRect().width * Math.min(2, devicePixelRatio || 1);
-    // play from the first frame, and leave the tile on the frame the gallery shows
-    img.src = H().src(x, w);
-    LIVE.stop = play(img, x, { width: w, onFrame: (k) => t.querySelectorAll(".scrub i").forEach((el, n) => el.classList.toggle("on", n === k)) });
-  }
-  // Rest the pointer on a burst and it plays; it re-arms while the pointer is still moving.
-  function liveArm(t) {
-    if (!fine() || reduced() || saveData()) return;
-    if (LIVE.tile !== t) { liveStop(); LIVE.tile = t; }
-    if (LIVE.stop) return;
-    clearTimeout(LIVE.t);
-    LIVE.t = setTimeout(() => liveStart(t), 380);
-  }
-  document.addEventListener("pointerover", (e) => {
-    if (e.pointerType !== "mouse") return;
-    const t = e.target.closest && e.target.closest(".tile.burst");
-    if (t) liveArm(t);
-    else if (LIVE.tile && !LIVE.tile.contains(e.target)) liveStop();
-  }, { passive: true });
-  // while playing, a deliberate sweep across the tile is a scrub: stop and let the pointer choose
-  document.addEventListener("pointermove", (e) => {
-    const t = LIVE.tile;
-    if (!t || e.pointerType !== "mouse" || !t.contains(e.target)) return;
-    if (!LIVE.stop) { liveArm(t); return; }
-    t._mv = (t._mv || 0) + Math.abs(e.movementX || 0);
-    if (t._mv > 40) { t._mv = 0; const keep = t; liveStop(); LIVE.tile = keep; }
-  }, { passive: true });
-  addEventListener("scroll", () => { if (LIVE.tile) liveStop(); }, { passive: true });
 
   /* ---------- depth maps ---------- */
   let depthIndex = null;
