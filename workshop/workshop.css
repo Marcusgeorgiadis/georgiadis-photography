@@ -38,16 +38,16 @@
 .ws-pick { display: grid; gap: 4px; }
 .ws-pick .btn { min-height: 30px; font-size: 12px; padding: 4px 10px; }
 .mini-flow .ws-pick > button:first-child { padding: 0; border: 0; aspect-ratio: 1; overflow: hidden; background: var(--bg-2); cursor: zoom-in; border-radius: 2px; }
-.ws-sel { position: fixed; z-index: 60; left: max(16px, env(safe-area-inset-left, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); bottom: max(14px, env(safe-area-inset-bottom, 0px)); display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--glass); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); box-shadow: 0 18px 50px -20px rgba(0, 0, 0, 0.5); }
+.ws-sel { position: fixed; z-index: 60; left: max(16px, env(safe-area-inset-left, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(max(14px, env(safe-area-inset-bottom, 0px)) + var(--tabs-h, 0px)); display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--glass); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); box-shadow: 0 18px 50px -20px rgba(0, 0, 0, 0.5); }
 .ws-sel .n { font-size: 12px; color: var(--ink); min-width: 86px; }
 .ws-sel input { width: 130px; flex: 1 1 80px; }
 .ws-sel select { width: auto; }
 .ws-sel .btn { min-height: 34px; padding: 6px 11px; font-size: 13px; }
 .ws-sel .stars button { font-size: 20px; color: var(--muted); }
 .ws-sel .stars button:hover { color: var(--accent); }
-.ws-pop { position: fixed; z-index: 70; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(max(14px, env(safe-area-inset-bottom, 0px)) + 120px); width: min(360px, calc(100vw - 32px)); display: grid; gap: 10px; padding: 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); box-shadow: 0 18px 50px -20px rgba(0, 0, 0, 0.5); }
+.ws-pop { position: fixed; z-index: 70; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(max(14px, env(safe-area-inset-bottom, 0px)) + var(--tabs-h, 0px) + 120px); width: min(360px, calc(100vw - 32px)); display: grid; gap: 10px; padding: 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); box-shadow: 0 18px 50px -20px rgba(0, 0, 0, 0.5); }
 .ws-pop .acts { display: flex; gap: 8px; }
-.ws-runbar { position: fixed; z-index: 65; left: max(16px, env(safe-area-inset-left, 0px)); bottom: max(14px, env(safe-area-inset-bottom, 0px)); width: min(420px, calc(100vw - 32px)); display: grid; grid-template-columns: 1fr auto; gap: 8px 12px; align-items: center; padding: 12px 14px; border-radius: 8px; background: var(--ink); color: var(--bg); box-shadow: 0 18px 50px -20px rgba(0, 0, 0, 0.5); }
+.ws-runbar { position: fixed; z-index: 65; left: max(16px, env(safe-area-inset-left, 0px)); bottom: calc(max(14px, env(safe-area-inset-bottom, 0px)) + var(--tabs-h, 0px)); width: min(420px, calc(100vw - 32px)); display: grid; grid-template-columns: 1fr auto; gap: 8px 12px; align-items: center; padding: 12px 14px; border-radius: 8px; background: var(--ink); color: var(--bg); box-shadow: 0 18px 50px -20px rgba(0, 0, 0, 0.5); }
 .ws-runbar .sc { color: inherit; opacity: 0.7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 300px; letter-spacing: 0.04em; text-transform: none; }
 .ws-runbar i { grid-column: 1 / -1; height: 3px; border-radius: 2px; background: linear-gradient(90deg, var(--accent) var(--p), color-mix(in srgb, var(--bg) 25%, transparent) var(--p)); }
 .ws-runbar .btn { color: var(--bg); border-color: color-mix(in srgb, var(--bg) 40%, transparent); min-height: 32px; }
@@ -66,4 +66,13 @@
   .ws-sel .stars button { font-size: 18px; padding: 0 1px; }
   .ws-sel [data-ws="sel-all"] { display: none; }
   .gp-selecting .ws-runbar, .gp-selecting .toast { bottom: calc(max(14px, env(safe-area-inset-bottom, 0px)) + 150px); }
+}
+/* The Workshop's header carries Select and two more sections: the search is a button here, and on
+   a phone the sky gives Select its place. */
+.gp-tools:has(#ws-select) .gp-find { min-width: 0; width: 38px; padding: 0; justify-content: center; border-color: transparent; background: transparent; color: var(--ink-2); cursor: pointer; }
+.gp-tools:has(#ws-select) .gp-find span, .gp-tools:has(#ws-select) .gp-find kbd { display: none; }
+@media (max-width: 860px) {
+  .gp-tools:has(#ws-select) .sky-btn { display: none; }
+  .gp-head:has(#ws-select) .gp-mark b { font-size: 16px; }
+  .gp-tools #ws-select { min-height: 32px; padding: 4px 11px; font-size: 13px; }
 }

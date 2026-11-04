@@ -31,7 +31,7 @@ button.link:hover { text-decoration-color: currentColor; }
 .to-top.on { opacity: 1; transform: none; pointer-events: auto; }
 
 /* ---------- home: the opening ---------- */
-.hm-hero { position: relative; height: calc(100svh - var(--head-h, 64px)); min-height: 560px; max-height: 1100px; overflow: hidden; background: #0b0c0b; color: #f4f2eb; isolation: isolate; }
+.hm-hero { position: relative; height: calc(100svh - var(--head-h, 64px) - var(--tabs-h, 0px)); min-height: 560px; max-height: 1100px; overflow: hidden; background: #0b0c0b; color: #f4f2eb; isolation: isolate; }
 .hm-slide { position: absolute; inset: 0; opacity: 0; transition: opacity 1500ms ease; }
 .hm-slide.on { opacity: 1; z-index: 1; }
 .hm-par { position: absolute; left: 0; right: 0; top: -30px; bottom: -30px; transform: translateY(var(--py, 0)); }
@@ -75,7 +75,7 @@ button.link:hover { text-decoration-color: currentColor; }
 .hm-down span { position: absolute; left: 50%; top: 8px; width: 3px; height: 8px; margin-left: -1.5px; border-radius: 2px; background: #fff; animation: hm-scroll 2.2s ease-in-out infinite; }
 @keyframes hm-scroll { 0% { transform: translateY(0); opacity: 0; } 30% { opacity: 1; } 80% { transform: translateY(14px); opacity: 0; } 100% { opacity: 0; } }
 @media (max-width: 760px) {
-  .hm-hero { min-height: 520px; height: calc(92svh - var(--head-h, 64px)); }
+  .hm-hero { min-height: 460px; height: calc(100svh - var(--head-h, 56px) - var(--tabs-h, 0px) - 28px); }
   .hm-copy { padding-bottom: 92px; gap: 12px; }
   .hm-copy p { font-size: 15px; }
   .hm-copy .cta .btn { min-height: 42px; padding: 8px 14px; font-size: 14px; }
@@ -528,18 +528,13 @@ a.way-tree:hover .tm-d circle { animation: tm-pop 600ms var(--ease-spring) both;
 @media (max-width: 1240px) {
   .gp-head .wrap { gap: 10px 18px; }
   .gp-nav a { padding: 8px 9px; font-size: 14.5px; }
-  .gp-tools [data-act="keys"], .gp-tools [data-act="surprise"] { display: none; }
 }
-@media (max-width: 760px) {
-  .gp-head .wrap { gap: 0 10px; }
-  .gp-tools { gap: 2px; margin-left: auto; }
-  .gp-tools .icon-btn { width: 36px; height: 36px; }
-}
-@media (max-width: 374px) {
-  .gp-mark b { font-size: 16px; }
-  .gp-mark span { font-size: 8px; letter-spacing: 0.1em; }
-  .gp-head .wrap { padding-inline: 14px; gap: 0 6px; }
-  .gp-tools .icon-btn { width: 30px; height: 30px; }
+/* a narrow window above the tab bar's width: Play is in the menu, and the rest draws in */
+@media (min-width: 861px) and (max-width: 940px) {
+  .gp-play { display: none; }
+  .gp-head .wrap { gap: 10px 12px; }
+  .gp-nav a { padding: 8px 7px; font-size: 14px; }
+  .gp-mark b { font-size: 20px; }
 }
 .facet-row > * { flex: none; }
 @media (max-width: 760px) { .vw-top [data-v="download"] { display: none; } }

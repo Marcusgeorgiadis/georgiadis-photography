@@ -193,7 +193,7 @@ body, .gp-head, .foot { transition: background-color 1200ms ease, color 800ms ea
 :root[data-lights="down"] .gp-tint { opacity: 0; transition: opacity 1200ms ease; }
 
 /* ---------- a day in the marsh ---------- */
-.dm { position: relative; min-height: calc(100svh - var(--head-h, 64px)); color: #f3f0e6; overflow: hidden; isolation: isolate; padding-bottom: 60px; }
+.dm { position: relative; min-height: calc(100svh - var(--head-h, 64px) - var(--tabs-h, 0px)); color: #f3f0e6; overflow: hidden; isolation: isolate; padding-bottom: 60px; }
 .dm-sky { position: fixed; inset: 0; z-index: -1; }
 .dm-sky > i:first-child { position: absolute; inset: 0; background: linear-gradient(180deg, #060a1a, #10182f 55%, #222b55); transition: background 400ms linear; }
 .dm-sky .dm-stars { position: absolute; inset: 0; opacity: 1; transition: opacity 800ms; background-image: radial-gradient(1.2px 1.2px at 12% 18%, #fff, transparent), radial-gradient(1px 1px at 28% 42%, #fff, transparent), radial-gradient(1.4px 1.4px at 47% 12%, #fff, transparent), radial-gradient(1px 1px at 63% 33%, #fff, transparent), radial-gradient(1.3px 1.3px at 78% 16%, #fff, transparent), radial-gradient(1px 1px at 88% 48%, #fff, transparent), radial-gradient(1px 1px at 8% 64%, #fff, transparent), radial-gradient(1.2px 1.2px at 36% 76%, #fff, transparent), radial-gradient(1px 1px at 70% 70%, #fff, transparent), radial-gradient(1px 1px at 93% 84%, #fff, transparent); }
@@ -203,7 +203,7 @@ body, .gp-head, .foot { transition: background-color 1200ms ease, color 800ms ea
   .dm-wrap { grid-template-columns: minmax(280px, 1fr) auto; align-items: center; column-gap: clamp(24px, 4vw, 64px); }
   .dm-head { align-self: center; }
   .dm-list { grid-column: 1 / -1; }
-  .dm-ring { width: min(56vw, calc(100svh - var(--head-h, 64px) - 70px), 820px); }
+  .dm-ring { width: min(56vw, calc(100svh - var(--head-h, 64px) - var(--tabs-h, 0px) - 70px), 820px); }
 }
 .dm-head { max-width: 720px; display: grid; gap: 8px; }
 .dm-head h1 { margin: 0; font-size: clamp(40px, 5.6vw, 84px); line-height: 0.95; }
@@ -268,7 +268,7 @@ body, .gp-head, .foot { transition: background-color 1200ms ease, color 800ms ea
 .peek-line { font: 500 11px var(--f-data); color: var(--ink-2); letter-spacing: 0.04em; margin-top: 4px; }
 
 /* ---------- the night sky ---------- */
-.ns { position: relative; height: calc(100svh - var(--head-h, 64px)); min-height: 520px; overflow: hidden; background: #03050d; color: #eef0ff; }
+.ns { position: relative; height: calc(100svh - var(--head-h, 64px) - var(--tabs-h, 0px)); min-height: 520px; overflow: hidden; background: #03050d; color: #eef0ff; }
 .ns-c { position: absolute; inset: 0; display: block; }
 .ns-head { position: absolute; left: 0; right: 0; top: clamp(18px, 4vh, 44px); pointer-events: none; display: grid; gap: 6px; }
 .ns-head .kicker { color: #b9c2ff; }
@@ -364,7 +364,7 @@ body, .gp-head, .foot { transition: background-color 1200ms ease, color 800ms ea
 .st-sky-a { position: absolute; inset: 0; background: linear-gradient(180deg, #0c1430, #222b55); transition: background 1600ms ease; }
 .st-stars { position: absolute; inset: 0; opacity: 0; transition: opacity 1600ms; background-image: radial-gradient(1.2px 1.2px at 12% 18%, #fff, transparent), radial-gradient(1px 1px at 28% 42%, #fff, transparent), radial-gradient(1.4px 1.4px at 47% 12%, #fff, transparent), radial-gradient(1px 1px at 63% 33%, #fff, transparent), radial-gradient(1.3px 1.3px at 78% 16%, #fff, transparent), radial-gradient(1px 1px at 88% 48%, #fff, transparent), radial-gradient(1px 1px at 8% 64%, #fff, transparent), radial-gradient(1.2px 1.2px at 36% 76%, #fff, transparent); }
 .st-sun { position: absolute; width: 300px; height: 300px; margin: 0 0 -150px -150px; border-radius: 50%; background: radial-gradient(circle, #fffdf6 0%, #fff1cc 8%, rgba(255, 226, 160, 0.5) 20%, rgba(255, 214, 140, 0.15) 42%, rgba(255, 214, 140, 0) 70%); transition: left 1600ms ease, bottom 1600ms ease, opacity 1600ms; }
-.st-open { min-height: calc(100svh - var(--head-h, 64px)); display: grid; align-content: center; gap: 14px; padding-top: 40px; padding-bottom: 40px; position: relative; }
+.st-open { min-height: calc(100svh - var(--head-h, 64px) - var(--tabs-h, 0px)); display: grid; align-content: center; gap: 14px; padding-top: 40px; padding-bottom: 40px; position: relative; }
 .st-open .kicker { color: inherit; opacity: 0.8; }
 .st-open h1 { margin: 0; font-size: clamp(48px, 8vw, 132px); line-height: 0.92; letter-spacing: -0.03em; }
 .st-sub { margin: 0; max-width: 56ch; font-size: clamp(17px, 1.6vw, 22px); line-height: 1.5; opacity: 0.9; }
@@ -416,7 +416,7 @@ body, .gp-head, .foot { transition: background-color 1200ms ease, color 800ms ea
 @media (prefers-reduced-motion: reduce) { .st-beat, .st-interlude, .st-end { opacity: 1; transform: none; transition: none; } .st-down { animation: none; } }
 
 /* ---------- dispatches by email ---------- */
-.nl-pop { position: fixed; z-index: 60; right: 20px; bottom: 20px; width: min(380px, calc(100vw - 40px)); max-height: calc(100svh - var(--head-h, 64px) - 40px); overflow: auto; background: var(--surface); color: var(--ink); border: 1px solid var(--hair); border-radius: 16px;
+.nl-pop { position: fixed; z-index: 60; right: 20px; bottom: 20px; width: min(380px, calc(100vw - 40px)); max-height: calc(100svh - var(--head-h, 64px) - var(--tabs-h, 0px) - 40px); overflow: auto; background: var(--surface); color: var(--ink); border: 1px solid var(--hair); border-radius: 16px;
   box-shadow: 0 34px 80px -28px rgba(0, 0, 0, 0.5), 0 2px 10px rgba(0, 0, 0, 0.08); opacity: 0; transform: translateY(18px) scale(0.985); transform-origin: 100% 100%; transition: opacity 380ms var(--ease-out), transform 560ms var(--ease-out); }
 .nl-pop.on { opacity: 1; transform: none; }
 .nl-pop.off { opacity: 0; transform: translateY(10px); transition-duration: 260ms; }

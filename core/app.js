@@ -68,6 +68,12 @@
     pause: I('<path d="M8 5.5v13M16 5.5v13"/>'),
     grid: I('<rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/>'),
     rows: I('<path d="M4 6h16M4 12h16M4 18h16"/>'),
+    menu: I('<path d="M4 7h16M4 12h16M4 17h10"/>'),
+    home: I('<path d="M4 10.5 12 4l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5.5h-5V20H5a1 1 0 0 1-1-1z"/>'),
+    frame: I('<rect x="4" y="4" width="16" height="16" rx="1.5"/><rect x="7.5" y="7.5" width="9" height="9" rx=".5"/><path d="m7.5 14.5 2.6-2.8 2.4 2.3 1.6-1.6 2.4 2.6"/>'),
+    feather: I('<path d="M19.5 4.5c-6 0-11 4.6-11 11v4"/><path d="M19.5 4.5c.4 6.8-3.7 11-9.6 11H8.5"/><path d="M12.6 11.4H17M10.3 13.8h4.6"/>'),
+    compass: I('<circle cx="12" cy="12" r="8.5"/><path d="m15.3 8.7-1.9 4.7-4.7 1.9 1.9-4.7z"/>'),
+    mail: I('<rect x="3.5" y="5.5" width="17" height="13" rx="1.5"/><path d="m4 7 8 6 8-6"/>'),
   };
 
   /* ---------- state ---------- */
@@ -212,6 +218,10 @@
   /* ---------- shell ---------- */
   // The logo is the way home; registered views (Exhibitions, Universe) slot in beside these.
   const NAV = [["gallery", "Gallery"], ["species", "Species"], ["outings", "Outings"], ["journal", "Journal"]];
+  // A phone keeps these in a tab bar at the foot of the screen, in reach of a thumb; a page that
+  // belongs to one of them lights its tab. Sections without a tab are in the menu.
+  const TABS = [["", "Home", "home"], ["gallery", "Gallery", "grid"], ["rooms", "Exhibitions", "frame"], ["species", "Species", "feather"], ["outings", "Outings", "compass"]];
+  const TAB_OF = { universe: "gallery", photo: "gallery", journal: "outings", story: "outings", sky: "species", plates: "species", day: "species" };
   function shell() {
     const s = A.site;
     // Views that name a neighbour (navAfter) sit beside it, in the order they registered.
@@ -224,28 +234,25 @@
       after.set(v.navAfter, k);
       nav.splice(at + k, 0, [v.id, v.label]);
     }
+    A.nav = nav;
+    const has = (id) => !id || nav.some((n) => n[0] === id);
+    const tabs = TABS.filter(([id]) => has(id));
     A.root.innerHTML = `<a class="visually-hidden" href="#gp-main">Skip to content</a>
 <header class="gp-head"><div class="wrap">
   <a class="gp-mark" href="#/"><b>${esc(s.title || "Georgiadis Photography")}</b><span>${esc(s.tagline || "Wildlife of Central Florida")}</span></a>
   <nav class="gp-nav" aria-label="Sections">${nav.map(([id, l]) => `<a href="#/${id}" data-nav="${id}">${esc(l)}</a>`).join("")}</nav>
   <div class="gp-tools">
     ${GP.sky ? GP.sky.button() : ""}
-    <button class="icon-btn" data-act="search" title="Search (/)" aria-label="Search">${ICON.search}</button>
-    <button class="icon-btn" data-act="surprise" title="Surprise me (R)" aria-label="Show a random photograph">${ICON.shuffle}</button>
-    <button class="icon-btn" data-act="exhibit" title="Play an exhibition (E)" aria-label="Play an exhibition">${ICON.play}</button>
-    ${GP.calls && GP.calls.available() ? GP.calls.button() : ""}
-    ${GP.scape ? GP.scape.button() : ""}
-    ${GP.fx ? GP.fx.depthButton() : ""}
-    ${burstButton()}
-    ${GP.newsletter ? GP.newsletter.button() : ""}
-    <button class="icon-btn" data-act="theme" title="Light or dark" aria-label="Switch light or dark">${ICON.moon}</button>
-    <button class="icon-btn" data-act="keys" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">${ICON.keys}</button>
+    <button class="gp-find" data-act="search" title="Search (/)" aria-label="Search the photographs">${ICON.search}<span>Search photographs</span><kbd>/</kbd></button>
+    <button class="icon-btn gp-play" data-act="exhibit" title="Play an exhibition (E)" aria-label="Play an exhibition">${ICON.play}</button>
+    <button class="icon-btn gp-menu-btn" data-act="menu" aria-haspopup="dialog" aria-expanded="false" title="Settings and more" aria-label="Settings and more">${ICON.menu}</button>
   </div>
 </div></header>
 <main id="gp-main" tabindex="-1"></main>
 ${footer(nav)}
+<nav class="gp-tabs" aria-label="Sections" style="--n:${tabs.length}">${tabs.map(([id, l, ic]) => `<a href="#/${id}" data-tab="${id}">${ICON[ic]}<span>${esc(l)}</span></a>`).join("")}</nav>
 <button class="to-top icon-btn" data-act="top" aria-label="Back to top" title="Back to top">${ICON.up}</button>`;
-    themeIcon();
+    paintTheme();
     if (GP.sky) GP.sky.start();
     if (GP.newsletter) { GP.newsletter.paint(); GP.newsletter.watch(); }
     const head = $(".gp-head", A.root);
@@ -276,12 +283,19 @@ ${footer(nav)}
     ${hasCalls ? `<p class="foot-small">Bird calls are recordings by iNaturalist contributors, shared under Creative Commons licences and credited beside each one.</p>` : ""}</div>
 </div><div class="wrap foot-base"><span>© ${new Date().getFullYear()} ${esc(s.title || "Georgiadis Photography")}</span><span>Press <kbd>?</kbd> for keyboard shortcuts</span></div></footer>`;
   }
-  function themeIcon() {
-    const b = $('[data-act="theme"]', A.root);
-    if (!b) return;
-    const dark = currentTheme() === "dark";
-    b.innerHTML = dark ? ICON.sun : ICON.moon;
-    b.setAttribute("aria-label", dark ? "Switch to light" : "Switch to dark");
+  function themeChoice() { const t = store.get("gp-theme"); return t === "light" || t === "dark" ? t : "auto"; }
+  function paintTheme() {
+    const v = themeChoice();
+    for (const b of $$('[data-act="theme-set"]')) b.setAttribute("aria-pressed", String(b.dataset.v === v));
+  }
+  function setTheme(v) {
+    const apply = () => {
+      if (v === "light" || v === "dark") document.documentElement.setAttribute("data-theme", v);
+      else document.documentElement.removeAttribute("data-theme");
+      store.set("gp-theme", v === "light" || v === "dark" ? v : "auto");
+      paintTheme();
+    };
+    if (document.startViewTransition && !reduced()) quiet(document.startViewTransition(apply)); else apply();
   }
   function currentTheme() {
     const t = document.documentElement.getAttribute("data-theme");
@@ -289,9 +303,70 @@ ${footer(nav)}
   }
   function toggleTheme() {
     const next = currentTheme() === "dark" ? "light" : "dark";
-    const apply = () => { document.documentElement.setAttribute("data-theme", next); store.set("gp-theme", next); themeIcon(); };
+    const apply = () => { document.documentElement.setAttribute("data-theme", next); store.set("gp-theme", next); paintTheme(); };
     if (document.startViewTransition && !reduced()) quiet(document.startViewTransition(apply)); else apply();
   }
+  /* ---------- the menu: settings, the other pages, a few actions ---------- */
+  // Settings are switches beside the same buttons the header used to carry, so each feature's
+  // own code still paints and toggles them; a click anywhere on a row presses its button.
+  function menuHtml() {
+    const has = (id) => A.views.some((v) => v.id === id);
+    const tabbed = new Set(TABS.map((t) => t[0]));
+    const pages = (A.nav || []).filter(([id]) => !tabbed.has(id)); // a phone's tab bar has no room for these
+    const calls = GP.calls && GP.calls.available();
+    const explore = [
+      GP.visitor && ["rooms/favourites", "Your favourites"],
+      has("sky") && ["sky", "The night sky"],
+      has("plates") && ["plates", "Natural-history plates"],
+      calls && has("day") && ["day", "A day in the marsh"],
+      calls && ["species?view=calls", "Bird calls"],
+    ].filter(Boolean);
+    const sw = (btn, t, sub) => (btn ? `<div class="mn-row" data-mn-row>${btn}<span class="mn-l"><b>${t}</b><small>${sub}</small></span><span class="mn-sw" aria-hidden="true"></span></div>` : "");
+    const act = (a, ic, t, tip) => `<button class="mn-act" data-act="${a}" data-mn-close title="${tip}">${ic}<span>${t}</span></button>`;
+    const v = themeChoice();
+    return `<div class="gp-menu" id="gp-menu" role="dialog" aria-label="Settings and more" tabindex="-1">
+  ${pages.length || explore.length ? `<section class="mn-sec"><h3 class="sc">Explore</h3><div class="mn-links">${pages.map(([id, l]) => `<a class="mn-page" href="#/${id}">${esc(l)}</a>`).join("")}${explore.map(([href, l]) => `<a href="#/${href}">${esc(l)}</a>`).join("")}</div></section>` : ""}
+  <section class="mn-sec"><h3 class="sc">Display</h3>
+    <div class="mn-row mn-theme"><span class="mn-ic" aria-hidden="true">${ICON.moon}</span><span class="mn-l"><b>Light or dark</b></span><span class="mn-seg" role="group" aria-label="Light or dark">${[["auto", "Auto"], ["light", "Light"], ["dark", "Dark"]].map(([k, l]) => `<button type="button" data-act="theme-set" data-v="${k}" aria-pressed="${v === k}">${l}</button>`).join("")}</span></div>
+    ${sw(burstButton(), "Open bursts", "A tile for every frame of every burst")}
+    ${GP.fx ? sw(GP.fx.depthButton(), "Depth", "Subjects stand out a little as you move") : ""}
+  </section>
+  ${calls || GP.scape ? `<section class="mn-sec"><h3 class="sc">Sound</h3>
+    ${calls ? sw(GP.calls.button(), "Bird calls", "Each species' call, beside its photographs") : ""}
+    ${GP.scape ? sw(GP.scape.button(), "Soundscape", "The place each photograph was made") : ""}
+  </section>` : ""}
+  <section class="mn-sec mn-acts">
+    ${act("exhibit", ICON.play, "Play an exhibition", "Play an exhibition (E)")}
+    ${act("surprise", ICON.shuffle, "Surprise me", "A random photograph (R)")}
+    ${GP.newsletter && GP.newsletter.button() ? act("newsletter", ICON.mail, "Email dispatches", "A short email when a new outing goes up") : ""}
+    ${act("keys", ICON.keys, "Keyboard shortcuts", "Keyboard shortcuts (?)")}
+  </section>
+</div>`;
+  }
+  function openMenu() {
+    const btn = $(".gp-menu-btn", A.root), head = $(".gp-head", A.root);
+    if (!btn || !head || $("#gp-menu")) return;
+    head.classList.remove("tucked");
+    const box = document.createElement("div");
+    box.innerHTML = menuHtml();
+    const p = box.firstElementChild;
+    head.after(p);
+    btn.setAttribute("aria-expanded", "true");
+    p.addEventListener("focusout", (e) => { if (e.relatedTarget && !p.contains(e.relatedTarget) && e.relatedTarget !== btn) closeMenu(false); });
+    requestAnimationFrame(() => p.classList.add("on"));
+    p.focus({ preventScroll: true });
+  }
+  function closeMenu(restore = true) {
+    const p = $("#gp-menu");
+    if (!p) return;
+    const btn = $(".gp-menu-btn", A.root);
+    const had = p.contains(document.activeElement);
+    p.removeAttribute("id");
+    p.classList.remove("on");
+    setTimeout(() => p.remove(), reduced() ? 0 : 200);
+    if (btn) { btn.setAttribute("aria-expanded", "false"); if (restore && had) btn.focus({ preventScroll: true }); }
+  }
+  function toggleMenu() { if ($("#gp-menu")) closeMenu(); else openMenu(); }
   // A transition the browser abandons (the window resized, say) still applies its change; nothing to report.
   function quiet(vt) { for (const k of ["ready", "finished", "updateCallbackDone"]) if (vt && vt[k]) vt[k].catch(() => {}); }
 
@@ -362,6 +437,11 @@ ${footer(nav)}
     $$(".gp-nav a").forEach((n) => n.toggleAttribute("aria-current", false));
     const navEl = $(`.gp-nav a[data-nav="${v || ""}"]`);
     if (navEl) navEl.setAttribute("aria-current", "page");
+    const tabKey = v ? TAB_OF[v] || v : "";
+    $$(".gp-tabs a").forEach((n) => n.toggleAttribute("aria-current", false));
+    const tabEl = $(`.gp-tabs a[data-tab="${tabKey}"]`);
+    if (tabEl) tabEl.setAttribute("aria-current", tabKey === (v || "") ? "page" : "true");
+    closeMenu(false);
     document.documentElement.dataset.view = v || "home";
     let html = "", after = null, title = "", full = false;
     const ext = A.views.find((x) => x.id === (v || ""));
@@ -772,9 +852,9 @@ ${footer(nav)}
   /* ---------- species ---------- */
   const MILESTONES = [10, 25, 50, 75, 100, 150, 200, 250, 300, 400, 500];
   function viewSpeciesIndex(q) {
-    const m = A.model, cab = !!GP.cabinet, mode = q.get("view") || (cab ? "cabinet" : "family");
+    const m = A.model, cab = !!GP.cabinet, mode = q.get("view") || "family";
     const callN = GP.calls ? m.species.filter((x) => x.call).length : 0;
-    const tabs = (cab ? [["cabinet", "Cabinet"]] : []).concat([["family", "By family"], ["life", "Life list"], ["az", "A–Z"]], callN ? [["calls", "Calls"]] : []);
+    const tabs = [["family", "By family"]].concat(cab ? [["cabinet", "Cabinet"]] : [], [["life", "Life list"], ["az", "A–Z"]], callN ? [["calls", "Calls"]] : []);
     const head = pageHead("Field guide", "Species", `${plural(m.life.length, "species", "species")} on the life list across ${plural(m.stats.families, "family", "families")}, plus ${fmtN(m.species.length - m.life.length)} more photographed as captive animals or not identified to species.`,
       `<div class="chips" role="tablist">${tabs.map(([v, l], i) => `<a class="chip" role="tab" href="#/species${i ? `?view=${v}` : ""}" aria-pressed="${mode === v}">${l}</a>`).join("")}${A.views.some((v) => v.id === "sky") ? `<a class="chip" href="#/sky">Night sky</a>` : ""}${A.views.some((v) => v.id === "plates") ? `<a class="chip" href="#/plates">Plates</a>` : ""}</div>`);
     let body = "", after = null;
@@ -797,18 +877,37 @@ ${footer(nav)}
       body = `<div class="milestones" style="margin-bottom:30px">${ms.map((v) => { const s = m.life[v - 1]; return `<div class="milestone${s ? " got" : ""}"><b>${v}</b>${s ? `${esc(s.name)} · ${esc(fmtShort(s.first))}` : `${v - n} to go`}</div>`; }).join("")}</div>
 <ol class="life">${m.life.map((s) => `<li><a href="#/species/${esc(s.slug)}"><span class="no mono">${String(s.lifeNo).padStart(3, "0")}</span>${cover(s.best, 160)}<span class="nm"><b>${esc(s.name)}</b><i>${esc(s.bin)}</i></span><span class="fam">${esc(s.famName)}</span><span class="when mono">${esc(fmtShort(s.first))}</span></a></li>`).join("")}</ol>`;
     } else if (mode === "az") {
-      body = `<div class="sp-grid">${wild.slice().sort((a, b) => a.name.localeCompare(b.name)).map(spCard).join("")}</div>`;
+      body = `<section class="sp-fam" data-fam=""><div class="sp-grid">${wild.slice().sort((a, b) => a.name.localeCompare(b.name)).map(spCard).join("")}</div></section>`;
     } else {
       for (const [, c] of [...m.tree].sort((a, b) => b[1].n - a[1].n)) {
         const fams = [];
         for (const o of c.orders.values()) for (const f of o.families.values()) fams.push(f);
         const shown = fams.map((f) => ({ f, sp: f.species.filter((s) => s.lifeNo) })).filter((x) => x.sp.length).sort((a, b) => b.sp.length - a.sp.length || a.f.common.localeCompare(b.f.common));
         if (!shown.length) continue;
-        body += `<h2 class="display" style="font-size:40px;margin:56px 0 0">${esc(c.common)}</h2>`;
-        for (const { f, sp } of shown) body += `<div class="family-h"><h2>${esc(f.common)}</h2><span class="binomial">${esc(f.name)}</span><span class="n">${plural(sp.length, "species", "species")}</span></div><div class="sp-grid">${sp.sort((a, b) => b.photos.length - a.photos.length).map(spCard).join("")}</div>`;
+        body += `<section class="sp-cls"><h2 class="display sp-cls-h">${esc(c.common)}</h2>`;
+        for (const { f, sp } of shown) body += `<section class="sp-fam" data-fam="${esc(f.common + " " + f.name)}"><div class="family-h"><h2>${esc(f.common)}</h2><span class="binomial">${esc(f.name)}</span><span class="n">${plural(sp.length, "species", "species")}</span></div><div class="sp-grid">${sp.sort((a, b) => b.photos.length - a.photos.length).map(spCard).join("")}</div></section>`;
+        body += `</section>`;
       }
     }
-    if (mode !== "life" && mode !== "cabinet" && mode !== "calls" && rest.length) body += `<div class="family-h" style="margin-top:72px"><h2>Also photographed</h2><span class="n">Captive, domestic, or not identified to species</span></div><div class="sp-grid">${rest.sort((a, b) => b.photos.length - a.photos.length).map(spCard).join("")}</div>`;
+    if (mode !== "life" && mode !== "cabinet" && mode !== "calls" && rest.length) body += `<section class="sp-fam" data-fam=""><div class="family-h" style="margin-top:72px"><h2>Also photographed</h2><span class="n">Captive, domestic, or not identified to species</span></div><div class="sp-grid">${rest.sort((a, b) => b.photos.length - a.photos.length).map(spCard).join("")}</div></section>`;
+    // The grids can be narrowed to a species by its name, its scientific name or its family.
+    if (mode === "family" || mode === "az") {
+      body = `<label class="search sp-find">${ICON.search}<span class="visually-hidden">Find a species</span><input type="search" id="sp-q" autocomplete="off" spellcheck="false" placeholder="Find a species: heron, Ardea, owl, woodpecker…"></label><p class="sp-none" hidden></p>` + body;
+      after = (main, signal) => {
+        const q = main.querySelector("#sp-q"), none = main.querySelector(".sp-none");
+        const norm = (t) => t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const cards = [...main.querySelectorAll(".sp-fam .sp-card")].map((el) => ({ el, t: norm(`${el.querySelector("h3").textContent} ${(el.querySelector(".binomial") || {}).textContent || ""} ${el.closest(".sp-fam").dataset.fam}`) }));
+        q.addEventListener("input", () => {
+          const words = norm(q.value.trim()).split(/\s+/).filter(Boolean);
+          let n = 0;
+          for (const c of cards) { const hit = words.every((w) => c.t.includes(w)); c.el.hidden = !hit; if (hit) n++; }
+          for (const f of main.querySelectorAll(".sp-fam")) f.hidden = !f.querySelector(".sp-card:not([hidden])");
+          for (const c of main.querySelectorAll(".sp-cls")) c.hidden = !c.querySelector(".sp-fam:not([hidden])");
+          none.hidden = n > 0;
+          none.textContent = n ? "" : `No species here match “${q.value.trim()}”.`;
+        }, { signal });
+      };
+    }
     return { html: `<div class="wrap page">${head}${body}</div>`, after, title: "Species" };
   }
   // The same bird from first light to last: the best frame in each light of the day, in order.
@@ -1168,10 +1267,15 @@ ${footer(nav)}
     }
   }
   function onClick(e) {
+    const row = e.target.closest("[data-mn-row]");
+    if (row && !e.target.closest("button")) { const b = row.querySelector("button"); if (b) b.click(); return; }
     const act = e.target.closest("[data-act]");
     if (act && A.root.contains(act)) {
       const a = act.dataset.act;
-      if (a === "theme") toggleTheme();
+      if (act.hasAttribute("data-mn-close")) closeMenu(false);
+      if (a === "menu") toggleMenu();
+      else if (a === "theme-set") setTheme(act.dataset.v);
+      else if (a === "theme") toggleTheme();
       else if (a === "bursts") toggleBursts();
       else if (a === "exhibit") exhibit();
       else if (a === "search") goSearch();
@@ -1298,6 +1402,7 @@ ${footer(nav)}
     d.showModal();
   }
   function onKey(e) {
+    if (e.key === "Escape" && $("#gp-menu")) { e.preventDefault(); closeMenu(); return; }
     if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return;
     if (GP.viewer && GP.viewer.isOpen()) return;
     if ($(".ex")) return;
@@ -1318,7 +1423,7 @@ ${footer(nav)}
     if (A.tipOn) { tipFor(null); A.tipOn = false; }
     const tt = $(".to-top");
     if (tt) tt.classList.toggle("on", y > innerHeight * 1.6);
-    if (y > 160 && y > lastY + 6) head.classList.add("tucked");
+    if (y > 160 && y > lastY + 6 && !$("#gp-menu")) head.classList.add("tucked");
     else if (y < lastY - 6 || y < 80) head.classList.remove("tucked");
     lastY = y;
   }
@@ -1342,6 +1447,10 @@ ${footer(nav)}
       A.bound = true;
       document.addEventListener("click", onClick);
       document.addEventListener("keydown", onKey);
+      // A click outside the open menu closes it and does nothing else (it would otherwise open
+      // the photograph underneath, say).
+      document.addEventListener("pointerdown", (e) => { if ($("#gp-menu") && !(e.target.closest && e.target.closest("#gp-menu, .gp-menu-btn"))) { closeMenu(false); A.eatClick = performance.now() + 500; } }, true);
+      document.addEventListener("click", (e) => { if (A.eatClick && performance.now() < A.eatClick) { e.preventDefault(); e.stopPropagation(); } A.eatClick = 0; }, true);
       document.addEventListener("pointermove", onScrub, { passive: true });
       document.addEventListener("pointerout", (e) => { if (e.target.closest && e.target.closest(".tile.burst") && !e.target.closest(".tile.burst").contains(e.relatedTarget)) onScrubEnd(e); }, { passive: true });
       document.addEventListener("load", (e) => {
@@ -1360,7 +1469,7 @@ ${footer(nav)}
       window.addEventListener("popstate", () => { A.traverse = true; });
       if ("scrollRestoration" in history) history.scrollRestoration = "manual";
       window.addEventListener("scroll", onScroll, { passive: true });
-      matchMedia("(prefers-color-scheme: dark)").addEventListener("change", themeIcon);
+      matchMedia("(prefers-color-scheme: dark)").addEventListener("change", paintTheme);
     }
     A.lastKey = "";
     route();
