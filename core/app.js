@@ -80,19 +80,22 @@
   function regCtx(list) { const k = "c" + ++A.ctxN; A.ctx.set(k, list); return k; }
 
   /* ---------- components ---------- */
+  // a tile flicks through at most this many frames of a burst; the viewer shows them all
+  const SCRUB_MAX = 10;
   function tile(x, o = {}) {
-    const b = x.burst, stack = o.stacks !== false && b && b.size > 1;
+    const b = x.burst, fr = b ? GP.model.framesOf(b, A.ff) : [], stack = o.stacks !== false && fr.length > 1;
+    const hov = fr.slice(0, SCRUB_MAX);
     const w = rowH() * x.ar * dpr() * 1.1;
     const lq = x.lq ? `<span class="lq" style="background-image:url(${x.lq})"></span>` : `<span class="lq" style="background:${esc(x.pal[0] || "")}"></span>`;
     const sel = A.selecting ? `<span class="tick" aria-hidden="true">✓</span>` : "";
     const bt = o.badge ? o.badge(x) : A.workshop && A.workshop.badge ? A.workshop.badge(x) : "";
     const badge = bt ? `<span class="badge">${esc(bt)}</span>` : "";
-    const scrub = stack ? `<span class="stack">${b.size}</span><span class="scrub">${b.frames.map((f) => `<i${f === x ? ' class="on"' : ""}></i>`).join("")}</span>` : "";
+    const scrub = stack ? `<span class="stack">${fr.length}</span><span class="scrub">${hov.map((f) => `<i${f === x ? ' class="on"' : ""}></i>`).join("")}</span>` : "";
     const sub = [fmtShort(x.t), x.light].filter(Boolean).join(" · ");
     const V = GP.visitor && !A.workshop ? GP.visitor : null;
     const fav = V && V.isFav(x.id), fresh = V && !o.noNew && V.isNew(x.id);
     const marks = V ? `<span class="fav" aria-hidden="true">${ICON.heartOn}</span>${fresh ? `<span class="new-pill">New</span>` : ""}` : "";
-    return `<button class="tile${stack ? " burst" : ""}${A.sel.has(x.id) ? " sel" : ""}${fav ? " is-fav" : ""}" data-id="${esc(x.id)}" style="--ar:${x.ar.toFixed(3)}" aria-label="${esc(titleOf(x) + ", " + fmtDate(x.t) + (fav ? ", in your favourites" : ""))}">${lq}<img src="${esc(src(x, w))}" alt="" loading="lazy" decoding="async" draggable="false" style="--fx:${(x.fp[0] * 100).toFixed(1)}%;--fy:${(x.fp[1] * 100).toFixed(1)}%"><span class="cap"><b>${esc(titleOf(x))}</b><span>${esc(sub)}</span></span>${badge}${scrub}${sel}${marks}</button>`;
+    return `<button class="tile${stack ? " burst" : ""}${A.sel.has(x.id) ? " sel" : ""}${fav ? " is-fav" : ""}" data-id="${esc(x.id)}"${stack ? ` data-frames="${esc(hov.map((f) => f.id).join(","))}"` : ""} style="--ar:${x.ar.toFixed(3)}" aria-label="${esc(titleOf(x) + ", " + fmtDate(x.t) + (fav ? ", in your favourites" : ""))}">${lq}<img src="${esc(src(x, w))}" alt="" loading="lazy" decoding="async" draggable="false" style="--fx:${(x.fp[0] * 100).toFixed(1)}%;--fy:${(x.fp[1] * 100).toFixed(1)}%"><span class="cap"><b>${esc(titleOf(x))}</b><span>${esc(sub)}</span></span>${badge}${scrub}${sel}${marks}</button>`;
   }
   function flow(list, o = {}) {
     const k = regCtx(list);
@@ -322,6 +325,7 @@ ${footer(nav)}
 
   function render(r) {
     clearTimers();
+    A.ff = null; // a filtered gallery sets its frame filter as it builds its list
     tipFor(null);
     if (GP.tint) GP.tint.page(null);
     // Listeners a view adds to the page live only until the next view replaces it.
@@ -411,17 +415,30 @@ ${footer(nav)}
     const m = A.model, all = q.get("all") === "1";
     const query = q.get("q") || "", g = q.get("g") || "", rmin = +(q.get("r") || 0), sort = q.get("sort") || (query ? "best" : "new");
     const sq = m.search(query), fresh = q.get("new") === "1" && GP.visitor;
-    let list = (all || !sq.empty ? m.photos : m.heroes).filter((x) => {
-      if (fresh && !GP.visitor.isNew(x.id) && !(x.burst && x.burst.frames.some((f) => GP.visitor.isNew(f.id)))) return false;
+    const pass = (x) => {
+      if (fresh && !GP.visitor.isNew(x.id)) return false;
       if (g === "small" ? !["insect", "other"].includes(x.group) : g && x.group !== g) return false;
       if (rmin && x.rating < rmin) return false;
       return sq.test(x);
-    });
-    if (!all && !sq.empty) { // searching: one tile per burst, the best matching frame
-      const seen = new Map();
-      for (const x of list) { const k = x.burst ? x.burst.id : x.id; const c = seen.get(k); if (!c || x.score > c.score) seen.set(k, x); }
-      list = [...seen.values()];
+    };
+    const filtering = !!(fresh || g || rmin || !sq.empty);
+    let list;
+    if (all) list = m.photos.filter(pass);
+    else if (!filtering) list = m.heroes.slice();
+    else {
+      // Filtered: a burst is in when any of its frames passes, and shows only the frames that
+      // do; its tile shows the first of them (GP.model.framesOf).
+      const done = new Set();
+      list = [];
+      for (const x of m.photos) {
+        const k = x.burst ? x.burst.id : x.id;
+        if (done.has(k) || !pass(x)) continue;
+        done.add(k);
+        list.push(x.burst ? GP.model.framesOf(x.burst, pass)[0] : x);
+      }
     }
+    // tiles, hovering and the viewer show the same frames of each burst
+    A.ff = filtering && !all ? pass : null;
     const byT = (a, b) => a.t.localeCompare(b.t) || (a.frame || 0) - (b.frame || 0);
     if (sort === "old") list.sort(byT);
     else if (sort === "best") list.sort((a, b) => b.score - a.score);
@@ -1044,15 +1061,12 @@ ${footer(nav)}
     const t = e.target.closest && e.target.closest(".tile.burst");
     if (!t || e.pointerType === "touch" || t.classList.contains("living")) return;
     const x = A.model.byId.get(t.dataset.id);
-    if (!x || !x.burst) return;
-    const r = t.getBoundingClientRect(), fr = x.burst.frames;
-    // Wherever the pointer comes in, the burst starts on the frame the tile shows (its lead,
-    // first in the burst); moving either way then steps through the frames, one per
-    // 1/n of the tile's width travelled, round and round.
-    if (t._lx == null) { t._lx = e.clientX; t._trav = 0; t._i = 0; return; }
-    t._trav += Math.abs(e.clientX - t._lx);
-    t._lx = e.clientX;
-    const i = Math.floor(t._trav / Math.max(12, r.width / fr.length)) % fr.length;
+    const fr = (t.dataset.frames || "").split(",").map((id) => A.model.byId.get(id)).filter(Boolean);
+    if (!x || fr.length < 2) return;
+    // The frame under the pointer is the one whose bar it is above: the bars along the foot of
+    // the tile split its width between the frames (the first is the one the tile shows).
+    const bars = t.querySelector(".scrub"), r = (bars || t).getBoundingClientRect();
+    const i = Math.max(0, Math.min(fr.length - 1, Math.floor(((e.clientX - r.left) / r.width) * fr.length)));
     if (t._i === i) return;
     t._i = i;
     const img = t.querySelector("img"), f = fr[i];
@@ -1078,8 +1092,8 @@ ${footer(nav)}
     const t = e.target.closest && e.target.closest(".tile.burst");
     if (!t || t._i == null) return;
     const x = A.model.byId.get(t.dataset.id);
-    const hi = x.burst.frames.indexOf(x);
-    t._i = null; t._frame = null; t._lx = null;
+    const hi = (t.dataset.frames || "").split(",").indexOf(x.id);
+    t._i = null; t._frame = null;
     const img = t.querySelector("img");
     img.src = src(x, rowH() * x.ar * dpr() * 1.1);
     fitFrame(t, img, null, x, "");
@@ -1224,7 +1238,7 @@ ${footer(nav)}
   GP.app = {
     start, update, setSelecting, toast, helpers,
     get model() { return A.model; }, get site() { return A.site; }, get adapter() { return A.adapter; }, get workshop() { return A.workshop; },
-    get selection() { return [...A.sel]; }, clearSelection() { A.sel.clear(); $$(".tile.sel").forEach((t) => t.classList.remove("sel")); },
+    get selection() { return [...A.sel]; }, get frameFilter() { return A.ff || null; }, clearSelection() { A.sel.clear(); $$(".tile.sel").forEach((t) => t.classList.remove("sel")); },
     setQuery, parseHash, hashFor, exhibit, toggleTheme, openById, openList, surprise, route: () => { A.lastKey = ""; route(); },
   };
 })(window.GP = window.GP || {});

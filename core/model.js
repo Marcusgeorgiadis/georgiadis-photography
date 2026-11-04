@@ -512,5 +512,16 @@
     return { terms, test: (x) => tests.every((t) => t(x)), empty: !tests.length };
   }
 
-  GP.model = { build, parseQuery, splitName, binomial, nameKey, slug, frameNo, rawId, sunTimes, lightOf, easternOffset, hexHsl, cleanLens, shutter, MONTHS, MON, SEASONS, BEHAVIOURS, NONE_RE, UNSURE_RE };
+  // The frames of a burst a view shows: all of them, or, in a filtered gallery, only those the
+  // filter lets through. The first is the one its tile shows: the lead when it passes, otherwise
+  // the strongest that does; the rest keep the burst's order.
+  function framesOf(b, pass) {
+    if (!b) return [];
+    if (!pass) return b.frames;
+    const f = b.frames.filter(pass);
+    if (!f.length || f[0] === b.hero) return f;
+    const top = f.reduce((a, c) => (c.score > a.score ? c : a));
+    return [top].concat(f.filter((y) => y !== top));
+  }
+  GP.model = { build, framesOf, parseQuery, splitName, binomial, nameKey, slug, frameNo, rawId, sunTimes, lightOf, easternOffset, hexHsl, cleanLens, shutter, MONTHS, MON, SEASONS, BEHAVIOURS, NONE_RE, UNSURE_RE };
 })(window.GP = window.GP || {});

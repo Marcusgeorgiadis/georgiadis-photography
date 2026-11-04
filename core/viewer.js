@@ -87,6 +87,7 @@
     V.list = list.filter(Boolean);
     V.i = Math.max(0, Math.min(V.list.length - 1, i));
     V.frame = null;
+    V.ff = GP.app.frameFilter;
     const wasOpen = V.open;
     V.open = true;
     V.el.hidden = false;
@@ -168,6 +169,14 @@
 
   /* ---------- showing a photograph ---------- */
   const cur = () => V.frame || V.list[V.i];
+  // The frames of a photograph's burst this viewer shows: in a filtered gallery only the ones the
+  // filter lets through (as its tile did), otherwise all of them.
+  function framesOf(x) {
+    const b = x && x.burst;
+    if (!b) return x ? [x] : [];
+    const f = GP.model.framesOf(b, V.ff);
+    return f.includes(x) ? f : b.frames;
+  }
   /* ---------- the photograph on stage: its colours, its depth, its light, its burst ---------- */
   function fxClear() {
     clearTimeout(V.fxT);
@@ -185,7 +194,7 @@
     if (!GP.fx) return;
     GP.fx.leak(V.fxbox, x);
     const lb = $('[data-v="live"]', V.el);
-    const burst = x.burst && x.burst.size >= 2;
+    const burst = framesOf(x).length >= 2;
     if (lb) lb.hidden = !burst;
     // a burst opens still, to step through frame by frame (LIVE or V plays it); a still floats in
     // front of its background
@@ -204,15 +213,16 @@
   }
   function live(once) {
     const x = cur();
-    if (!GP.fx || !x || !x.burst || x.burst.size < 2) return;
+    const fr = framesOf(x);
+    if (!GP.fx || !x || fr.length < 2) return;
     const lb = $('[data-v="live"]', V.el);
     if (V.liveStop) { V.liveStop(); V.liveStop = null; if (lb) lb.setAttribute("aria-pressed", "false"); return; }
     if (V.surf) { V.surf.destroy(); V.surf = null; }
     if (lb) lb.setAttribute("aria-pressed", "true");
-    const fr = x.burst.frames, w = Math.min(2048, Math.max(V.bw, V.bh) * Math.min(2, devicePixelRatio || 1));
+    const w = Math.min(2048, Math.max(V.bw, V.bh) * Math.min(2, devicePixelRatio || 1));
     const strip = $(".vw-strip", V.el);
     V.liveStop = GP.fx.play(V.img, x, {
-      width: w, once: !!once, crossfade: false,
+      width: w, once: !!once, crossfade: false, frames: fr,
       onFrame: (k) => { strip.querySelectorAll("[data-frame]").forEach((b, n) => b.classList.toggle("live", n === k)); badge(`live · frame ${k + 1} of ${fr.length}`); },
       onEnd: () => { V.liveStop = null; if (lb) lb.setAttribute("aria-pressed", "false"); strip.querySelectorAll(".live").forEach((b) => b.classList.remove("live")); badge(); },
     });
@@ -260,7 +270,7 @@
     if (d && typeof d === "string") { dl.href = d; dl.setAttribute("download", x.name); } else dl.removeAttribute("href");
     $$('[data-v="share"]', V.el).forEach((b) => { b.hidden = !shareUrl(x); });
     paintFav(x);
-    const steps = V.list.length > 1 || (x.burst && x.burst.size > 1);
+    const steps = V.list.length > 1 || framesOf(x).length > 1;
     $(".vw-prev", V.el).hidden = !steps;
     $(".vw-next", V.el).hidden = !steps;
     strip(x);
@@ -274,19 +284,19 @@
     if (hh.q.get("p") && hh.q.get("p") !== x.id) { hh.q.set("p", x.id); history.replaceState(history.state, "", GP.app.hashFor(hh.parts, hh.q)); }
   }
   function strip(x) {
-    const s = $(".vw-strip", V.el), b = x.burst, box = $(".vw-frames", V.el);
-    if (!b || b.size < 2) { box.hidden = true; s.innerHTML = ""; return; }
+    const s = $(".vw-strip", V.el), fr = framesOf(x), box = $(".vw-frames", V.el);
+    if (fr.length < 2) { box.hidden = true; s.innerHTML = ""; return; }
     box.hidden = false;
     const h = H();
-    s.innerHTML = b.frames.map((f, i) => `<button role="option" data-frame="${i}" class="${f === x ? "on" : ""}" aria-selected="${f === x}" aria-label="Frame ${i + 1} of ${b.size}"><img src="${h.esc(h.src(f, 160))}" alt="" loading="lazy"></button>`).join("");
+    s.innerHTML = fr.map((f, i) => `<button role="option" data-frame="${i}" class="${f === x ? "on" : ""}" aria-selected="${f === x}" aria-label="Frame ${i + 1} of ${fr.length}"><img src="${h.esc(h.src(f, 160))}" alt="" loading="lazy"></button>`).join("");
     const on = s.querySelector(".on");
     if (on) on.scrollIntoView({ block: "nearest", inline: "center" });
   }
   function badge(extra) {
-    const x = cur(), b = x.burst;
+    const x = cur(), fr = framesOf(x);
     const parts = [];
     if (V.list.length > 1) parts.push(`${V.i + 1} / ${V.list.length}`);
-    if (b && b.size > 1) parts.push(`frame ${b.frames.indexOf(x) + 1} of ${b.size}`);
+    if (fr.length > 1) parts.push(`frame ${fr.indexOf(x) + 1} of ${fr.length}`);
     parts.push(extra || (V.full ? `full resolution · ${x.W} × ${x.H}` : V.k > 1.02 ? `${Math.round(V.k * 100)}%` : ""));
     $(".vw-badge", V.el).textContent = parts.filter(Boolean).join(" · ");
   }
@@ -417,25 +427,25 @@ ${ws && ws.infoExtra ? ws.infoExtra(x) : ""}`;
   // last, so nothing in it is skipped either way.
   function step(d) {
     if (V.liveStop) { V.liveStop(); V.liveStop = null; }
-    const x = cur(), b = x && x.burst;
-    if (b && b.size > 1) {
-      const i = b.frames.indexOf(x) + d;
-      if (i >= 0 && i < b.size) { V.frame = b.frames[i]; show({}); return; }
+    const x = cur(), fr = framesOf(x);
+    if (fr.length > 1) {
+      const i = fr.indexOf(x) + d;
+      if (i >= 0 && i < fr.length) { V.frame = fr[i]; show({}); return; }
     }
     const n = V.i + d;
     if (V.list.length < 2 || n < 0 || n >= V.list.length) { nudge(d); return; }
     V.i = n;
-    const nb = V.list[n].burst;
-    V.frame = nb && nb.size > 1 ? nb.frames[d > 0 ? 0 : nb.size - 1] : null;
+    const nf = framesOf(V.list[n]);
+    V.frame = nf.length > 1 ? nf[d > 0 ? 0 : nf.length - 1] : null;
     show({ dir: d });
   }
   function frame(d) {
     if (V.liveStop) { V.liveStop(); V.liveStop = null; }
-    const x = cur(), b = x.burst;
-    if (!b || b.size < 2) return;
+    const x = cur(), fr = framesOf(x);
+    if (fr.length < 2) return;
     // round and round: from the last frame the next is the first
-    const i = (b.frames.indexOf(x) + d + b.size) % b.size;
-    V.frame = b.frames[i];
+    const i = (fr.indexOf(x) + d + fr.length) % fr.length;
+    V.frame = fr[i];
     show({});
   }
   function nudge(d) {
@@ -518,7 +528,7 @@ ${ws && ws.infoExtra ? ws.infoExtra(x) : ""}`;
     if (!g.moved) { tap(e, g); return; }
     const v = velocity(g.samples);
     if (V.k > 1.01) { inertia(v); return; }
-    if (g.axis === "x" && (V.list.length > 1 || (cur().burst && cur().burst.size > 1)) && (Math.abs(dx) > 70 || Math.abs(v.x) > 0.5)) { step(dx < 0 ? 1 : -1); return; }
+    if (g.axis === "x" && (V.list.length > 1 || framesOf(cur()).length > 1) && (Math.abs(dx) > 70 || Math.abs(v.x) > 0.5)) { step(dx < 0 ? 1 : -1); return; }
     if (g.axis === "y" && (dy > 110 || v.y > 0.7)) { close(); return; }
     apply(260);
   }
@@ -587,7 +597,7 @@ ${ws && ws.infoExtra ? ws.infoExtra(x) : ""}`;
   /* ---------- controls ---------- */
   function onClick(e) {
     const f = e.target.closest("[data-frame]");
-    if (f) { V.frame = cur().burst.frames[+f.dataset.frame]; show({}); return; }
+    if (f) { V.frame = framesOf(cur())[+f.dataset.frame]; show({}); return; }
     const rate = e.target.closest("[data-rate]");
     if (rate && GP.app.workshop && GP.app.workshop.rate) {
       const n = +rate.dataset.rate, x = cur();

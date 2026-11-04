@@ -151,9 +151,9 @@
   }
   // Plays a burst's frames through an <img>. Returns a stop function.
   function play(img, x, o = {}) {
-    const b = x && x.burst;
-    if (!b || b.size < 2 || reduced()) return () => {};
-    const fr = b.frames, gaps = cadence(fr), w = o.width || 720;
+    const b = x && x.burst, fr = o.frames || (b && b.frames) || [];
+    if (fr.length < 2 || reduced()) return () => {};
+    const gaps = cadence(fr), w = o.width || 720;
     const urls = fr.map((f) => H().src(f, w));
     let stopped = false, t = 0, i = 0;
     const ghost = o.crossfade !== false ? document.createElement("img") : null;
