@@ -294,7 +294,7 @@
   <div class="hm-copy wrap">
     <div class="kicker">${h.esc(site.kicker || `${site.tagline || "Wildlife of Central Florida"} · ${y0 === y1 ? y0 : y0 + "–" + y1}`)}</div>
     <h1 class="display">${h.esc(site.title || "Georgiadis Photography")}</h1>
-    <p>${h.esc(site.intro || `Herons at dawn, otters in the shallows, alligators in the heat of the day: ${h.fmtN(st.photos)} photographs of ${h.fmtN(st.species)} species from ${h.fmtN(st.outings)} outings into Florida's wetlands and woods.`)}</p>
+    <p>${h.esc(site.intro || `${h.fmtN(st.photos)} photographs of ${h.fmtN(st.species)} species from ${h.fmtN(st.outings)} outings into Florida's wetlands and woods.`)}</p>
     <div class="cta">
       <a class="btn primary" href="#/gallery">Explore the gallery ${h.ICON.arrow}</a>
       <button class="btn" data-hm="play">${h.ICON.play} Play the exhibition</button>
