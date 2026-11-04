@@ -1,6 +1,6 @@
 /* Georgiadis Photography: the viewfinder and the loupe.
-   Viewfinder: with a mouse, focus brackets close in on the subject of the photograph under the
-   pointer (its stored focus point), lock with a pulse and show the exposure.
+   Viewfinder: with a mouse, the cursor over a photograph becomes a small reticle with the
+   exposure under it, green over the subject (its stored focus point).
    Loupe: hold Shift over a photograph (or long-press it on a touch screen) for a round
    magnifier that loads a sharper copy, then the original when the magnification needs it.
    The mouse wheel changes the magnification while the loupe is up. */
@@ -34,22 +34,16 @@
   }
 
   /* ---------- viewfinder ---------- */
-  const VF = { el: null, read: null, ret: null, target: null, t: 0, hint: 0, box: null, raf: 0, px: 0, py: 0 };
+  // Over a photograph the cursor becomes a lens: a small reticle with the camera's readout under
+  // it, which turns green over the subject (the photograph's stored focus point) once it settles.
+  const VF = { ret: null, target: null, t: 0, hint: 0, box: null, lock: false, raf: 0, px: 0, py: 0 };
   function vfEnsure() {
-    if (VF.el) return;
-    VF.el = document.createElement("div");
-    VF.el.className = "vf";
-    VF.el.setAttribute("aria-hidden", "true");
-    VF.el.innerHTML = `<i class="vf-c tl"></i><i class="vf-c tr"></i><i class="vf-c bl"></i><i class="vf-c br"></i><i class="vf-dot"></i>`;
-    VF.read = document.createElement("div");
-    VF.read.className = "vf-read";
-    VF.read.setAttribute("aria-hidden", "true");
-    // the cursor becomes a lens: a reticle that follows the pointer, with the camera's readout under it
+    if (VF.ret) return;
     VF.ret = document.createElement("div");
     VF.ret.className = "vf-ret";
     VF.ret.setAttribute("aria-hidden", "true");
     VF.ret.innerHTML = `<span class="vf-ring"><i class="t"></i><i class="r"></i><i class="b"></i><i class="l"></i><i class="c"></i></span><span class="vf-lcd"></span>`;
-    document.body.append(VF.el, VF.read, VF.ret);
+    document.body.append(VF.ret);
   }
   function lcd(x) {
     const e = x.exif || {}, out = [];
@@ -68,16 +62,7 @@
     if (!VF.ret) return;
     VF.ret.style.transform = `translate3d(${VF.px}px, ${VF.py}px, 0)`;
     const b = VF.box;
-    // in focus when the lens is on the subject the brackets locked onto
-    VF.ret.classList.toggle("focus", !!(b && VF.el.classList.contains("lock") && VF.px > b[0] && VF.px < b[2] && VF.py > b[1] && VF.py < b[3]));
-  }
-  function exposure(x) {
-    const e = x.exif || {}, a = [];
-    if (e.ss) a.push(GP.model.shutter(e.ss).replace(/ s$/, ""));
-    if (e.f) a.push("f/" + +(+e.f).toFixed(1));
-    if (e.iso) a.push("ISO " + e.iso);
-    if (e.fl) a.push(Math.round(e.fl) + " mm");
-    return a.join("  ");
+    VF.ret.classList.toggle("focus", !!(b && VF.lock && VF.px > b[0] && VF.px < b[2] && VF.py > b[1] && VF.py < b[3]));
   }
   function vfShow(el) {
     const x = photoOf(el), img = imgOf(el);
@@ -85,44 +70,19 @@
     vfEnsure();
     const g = geometry(img, x), r = el.getBoundingClientRect();
     if (r.width < 90 || r.height < 70) return vfHide();
+    // the subject: a square around the focus point, kept inside the frame
     const fp = x.fp || [0.5, 0.5];
     const side = Math.max(44, Math.min(150, Math.min(r.width, r.height) * 0.36));
     const cx = Math.max(r.left + side / 2 + 4, Math.min(r.right - side / 2 - 4, g.ox + fp[0] * g.W));
     const cy = Math.max(r.top + side / 2 + 4, Math.min(r.bottom - side / 2 - 4, g.oy + fp[1] * g.H));
-    const box = VF.el.style;
     VF.target = el;
     VF.box = [cx - side / 2, cy - side / 2, cx + side / 2, cy + side / 2];
-    VF.el.classList.remove("lock", "on");
-    VF.read.classList.remove("on");
+    VF.lock = false;
     VF.ret.querySelector(".vf-lcd").innerHTML = lcd(x);
     VF.ret.classList.add("on");
     document.documentElement.classList.add("gp-lens");
     clearTimeout(VF.t);
-    // start at the frame's edges, then close in on the subject
-    VF.el.style.transition = "none";
-    Object.assign(box, { left: r.left + 8 + "px", top: r.top + 8 + "px", width: r.width - 16 + "px", height: r.height - 16 + "px" });
-    void VF.el.offsetWidth;
-    VF.el.style.transition = "";
-    VF.el.classList.add("on");
-    const settle = () => {
-      Object.assign(box, { left: cx - side / 2 + "px", top: cy - side / 2 + "px", width: side + "px", height: side + "px" });
-      VF.t = setTimeout(() => {
-        if (VF.target !== el) return;
-        VF.el.classList.add("lock");
-        retMove();
-        // the reticle carries the readout now; the old label stays for screens without one
-        if (VF.ret && VF.ret.classList.contains("on")) return;
-        const txt = exposure(x);
-        if (!txt) return;
-        VF.read.textContent = txt;
-        const above = cy - side / 2 - r.top > 30;
-        VF.read.style.left = cx + "px";
-        VF.read.style.top = (above ? cy - side / 2 - 8 : cy + side / 2 + 8) + "px";
-        VF.read.classList.toggle("below", !above);
-        VF.read.classList.add("on");
-      }, reduced() ? 0 : 340);
-    };
-    if (reduced()) settle(); else requestAnimationFrame(settle);
+    VF.t = setTimeout(() => { if (VF.target !== el) return; VF.lock = true; retMove(); }, reduced() ? 0 : 340);
     // first time: tell people about the loupe
     if (!store.get("gp-loupe-hint") && !VF.hint) {
       VF.hint = setTimeout(() => {
@@ -134,11 +94,10 @@
   function vfHide() {
     VF.target = null;
     VF.box = null;
+    VF.lock = false;
     clearTimeout(VF.t);
     if (VF.hint) { clearTimeout(VF.hint); VF.hint = 0; }
-    if (!VF.el) return;
-    VF.el.classList.remove("on", "lock");
-    VF.read.classList.remove("on");
+    if (!VF.ret) return;
     VF.ret.classList.remove("on", "focus");
     document.documentElement.classList.remove("gp-lens");
   }

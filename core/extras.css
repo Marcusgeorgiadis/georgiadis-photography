@@ -41,28 +41,6 @@
 .uv-head, .uv-hint { transition: opacity 400ms var(--ease-out), transform 400ms var(--ease-out); }
 .uv.zoomed .uv-head, .uv.zoomed .uv-hint { opacity: 0; transform: translateY(-6px); }
 
-/* ---------- viewfinder ---------- */
-.vf { position: fixed; left: 0; top: 0; width: 0; height: 0; z-index: 20; pointer-events: none; opacity: 0; color: #fff;
-  filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.55)) drop-shadow(0 1px 3px rgba(0, 0, 0, 0.3));
-  transition: left 420ms var(--ease-spring), top 420ms var(--ease-spring), width 420ms var(--ease-spring), height 420ms var(--ease-spring), opacity 200ms var(--ease-out); }
-.vf.on { opacity: 1; }
-.vf-c { position: absolute; width: 16px; height: 16px; border: 0 solid currentColor; transition: border-color 160ms; }
-.vf-c.tl { left: 0; top: 0; border-width: 1.5px 0 0 1.5px; }
-.vf-c.tr { right: 0; top: 0; border-width: 1.5px 1.5px 0 0; }
-.vf-c.bl { left: 0; bottom: 0; border-width: 0 0 1.5px 1.5px; }
-.vf-c.br { right: 0; bottom: 0; border-width: 0 1.5px 1.5px 0; }
-.vf-dot { position: absolute; left: 50%; top: 50%; width: 5px; height: 5px; margin: -2.5px 0 0 -2.5px; border-radius: 50%; background: currentColor; opacity: 0; transition: opacity 200ms; }
-.vf.lock { color: #fff; animation: vf-lock 520ms var(--ease-out); }
-.vf.lock .vf-c { border-color: var(--vf-lock, #9be37a); animation: vf-corner 900ms var(--ease-out) forwards; }
-.vf.lock .vf-dot { opacity: 0.9; background: var(--vf-lock, #9be37a); }
-@keyframes vf-lock { 0% { transform: scale(1.12); } 45% { transform: scale(0.96); } 100% { transform: scale(1); } }
-@keyframes vf-corner { 0%, 55% { border-color: var(--vf-lock, #9be37a); } 100% { border-color: #fff; } }
-.vf-read { position: fixed; z-index: 20; pointer-events: none; transform: translate(-50%, -100%); padding: 3px 7px; border-radius: 3px; background: rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); color: #f2f2ea; font: 500 10.5px/1.4 var(--f-data); letter-spacing: 0.06em; white-space: pre; opacity: 0; transition: opacity 240ms var(--ease-out); }
-.vf-read.below { transform: translate(-50%, 0); }
-.vf-read.on { opacity: 1; }
-.gp-louping .vf, .gp-louping .vf-read { opacity: 0 !important; }
-@media (prefers-reduced-motion: reduce) { .vf, .vf.lock, .vf.lock .vf-c { transition: none; animation: none; } }
 
 /* ---------- loupe ---------- */
 .loupe { position: fixed; left: 0; top: 0; z-index: 70; width: 228px; height: 228px; pointer-events: none; opacity: 0; transition: opacity 160ms var(--ease-out); will-change: transform; }

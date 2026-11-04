@@ -5,17 +5,17 @@
 /* ---------- the cursor as a lens ---------- */
 .vf-ret { position: fixed; left: 0; top: 0; z-index: 21; pointer-events: none; opacity: 0; transition: opacity 160ms ease; will-change: transform; }
 .vf-ret.on { opacity: 1; }
-.vf-ring { position: absolute; left: -23px; top: -23px; width: 46px; height: 46px; border-radius: 50%; border: 1.5px solid rgba(255, 255, 255, 0.92);
+.vf-ring { position: absolute; left: -11.5px; top: -11.5px; width: 23px; height: 23px; border-radius: 50%; border: 1.25px solid rgba(255, 255, 255, 0.92);
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25), inset 0 0 0 1px rgba(0, 0, 0, 0.12); transition: border-color 160ms, transform 260ms var(--ease-spring); }
 .vf-ring i { position: absolute; background: rgba(255, 255, 255, 0.92); box-shadow: 0 0 1px rgba(0, 0, 0, 0.5); }
-.vf-ring .t, .vf-ring .b { left: 50%; width: 1.5px; height: 7px; margin-left: -0.75px; }
-.vf-ring .t { top: -4px; } .vf-ring .b { bottom: -4px; }
-.vf-ring .l, .vf-ring .r { top: 50%; height: 1.5px; width: 7px; margin-top: -0.75px; }
-.vf-ring .l { left: -4px; } .vf-ring .r { right: -4px; }
-.vf-ring .c { left: 50%; top: 50%; width: 3px; height: 3px; margin: -1.5px; border-radius: 50%; }
+.vf-ring .t, .vf-ring .b { left: 50%; width: 1.25px; height: 4px; margin-left: -0.625px; }
+.vf-ring .t { top: -2.5px; } .vf-ring .b { bottom: -2.5px; }
+.vf-ring .l, .vf-ring .r { top: 50%; height: 1.25px; width: 4px; margin-top: -0.625px; }
+.vf-ring .l { left: -2.5px; } .vf-ring .r { right: -2.5px; }
+.vf-ring .c { left: 50%; top: 50%; width: 2px; height: 2px; margin: -1px; border-radius: 50%; }
 .vf-ret.focus .vf-ring { border-color: #9be37a; transform: scale(0.86); }
 .vf-ret.focus .vf-ring i { background: #9be37a; }
-.vf-lcd { position: absolute; top: 34px; left: 0; transform: translateX(-50%); display: flex; align-items: center; gap: 9px; padding: 4px 9px; border-radius: 4px; white-space: nowrap;
+.vf-lcd { position: absolute; top: 20px; left: 0; transform: translateX(-50%); display: flex; align-items: center; gap: 9px; padding: 4px 9px; border-radius: 4px; white-space: nowrap;
   background: rgba(4, 6, 4, 0.78); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); font: 500 10.5px/1 var(--f-data); letter-spacing: 0.05em; color: #8fe06a; text-shadow: 0 0 6px rgba(143, 224, 106, 0.4); }
 .vf-lcd b { font-weight: 500; }
 .vf-meter { position: relative; display: inline-flex; gap: 2.5px; align-items: flex-end; height: 10px; padding-bottom: 3px; }

@@ -17,7 +17,7 @@ The site is static (GitHub Pages) and rebuilds itself:
 - **Gallery, Species, Outings, Journal**: search with suggestions as you type, density and "new since your last visit"; the field guide (a photo grid by family with a box to find a species, the cabinet a tap away) with calls, light and "seen with"; each outing's day placed by the minute against that day's light, with "Hear the day"; charts, records and the tree of life.
 - **Favourites**: the heart in the viewer (or L) hangs a photograph in the visitor's own room. Favourites, "new since last visit" and the daily score stay on the visitor's device.
 - **Universe** (`#/universe`): every photograph as a tile on one canvas, rearranged into a colour wheel, a skyline of outings, a 24-hour dial or clusters by family. Zoom far into a tile to open it.
-- **Viewfinder and loupe**: with a mouse, focus brackets lock onto the subject of the photograph under the pointer. Hold Shift (or long-press on a phone) for a loupe that loads the original as you magnify.
+- **Viewfinder and loupe**: with a mouse, the cursor over a photograph becomes a small reticle with the exposure under it, green over the subject. Hold Shift (or long-press on a phone) for a loupe that loads the original as you magnify.
 - **Cabinet of specimens**: the species guide as a cabinet, one drawer per family, with museum labels.
 - **Tree of life** (Journal): the life list as a radial tree that grows in the order species were first photographed.
 - **Bird calls**: each species' call on its page and in the viewer, off until the visitor turns sound on. Recordings come from iNaturalist under Creative Commons licences and are credited beside every player.
