@@ -301,15 +301,36 @@
   }
 
   /* ---------- the species list used by every ID field ---------- */
+  // Every name in the archive, including those known only to genus or as a group ("Bumble Bee",
+  // "Dragonfly sp."), which most insects and other small lives are. One list has them all
+  // (ws-species); one per type (ws-species-insect, ...) narrows the suggestions once a type is
+  // chosen.
   function speciesList() {
-    let dl = $("#ws-species");
-    if (!dl) { dl = document.createElement("datalist"); dl.id = "ws-species"; document.body.appendChild(dl); }
-    const opts = model().species.filter((s) => !s.sp).slice().sort((a, b) => natural(a.name, b.name));
-    const sig = opts.map((s) => s.name + "|" + s.sci).join(";");
-    if (dl.dataset.sig === sig) return;
-    dl.dataset.sig = sig;
-    dl.innerHTML = opts.map((s) => `<option value="${esc(s.name)}" label="${esc([s.bin, plural(s.photos.length, "photo")].filter(Boolean).join(" · "))}"></option>`).join("");
+    const opts = model().species.slice().sort((a, b) => natural(a.name, b.name));
+    const sig = opts.map((s) => s.name + "|" + s.sci + "|" + s.group).join(";");
+    const all = $("#ws-species");
+    if (all && all.dataset.sig === sig) return;
+    const optHtml = (list) => list.map((s) => `<option value="${esc(s.name)}" label="${esc([s.sp ? "not to species" : s.bin, plural(s.photos.length, "photo")].filter(Boolean).join(" · "))}"></option>`).join("");
+    const put = (id, list) => {
+      let dl = document.getElementById(id);
+      if (!dl) { dl = document.createElement("datalist"); dl.id = id; document.body.appendChild(dl); }
+      dl.innerHTML = optHtml(list);
+      return dl;
+    };
+    put("ws-species", opts).dataset.sig = sig;
+    for (const g of Object.keys(GROUPS)) put("ws-species-" + g, opts.filter((s) => s.group === g));
   }
+  // The species box suggests names of the type chosen beside it (or every name, for "Any type").
+  function listFor(f) {
+    const inp = f && f.querySelector("#ws-common, #ws-sel-sp"), g = f && f.querySelector("select[name=group]");
+    if (!inp || !g) return;
+    // in the viewer the type starts as the photo's own; it only narrows the list once changed
+    const on = g.value && (g.dataset.touched === "1" || g.id === "ws-sel-group");
+    inp.setAttribute("list", on ? "ws-species-" + g.value : "ws-species");
+  }
+  document.addEventListener("change", (e) => {
+    if (e.target.matches && e.target.matches("#ws-group, #ws-sel-group")) { e.target.dataset.touched = "1"; listFor(e.target.form); }
+  });
   document.addEventListener("input", (e) => {
     if (e.target.id === "ws-common" || e.target.id === "ws-sel-sp") {
       const k = known(e.target.value);
@@ -319,7 +340,7 @@
       const sci = f.querySelector("#ws-sci");
       if (sci && sci.dataset.auto === "1") sci.value = k ? k.sci || "" : "";
       const g = f.querySelector("select[name=group]");
-      if (k && g && GROUPS[k.group]) g.value = k.group;
+      if (k && g && GROUPS[k.group] && g.value !== k.group) { g.value = k.group; listFor(f); }
     } else if (e.target.id === "ws-sci") e.target.dataset.auto = "0";
   });
 
@@ -336,7 +357,7 @@
     bar.setAttribute("aria-label", "Selected photos");
     bar.innerHTML = `<span class="n mono" id="ws-sel-n">0 selected</span>
 <input id="ws-sel-sp" name="common" list="ws-species" placeholder="Set species…" autocomplete="off">
-<select id="ws-sel-group" name="group">${Object.entries(GROUPS).map(([k, v]) => `<option value="${k}">${v}</option>`).join("")}</select>
+<select id="ws-sel-group" name="group" aria-label="Type"><option value="">Any type</option>${Object.entries(GROUPS).map(([k, v]) => `<option value="${k}">${v}</option>`).join("")}</select>
 <button class="btn primary" type="submit" data-act2="species">Apply</button>
 <span class="stars" aria-label="Rate selected">${[1, 2, 3, 4, 5].map((n) => `<button type="button" data-ws="sel-rate" data-n="${n}" aria-label="${n} stars">★</button>`).join("")}</span>
 <button class="btn" type="button" data-ws="sel-hide">Hide / show</button>
