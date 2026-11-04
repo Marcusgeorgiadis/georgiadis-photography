@@ -79,6 +79,8 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 .icon-btn { width: 38px; height: 38px; display: grid; place-items: center; border: 1px solid transparent; background: transparent; border-radius: 999px; cursor: pointer; color: var(--ink-2); transition: background var(--t-fast), border-color var(--t-fast); }
 .icon-btn:hover { background: var(--surface); border-color: var(--hair); }
 .icon-btn svg { width: 18px; height: 18px; }
+/* An icon dropped into running text with no size of its own stays the size of the text (unsized, an SVG fills its container). */
+:where(svg[viewBox="0 0 24 24"]:not([width])) { width: 1em; height: 1em; }
 @media (max-width: 760px) {
   .gp-head .wrap { min-height: 56px; }
   .gp-nav { order: 3; width: 100%; overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; margin: 0 -8px 6px; }
