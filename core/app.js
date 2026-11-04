@@ -1046,7 +1046,13 @@ ${footer(nav)}
     const x = A.model.byId.get(t.dataset.id);
     if (!x || !x.burst) return;
     const r = t.getBoundingClientRect(), fr = x.burst.frames;
-    const i = Math.max(0, Math.min(fr.length - 1, Math.floor(((e.clientX - r.left) / r.width) * fr.length)));
+    // Wherever the pointer comes in, the burst starts on the frame the tile shows (its lead,
+    // first in the burst); moving either way then steps through the frames, one per
+    // 1/n of the tile's width travelled, round and round.
+    if (t._lx == null) { t._lx = e.clientX; t._trav = 0; t._i = 0; return; }
+    t._trav += Math.abs(e.clientX - t._lx);
+    t._lx = e.clientX;
+    const i = Math.floor(t._trav / Math.max(12, r.width / fr.length)) % fr.length;
     if (t._i === i) return;
     t._i = i;
     const img = t.querySelector("img"), f = fr[i];
@@ -1073,7 +1079,7 @@ ${footer(nav)}
     if (!t || t._i == null) return;
     const x = A.model.byId.get(t.dataset.id);
     const hi = x.burst.frames.indexOf(x);
-    t._i = null; t._frame = null;
+    t._i = null; t._frame = null; t._lx = null;
     const img = t.querySelector("img");
     img.src = src(x, rowH() * x.ar * dpr() * 1.1);
     fitFrame(t, img, null, x, "");

@@ -281,8 +281,11 @@
         if (near) cur.push(x); else { cur = [x]; bursts.push(cur); }
       }
     }
-    bursts.forEach((frames, k) => {
-      const hero = frames.find((x) => x.heroMark) || frames.slice().sort((a, b) => b.score - a.score)[0];
+    bursts.forEach((list, k) => {
+      const hero = list.find((x) => x.heroMark) || list.slice().sort((a, b) => b.score - a.score)[0];
+      // the lead frame comes first (the one its tile shows, where hovering and the viewer start),
+      // then the rest in the order they were taken
+      const frames = [hero].concat(list.filter((x) => x !== hero));
       const b = { id: hero.id, frames, hero, size: frames.length };
       frames.forEach((x, i) => { x.burst = b; x.burstIndex = i; x.isHero = x === hero; });
       bursts[k] = b;
