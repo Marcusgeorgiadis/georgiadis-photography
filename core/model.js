@@ -233,7 +233,7 @@
           behaviours, young: YOUNG_RE.test(text),
           pal: e.pal || [], hsl: (e.pal || []).slice(0, 4).map(hexHsl), lq: e.lq || "", fp: e.fp || [0.5, 0.5], sh: e.sh || 0,
           exif: { cam: e.cam || "", lens: cleanLens(e.lens), fl: e.fl || 0, f: e.f || 0, ss: e.ss || 0, iso: e.iso || 0, eb: e.eb || 0, gps: e.gps || null },
-          frame: frameNo(p.n), heroMark: !!ov.hero, cover: !!ov.cover, st: p.st || "", err: p.err || "",
+          frame: frameNo(p.n), heroMark: !!ov.hero, burstMark: typeof ov.burst === "string" ? ov.burst.slice(0, 80) : "", cover: !!ov.cover, st: p.st || "", err: p.err || "",
           a: p.a || (pv && pv.a) || "", pub: pub[id] || "", raw: p,
         });
       }
@@ -258,16 +258,24 @@
     if (opts.dedupe !== false) photos = photos.filter((x) => !x.dupOf);
     const byId = new Map(allIncludingDups.map((x) => [x.id, x]));
 
-    // 4. bursts: consecutive frames of one subject within a couple of seconds
-    const byFolder = new Map();
-    for (const x of photos) (byFolder.get(x.fid) || byFolder.set(x.fid, []).get(x.fid)).push(x);
+    // 4. bursts: consecutive frames of one subject within a couple of seconds. The Workshop can
+    // override this per photo (ov.burst): "g:<id>" joins every photo with that key into one burst
+    // whatever the timing, and "solo" keeps a photo on its own.
+    const byTime = (a, b) => (a.secs ?? 0) - (b.secs ?? 0) || (a.frame ?? 0) - (b.frame ?? 0) || natural(a.name, b.name);
+    const byFolder = new Map(), joined = new Map();
+    for (const x of photos) {
+      (byFolder.get(x.fid) || byFolder.set(x.fid, []).get(x.fid)).push(x);
+      if (x.burstMark.startsWith("g:")) (joined.get(x.burstMark) || joined.set(x.burstMark, []).get(x.burstMark)).push(x);
+    }
     const bursts = [];
+    for (const list of joined.values()) bursts.push(list.sort(byTime));
     for (const list of byFolder.values()) {
-      list.sort((a, b) => (a.secs ?? 0) - (b.secs ?? 0) || (a.frame ?? 0) - (b.frame ?? 0) || natural(a.name, b.name));
+      list.sort(byTime);
       let cur = null;
       for (const x of list) {
+        if (x.burstMark.startsWith("g:")) continue; // in a joined burst, above
         const prev = cur && cur[cur.length - 1];
-        const near = prev && prev.spKey === x.spKey && (
+        const near = prev && prev.burstMark !== "solo" && x.burstMark !== "solo" && prev.spKey === x.spKey && (
           prev.secs != null && x.secs != null ? Math.abs(x.secs - prev.secs) <= 2 && (prev.frame == null || x.frame == null || Math.abs(x.frame - prev.frame) <= 8)
             : prev.frame != null && x.frame != null && Math.abs(x.frame - prev.frame) <= 2);
         if (near) cur.push(x); else { cur = [x]; bursts.push(cur); }

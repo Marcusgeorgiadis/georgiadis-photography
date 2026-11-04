@@ -40,7 +40,7 @@ IMAGE_CANDIDATES = [
 ]
 
 AI_KEEP = ("group", "common", "scientific", "confidence", "count", "others", "sexAge", "behavior", "setting", "tags", "quality", "caption")
-OV_KEEP = ("common", "scientific", "group", "rating", "hero", "cover")
+OV_KEEP = ("common", "scientific", "group", "rating", "hero", "cover", "burst")
 EN_KEEP = ("t", "cam", "lens", "fl", "f", "ss", "iso", "eb", "W", "H", "pal", "lq", "fp", "sh")
 
 

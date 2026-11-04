@@ -175,6 +175,8 @@
   <div class="ws-acts">
     <button class="btn" data-ws="hide">${x.hidden ? "Show on public site" : "Hide from public site"} <kbd>H</kbd></button>
     ${b && b.size > 1 && !x.isHero ? `<button class="btn" data-ws="hero">Lead this burst</button>` : ""}
+    ${b && b.size > 1 ? `<button class="btn" data-ws="unburst">Take out of this burst</button>` : ""}
+    ${b && b.frames.some((f) => f.burstMark) ? `<button class="btn ghost" data-ws="autoburst" title="Go back to grouping these frames by when they were taken">Automatic grouping</button>` : ""}
     <button class="btn" data-ws="cover">${x.cover ? "Cover ✓" : "Use as cover"}</button>
     <button class="btn" data-ws="opening">${opening ? "Remove from opening" : "Add to opening"}</button>
     <button class="btn" data-ws="reid"${canSort() && !W.run ? "" : " disabled"}>Identify again</button>
@@ -205,6 +207,8 @@
       if (a === "hide") toggleHidden([x]);
       else if (a === "revert") saveMany([x], () => ({ ov: { common: null, scientific: null, group: null } })).then(() => toast("Back to Claude's ID"), (er) => toast(dbErrText(er)));
       else if (a === "hero") setHero(x);
+      else if (a === "unburst") takeOut(x);
+      else if (a === "autoburst") autoGroup(x);
       else if (a === "cover") setCover(x);
       else if (a === "opening") toggleOpening(x);
       else if (a === "reid") reidentify(x);
@@ -249,6 +253,41 @@
   function setHero(x) {
     const fr = x.burst.frames;
     saveMany(fr, (f) => ({ ov: { hero: f === x ? true : null } })).then(() => toast("This frame now leads the burst"), (e) => toast(dbErrText(e)));
+  }
+  /* ---------- bursts by hand ---------- */
+  // A selected burst stands for all its frames. Joining gives every frame one key (ov.burst
+  // "g:<lead id>"), so the model keeps them together whatever their timing; "solo" keeps a frame
+  // on its own; null goes back to grouping by time.
+  const framesOf = (xs) => [...new Set(xs.flatMap((x) => (x.burst ? x.burst.frames : [x])))];
+  function joinBursts(xs) {
+    const all = framesOf(xs);
+    if (all.length < 2) { toast("Select two or more photos or bursts to join."); return; }
+    if (new Set(all.map((x) => x.fid)).size > 1) { toast("A burst can only join photos from the same outing."); return; }
+    // the lead stays the lead of the biggest burst in the selection
+    const big = xs.filter((x) => x.burst).sort((a, b) => b.burst.size - a.burst.size)[0];
+    const lead = (big && big.burst.hero) || all[0];
+    const key = "g:" + lead.id;
+    const names = [...new Set(all.map((x) => x.common || "unnamed"))];
+    saveMany(all, (f) => ({ ov: { burst: key, hero: f === lead ? true : null } })).then(() => {
+      toast(`Joined ${plural(all.length, "photo")} into one burst` + (names.length > 1 ? `. They still carry different names (${names.slice(0, 3).join(", ")}); set one species to match them.` : "."));
+      GP.app.clearSelection(); paintSel();
+    }, (e) => toast(dbErrText(e)));
+  }
+  function splitBursts(xs) {
+    const all = framesOf(xs);
+    if (!xs.some((x) => x.burst && x.burst.size > 1)) { toast("Select a burst to split up."); return; }
+    saveMany(all, () => ({ ov: { burst: "solo", hero: null } })).then(() => { toast(`Split into ${plural(all.length, "single photo")}`); GP.app.clearSelection(); paintSel(); }, (e) => toast(dbErrText(e)));
+  }
+  function takeOut(x) {
+    const rest = x.burst.frames.filter((f) => f !== x);
+    // the frames left behind keep their grouping; a joined burst stays joined without this one
+    const patches = [[x, { ov: { burst: "solo", hero: null } }]];
+    if (x.isHero && rest.length) { const next = rest.slice().sort((a, b) => b.score - a.score)[0]; patches.push([next, { ov: { hero: true } }]); }
+    const by = new Map(patches);
+    saveMany([...by.keys()], (f) => by.get(f)).then(() => toast("Taken out of the burst"), (e) => toast(dbErrText(e)));
+  }
+  function autoGroup(x) {
+    saveMany(x.burst.frames, () => ({ ov: { burst: null } })).then(() => toast("Back to grouping by when they were taken"), (e) => toast(dbErrText(e)));
   }
   function setCover(x) {
     const others = allPhotos().filter((y) => y.cover && y !== x && (y.fid === x.fid || (x.spKey && y.spKey === x.spKey)));
@@ -302,6 +341,8 @@
 <span class="stars" aria-label="Rate selected">${[1, 2, 3, 4, 5].map((n) => `<button type="button" data-ws="sel-rate" data-n="${n}" aria-label="${n} stars">★</button>`).join("")}</span>
 <button class="btn" type="button" data-ws="sel-hide">Hide / show</button>
 <button class="btn" type="button" data-ws="sel-collect">Add to collection</button>
+<button class="btn" type="button" data-ws="sel-join" title="Make the selected photos and bursts one burst">Join bursts</button>
+<button class="btn" type="button" data-ws="sel-split" title="Show every frame of the selected bursts on its own">Split burst</button>
 <button class="btn" type="button" data-ws="sel-revert">Claude's ID</button>
 <button class="btn ghost" type="button" data-ws="sel-all">Select all here</button>
 <button class="btn ghost" type="button" data-ws="sel-clear">Clear</button>
@@ -333,6 +374,8 @@
       case "sel-hide": if (xs.length) toggleHidden(xs); break;
       case "sel-revert": if (xs.length) saveMany(xs, () => ({ ov: { common: null, scientific: null, group: null } })).then(() => toast(`${plural(xs.length, "photo")} back to Claude's ID`)); break;
       case "sel-collect": collect(xs); break;
+      case "sel-join": joinBursts(xs); break;
+      case "sel-split": splitBursts(xs); break;
       case "sel-all": $$("#gp-main .tile[data-id]").forEach((t) => { if (!t.classList.contains("sel")) t.click(); }); break;
       case "sel-clear": GP.app.clearSelection(); paintSel(); break;
       case "sel-done": GP.app.setSelecting(false); paintSel(); break;

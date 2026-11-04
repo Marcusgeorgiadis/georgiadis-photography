@@ -42,7 +42,7 @@ The site is static (GitHub Pages) and rebuilds itself:
 | `p/`, `s/`, `o/`, `r/` | Link-preview pages (built) |
 | `depth/` | A small depth map for each photograph (built by `depth_maps.py`) |
 | `audio/calls/` | Call clips and their sonograms (built by `fetch_calls.py`) |
-| `workshop/` | The private Workshop: the same engine plus sorting with Claude, ID fixes and publish controls |
+| `workshop/` | The private Workshop: the same engine plus sorting with Claude, ID fixes, burst grouping by hand (Select, then Join bursts or Split burst; in the viewer, Take out of this burst or Automatic grouping) and publish controls |
 | `data/` | `gallery.json` (built), `dispatches.json` (built: the outings feed the newsletter reads), `calls.json` (recording credits), field notes, outing summaries, taxonomy |
 | `tools/` | `build_site.py`, `og_pages.js`, `fetch_calls.py`, `depth_maps.py`, `nikon_previews.py`, `nikon_enrich.py`, `dev_server.py` |
 | `drive-sync/` | The Apps Script that keeps the public copies current |

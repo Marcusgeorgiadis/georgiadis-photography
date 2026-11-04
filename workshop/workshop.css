@@ -38,11 +38,11 @@
 .ws-pick { display: grid; gap: 4px; }
 .ws-pick .btn { min-height: 30px; font-size: 12px; padding: 4px 10px; }
 .mini-flow .ws-pick > button:first-child { padding: 0; border: 0; aspect-ratio: 1; overflow: hidden; background: var(--bg-2); cursor: zoom-in; border-radius: 2px; }
-.ws-sel { position: fixed; z-index: 60; left: max(16px, env(safe-area-inset-left, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); bottom: max(14px, env(safe-area-inset-bottom, 0px)); display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--glass); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); box-shadow: 0 18px 50px -20px rgba(0, 0, 0, 0.5); }
+.ws-sel { position: fixed; z-index: 60; left: max(16px, env(safe-area-inset-left, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); bottom: max(14px, env(safe-area-inset-bottom, 0px)); display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--glass); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); box-shadow: 0 18px 50px -20px rgba(0, 0, 0, 0.5); }
 .ws-sel .n { font-size: 12px; color: var(--ink); min-width: 86px; }
-.ws-sel input { width: 200px; flex: 1 1 160px; }
+.ws-sel input { width: 150px; flex: 1 1 120px; }
 .ws-sel select { width: auto; }
-.ws-sel .btn { min-height: 34px; padding: 6px 12px; font-size: 13px; }
+.ws-sel .btn { min-height: 34px; padding: 6px 11px; font-size: 13px; }
 .ws-sel .stars button { font-size: 20px; color: var(--muted); }
 .ws-sel .stars button:hover { color: var(--accent); }
 .ws-pop { position: fixed; z-index: 70; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(max(14px, env(safe-area-inset-bottom, 0px)) + 120px); width: min(360px, calc(100vw - 32px)); display: grid; gap: 10px; padding: 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); box-shadow: 0 18px 50px -20px rgba(0, 0, 0, 0.5); }
@@ -54,7 +54,9 @@
 .gp-selecting .ws-runbar { bottom: calc(max(14px, env(safe-area-inset-bottom, 0px)) + 76px); }
 .gp-tools #ws-select { min-height: 34px; padding: 6px 14px; }
 @media (max-width: 760px) { .ws-id { grid-template-columns: 1fr; } .ws-sel input { width: 100%; } }
-.gp-selecting .tile .stack, .gp-selecting .tile .scrub { display: none; }
+.gp-selecting .tile .scrub { display: none; }
+/* while selecting, the burst count moves clear of the tick, so bursts can be told from singles */
+.gp-selecting .tile .stack { right: auto; left: 10px; }
 .gp-selecting .toast { bottom: calc(max(22px, env(safe-area-inset-bottom, 0px)) + 84px); }
 @media (max-width: 760px) {
   .ws-sel { gap: 6px; padding: 8px; }
