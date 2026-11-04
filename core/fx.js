@@ -4,8 +4,7 @@
    - leak: backlit and silhouetted frames get light drifting across their edges.
    - live: a burst plays frame by frame, at a beat slow enough to see each one.
    - surface: a WebGL copy of a photograph that floats the subject in front of its background
-     (from a depth map made at build time) as the pointer moves or the phone tilts, and lets
-     water ripple where the pointer touches it. The depth is a visitor's choice, off until they
+     (from a depth map made at build time) as the pointer moves or the phone tilts. The depth is a visitor's choice, off until they
      turn it on (the header's Depth button, or M), and kept subtle when it is on.
    Everything waits for reduced motion to be off and falls back to the plain photograph. */
 (function (GP) {
@@ -264,7 +263,7 @@ void main(){
     return ctl;
   }
   function make(img, x, o = {}) {
-    const wantDepth = o.depth !== false, wantRipple = o.ripple && isWater(x);
+    const wantDepth = o.depth !== false, wantRipple = false; // water ripples are off on this site
     const ctl = { destroy() {}, setPointer() {}, el: null };
     if (reduced() || (!wantDepth && !wantRipple) || liveSurfaces > 3) return ctl;
     const canvas = document.createElement("canvas");

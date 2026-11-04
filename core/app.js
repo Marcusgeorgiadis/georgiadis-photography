@@ -185,7 +185,7 @@
   }
 
   /* ---------- shell ---------- */
-  // The logo is the way home; registered views (Exhibitions, Universe, Quiz) slot in beside these.
+  // The logo is the way home; registered views (Exhibitions, Universe) slot in beside these.
   const NAV = [["gallery", "Gallery"], ["species", "Species"], ["outings", "Outings"], ["journal", "Journal"]];
   function shell() {
     const s = A.site;
@@ -236,8 +236,7 @@ ${footer(nav)}
   <div class="foot-about"><a class="gp-mark" href="#/"><b>${esc(s.title || "Georgiadis Photography")}</b><span>${esc(s.tagline || "Wildlife of Central Florida")}</span></a>
     <p>${esc(s.footer || `A field archive of ${plural(st.species, "species", "species")} from ${plural(st.outings, "outing")}. Every photograph here is a Final from the Nikon archive.`)}</p></div>
   <nav class="foot-col" aria-label="Explore"><h3 class="sc">Explore</h3>${[["", "Home"]].concat(nav).map(([id, l]) => `<a href="#/${id}">${esc(l)}</a>`).join("")}</nav>
-  <div class="foot-col"><h3 class="sc">Play &amp; listen</h3>
-    ${A.views.some((v) => v.id === "quiz") ? `<a href="#/quiz?daily=1">Today’s challenge</a>` : ""}
+  <div class="foot-col"><h3 class="sc">Look &amp; listen</h3>
     <button class="link" data-act="surprise">Surprise me</button>
     ${GP.visitor ? `<a href="#/rooms/favourites">Your favourites</a>` : ""}
     ${hasCalls ? `<a href="#/species?view=calls">Bird calls</a>` : ""}

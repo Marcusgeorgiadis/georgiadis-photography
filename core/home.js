@@ -1,5 +1,5 @@
 /* Georgiadis Photography: the home page. A cinematic opening, then the archive's best work, the
-   ways into it (Universe, cabinet, tree of life, the daily challenge, the calls), its exhibitions
+   ways into it (Universe, cabinet, tree of life, the calls), its exhibitions
    and latest outings. Returning visitors also see what's new since they last came, their
    favourites and where they left off. */
 (function (GP) {
@@ -322,13 +322,12 @@
 </section>`;
 
     /* for you: only once there's something personal to show */
-    const favs = V ? V.favPhotos() : [], last = V ? V.lastSeen() : null, daily = GP.quizDaily ? GP.quizDaily.status() : null;
+    const favs = V ? V.favPhotos() : [], last = V ? V.lastSeen() : null;
     const mosaic = (list) => `<span class="fy-mosaic">${list.slice(0, 4).map((x) => `<span>${h.cover(x, 240)}</span>`).join("")}</span>`;
     const forYou = [];
     if (returning && newList.length) forYou.push(`<a class="fy" href="#/gallery?new=1">${mosaic(newList)}<span class="fy-t"><span class="sc">Since ${V.previousVisit ? h.esc(h.fmtShort(V.previousVisit)) : "your last visit"}</span><b>${h.plural(newList.length, "new photograph")}</b><span>See what's arrived ${h.ICON.arrow}</span></span></a>`);
     if (favs.length) forYou.push(`<a class="fy" href="#/rooms/favourites">${mosaic(favs)}<span class="fy-t"><span class="sc">Your favourites</span><b>${h.plural(favs.length, "photograph")}</b><span>Your own room ${h.ICON.arrow}</span></span></a>`);
     if (last && returning) forYou.push(`<a class="fy" href="${h.esc(GP.app.hashFor(["gallery"], new URLSearchParams({ p: last.x.id })))}"><span class="fy-one">${h.cover(last.x, 360)}</span><span class="fy-t"><span class="sc">Pick up where you left off · ${h.esc(V.ago(last.at))}</span><b>${h.esc(h.titleOf(last.x))}</b><span>${h.esc(h.fmtDate(last.x.t))} ${h.ICON.arrow}</span></span></a>`);
-    if (daily && (returning || daily.played)) forYou.push(`<a class="fy fy-quiz" href="#/quiz?daily=1"><span class="fy-q" aria-hidden="true">?</span><span class="fy-t"><span class="sc">Today's challenge${daily.streak > 1 ? ` · ${daily.streak}-day streak` : ""}</span><b>${daily.played ? `You scored ${daily.score} of 10` : "Ten birds, the same for everyone"}</b><span>${daily.played ? "Come back tomorrow for a new one" : "Play today's ten"} ${h.ICON.arrow}</span></span></a>`);
     const forYouHtml = forYou.length ? `<section class="hm-sec wrap"><div class="hm-sec-h"><div><div class="kicker">${returning ? "Welcome back" : "For you"}</div><h2>Your archive</h2></div></div><div class="fy-row">${forYou.join("")}</div></section>` : "";
 
     /* highlights */
@@ -347,7 +346,6 @@
     for (const c of m.tree.values()) for (const o of c.orders.values()) for (const f of o.families.values()) { const sp = f.species.filter((s) => s.lifeNo); if (sp.length) famBig.push({ f, sp }); }
     famBig.sort((a, b) => b.sp.length - a.sp.length);
     const drawers = famBig.slice(0, 3).map(({ f, sp }) => `<span class="cab-drawer"><span class="cab-window">${h.cover(sp[0].best, 160)}</span><span class="cab-holder"><span class="cab-card"><b>${h.esc(f.name)}</b><i>${h.esc(f.common)}</i></span></span><span class="cab-pull"></span></span>`).join("");
-    const quizBird = bestOf(m, 30, (x) => x.group === "bird")[Math.floor(Date.now() / 864e5) % Math.max(1, Math.min(30, bestOf(m, 30, (x) => x.group === "bird").length))];
     const listenSp = (() => {
       const withCall = m.life.filter((s) => s.call && s.best);
       if (!withCall.length || !GP.calls) return null;
@@ -363,7 +361,6 @@
     <a class="way way-sky" href="#/sky"><span class="way-art sky-art" aria-hidden="true">${Array.from({ length: 46 }, (_, k) => `<i style="--x:${((k * 37) % 97) + 1.5}%;--y:${((k * 53) % 89) + 4}%;--s:${(1 + (k % 5) * 0.7).toFixed(1)}px;--d:${(k % 7) * 0.4}s"></i>`).join("")}</span><span class="way-t"><span class="sc">The life list</span><b>The night sky</b><span>Every species a star, brighter the more it has been photographed; every family a constellation.</span></span></a>
     <a class="way way-plates" href="#/plates"><span class="way-art plates-art" aria-hidden="true">${famBig.slice(0, 1).map(({ sp: fs }) => fs.slice(0, 4).map((sp2) => `<span>${h.cover(sp2.best, 200)}</span>`).join("")).join("")}</span><span class="way-t"><span class="sc">For the wall</span><b>Natural-history plates</b><span>Each family as a plate from an old field guide, numbered and named, ready to print.</span></span></a>
     <a class="way way-tree" href="#/journal?tree=1"><span class="way-art tree-art" aria-hidden="true">${GP.treeOfLife && GP.treeOfLife.mini ? GP.treeOfLife.mini(m) : ""}</span><span class="way-t"><span class="sc">The tree of life</span><b>Watch the life list grow</b><span>Every species in the order it was first photographed, branch by branch.</span></span></a>
-    ${quizBird ? `<a class="way way-quiz" href="#/quiz?daily=1"><span class="way-art quiz-art" aria-hidden="true"><span class="quiz-crop"><img src="${h.esc(h.src(quizBird, 720))}" alt="" style="transform-origin:0 0;transform:${cropT(quizBird, 2.4)}"></span><span class="quiz-q">?</span></span><span class="way-t"><span class="sc">Name that bird</span><b>Today's challenge</b><span>Ten close crops, four names each, the same ten for everyone today. ${daily && daily.played ? `You scored ${daily.score}.` : ""}</span></span></a>` : ""}
     ${listenSp ? `<div class="way way-listen"><span class="way-art listen-art"><a class="listen-pic" href="#/species/${h.esc(listenSp.slug)}" aria-label="${h.esc(listenSp.name)}">${h.cover(listenSp.best, 360)}</a>${GP.calls.player(listenSp, true)}</span><span class="way-t"><span class="sc">Listen</span><b>Hear the ${h.esc(listenSp.name)}</b><span>${h.plural(m.species.filter((s) => s.call).length, "species", "species")} have their calls beside the photographs. <a href="#/species?view=calls">All the calls ${h.ICON.arrow}</a></span></span></div>` : ""}
   </div>
 </section>`;
@@ -410,11 +407,6 @@
     if (!c) return 999;
     const chroma = c[1] * (1 - Math.abs(2 * c[2] - 1));
     return chroma < 0.08 ? 400 + (1 - c[2]) * 100 : (c[0] + 330) % 360;
-  }
-  function cropT(x, k) {
-    const fp = x.fp || [0.5, 0.5], lim = 1 / (2 * k);
-    const cx = Math.max(lim, Math.min(1 - lim, fp[0])), cy = Math.max(lim, Math.min(1 - lim, fp[1] - 0.03));
-    return `translate(${((0.5 - k * cx) * 100).toFixed(2)}%, ${((0.5 - k * cy) * 100).toFixed(2)}%) scale(${k})`;
   }
 
   function mount(main, signal, m, h, slides) {
