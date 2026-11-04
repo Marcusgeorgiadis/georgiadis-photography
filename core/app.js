@@ -1213,11 +1213,45 @@ ${footer(nav)}
     route();
   }
   // Rebuild after the library changes (Workshop edits, a fresh scan); keeps the page and scroll.
+  // When the page is rebuilt in place (a save in the Workshop, the selection changing), tiles can
+  // merge, split or move between rows, so the same scroll position can land somewhere else. The
+  // page is held on a tile instead: the one an action asked for (holdView), or else the one in
+  // the middle of the screen, back at the same height on screen.
+  function viewAnchor() {
+    const vh = innerHeight, tiles = $$("#gp-main [data-id]");
+    const want = A.hold && Date.now() - A.hold.at < 10000 ? A.hold.id : null;
+    if (want) {
+      const el = tiles.find((t) => t.dataset.id === want || (t.dataset.frames || "").split(",").includes(want));
+      const r = el && el.getBoundingClientRect();
+      if (r && r.bottom > 0 && r.top < vh) return { id: want, top: r.top };
+    }
+    let best = null, bd = Infinity;
+    for (const t of tiles) {
+      const r = t.getBoundingClientRect();
+      if (!r.height || r.bottom < 0 || r.top > vh) continue;
+      const d = Math.abs(r.top + r.height / 2 - vh / 2);
+      if (d < bd) { bd = d; best = { id: t.dataset.id, top: r.top }; }
+    }
+    return best;
+  }
+  function findTile(id) {
+    const tiles = $$("#gp-main [data-id]");
+    const el = tiles.find((t) => t.dataset.id === id);
+    if (el) return el;
+    // gone: it joined a burst (or a burst was split): hold on whichever tile now shows its burst
+    const x = A.model.byId.get(id), fr = x && x.burst ? x.burst.frames.map((f) => f.id) : [];
+    return tiles.find((t) => fr.includes(t.dataset.id) || (t.dataset.frames || "").split(",").some((i) => fr.includes(i))) || null;
+  }
+  function holdAnchor(an) {
+    if (!an) return;
+    const el = findTile(an.id);
+    if (el) window.scrollBy(0, el.getBoundingClientRect().top - an.top);
+  }
   function update(raw) {
     A.raw = raw || A.raw;
     A.model = M.build(A.raw, A.modelOpts);
     A.site = Object.assign({}, A.model.site, A.siteOverride || {});
-    const y = window.scrollY;
+    const y = window.scrollY, an = viewAnchor();
     A.keepScroll = true;
     const cur = GP.viewer && GP.viewer.isOpen() ? GP.viewer.current() : null;
     A.lastKey = "";
@@ -1225,8 +1259,12 @@ ${footer(nav)}
     A.lastKey = keyOf(r);
     render(r);
     window.scrollTo(0, y);
+    holdAnchor(an);
+    requestAnimationFrame(() => holdAnchor(an));
+    A.hold = null;
     if (cur && GP.viewer.refresh) GP.viewer.refresh(A.model);
   }
+  function holdView(id) { A.hold = id ? { id, at: Date.now() } : null; }
   function setSelecting(on) {
     A.selecting = !!on;
     if (!on) A.sel.clear();
@@ -1236,7 +1274,7 @@ ${footer(nav)}
 
   const helpers = { esc, tile, flow, cover, chip, spCard, chapterRow, pageHead, specimenTag, fmtDate, fmtShort, fmtTime, fmtN, plural, titleOf, exposure, src, ICON, regCtx, toast, hbars, table, svgBars, pageUrl, shareBtn, sharePage };
   GP.app = {
-    start, update, setSelecting, toast, helpers,
+    start, update, setSelecting, toast, helpers, holdView,
     get model() { return A.model; }, get site() { return A.site; }, get adapter() { return A.adapter; }, get workshop() { return A.workshop; },
     get selection() { return [...A.sel]; }, get frameFilter() { return A.ff || null; }, clearSelection() { A.sel.clear(); $$(".tile.sel").forEach((t) => t.classList.remove("sel")); },
     setQuery, parseHash, hashFor, exhibit, toggleTheme, openById, openList, surprise, route: () => { A.lastKey = ""; route(); },

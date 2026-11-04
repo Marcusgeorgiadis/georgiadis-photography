@@ -268,6 +268,8 @@
     const lead = (big && big.burst.hero) || all[0];
     const key = "g:" + lead.id;
     const names = [...new Set(all.map((x) => x.common || "unnamed"))];
+    // the page rebuilds when the change lands: keep the joined burst where it is on screen
+    if (GP.app.holdView) GP.app.holdView(lead.id);
     saveMany(all, (f) => ({ ov: { burst: key, hero: f === lead ? true : null } })).then(() => {
       toast(`Joined ${plural(all.length, "photo")} into one burst` + (names.length > 1 ? `. They still carry different names (${names.slice(0, 3).join(", ")}); set one species to match them.` : "."));
       GP.app.clearSelection(); paintSel();
@@ -276,6 +278,7 @@
   function splitBursts(xs) {
     const all = framesOf(xs);
     if (!xs.some((x) => x.burst && x.burst.size > 1)) { toast("Select a burst to split up."); return; }
+    if (GP.app.holdView) GP.app.holdView(xs[0].id);
     saveMany(all, () => ({ ov: { burst: "solo", hero: null } })).then(() => { toast(`Split into ${plural(all.length, "single photo")}`); GP.app.clearSelection(); paintSel(); }, (e) => toast(dbErrText(e)));
   }
   function takeOut(x) {
