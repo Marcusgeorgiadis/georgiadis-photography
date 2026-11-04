@@ -233,7 +233,7 @@
           behaviours, young: YOUNG_RE.test(text),
           pal: e.pal || [], hsl: (e.pal || []).slice(0, 4).map(hexHsl), lq: e.lq || "", fp: e.fp || [0.5, 0.5], sh: e.sh || 0,
           exif: { cam: e.cam || "", lens: cleanLens(e.lens), fl: e.fl || 0, f: e.f || 0, ss: e.ss || 0, iso: e.iso || 0, eb: e.eb || 0, gps: e.gps || null },
-          frame: frameNo(p.n), heroMark: !!ov.hero, burstMark: typeof ov.burst === "string" ? ov.burst.slice(0, 80) : "", cover: !!ov.cover, st: p.st || "", err: p.err || "",
+          frame: frameNo(p.n), heroMark: !!ov.hero, explicit: !!ov.explicit, burstMark: typeof ov.burst === "string" ? ov.burst.slice(0, 80) : "", cover: !!ov.cover, st: p.st || "", err: p.err || "",
           a: p.a || (pv && pv.a) || "", pub: pub[id] || "", raw: p,
         });
       }
@@ -291,6 +291,8 @@
       bursts[k] = b;
     });
     const heroes = photos.filter((x) => x.isHero);
+    // what the home page and other automatic picks draw from: never a photograph marked sensitive
+    const calmHeroes = heroes.filter((x) => !x.explicit && !(x.burst && x.burst.frames.some((f) => f.explicit)));
 
     // 5. outings: each dated folder is one outing
     const outings = [];
@@ -301,7 +303,8 @@
       for (const x of list) if (x.spKey) { const e = sp.get(x.spKey) || { key: x.spKey, name: x.common, n: 0 }; e.n++; sp.set(x.spKey, e); }
       const top = [...sp.values()].sort((a, b) => b.n - a.n);
       const hs = list.filter((x) => x.isHero);
-      const cover = list.find((x) => x.cover) || hs.filter((x) => x.ar >= 1.2 && x.group !== "scene").sort((a, b) => b.score - a.score)[0] || hs.slice().sort((a, b) => b.score - a.score)[0];
+      const calm = hs.filter((x) => !x.explicit), pickFrom = calm.length ? calm : hs;
+      const cover = list.find((x) => x.cover) || pickFrom.filter((x) => x.ar >= 1.2 && x.group !== "scene").sort((a, b) => b.score - a.score)[0] || pickFrom.slice().sort((a, b) => b.score - a.score)[0];
       const companions = String(f.outing || "").replace(/^birding\s*/i, "").split(/\s+/).filter((w) => /^[A-Z]{2}$/.test(w));
       outings.push({
         id: fid, type: f.outing || "", date: f.date || "", label: f.dateLabel || "", photos: list, heroes: hs,
@@ -339,7 +342,7 @@
     for (const s of species) {
       s.photos.sort((a, b) => b.score - a.score);
       s.heroes = s.photos.filter((x) => x.isHero);
-      s.best = s.photos.find((x) => x.cover) || s.heroes.find((x) => x.ar >= 1.15) || s.photos[0];
+      s.best = s.photos.find((x) => x.cover) || s.heroes.find((x) => x.ar >= 1.15 && !x.explicit) || s.heroes.find((x) => !x.explicit) || s.photos.find((x) => !x.explicit) || s.photos[0];
       s.note = notesSp[s.bin] || notesSp[s.sci] || "";
       const call = calls[s.bin] || calls[s.sci];
       s.call = call && call.file ? call : null;
@@ -394,11 +397,11 @@
     const curated = (raw.collections || []).map((c) => ({ ...c, curated: true }));
     const rooms = [], usedCovers = new Set();
     for (const r of [...curated, ...ROOMS]) {
-      let list = r.ids ? r.ids.map((id) => byId.get(id)).filter((x) => x && !x.dupOf) : heroes.filter(r.test);
+      let list = r.ids ? r.ids.map((id) => byId.get(id)).filter((x) => x && !x.dupOf) : heroes.filter((x) => !x.explicit && r.test(x));
       if (!r.ids) list.sort((a, b) => b.score - a.score);
       if (r.limit) list = list.slice(0, r.limit);
       if (list.length < (r.min || 5)) continue;
-      const cover = (r.cover && byId.get(r.cover)) || list.find((x) => x.ar >= 1.2 && !usedCovers.has(x.id)) || list.find((x) => !usedCovers.has(x.id)) || list[0];
+      const cover = (r.cover && byId.get(r.cover)) || list.find((x) => x.ar >= 1.2 && !x.explicit && !usedCovers.has(x.id)) || list.find((x) => !x.explicit && !usedCovers.has(x.id)) || list[0];
       usedCovers.add(cover.id);
       rooms.push({ id: r.id, title: r.title, sub: r.sub || "", photos: list, cover, curated: !!r.curated });
     }
@@ -407,7 +410,7 @@
     let opening = (site.heroIds || []).map((id) => byId.get(id)).filter(Boolean);
     if (!opening.length) {
       const seen = new Set();
-      for (const x of heroes.filter((x) => x.ar >= 1.3 && x.group !== "scene" && !x.unsure && !x.domestic).sort((a, b) => b.score - a.score)) {
+      for (const x of heroes.filter((x) => x.ar >= 1.3 && x.group !== "scene" && !x.unsure && !x.domestic && !x.explicit).sort((a, b) => b.score - a.score)) {
         if (seen.has(x.spKey)) continue;
         seen.add(x.spKey); opening.push(x);
         if (opening.length === 7) break;
@@ -427,7 +430,7 @@
     photos.slice().sort((a, b) => a.t.localeCompare(b.t) || natural(a.name, b.name)).forEach((x, i) => { x.no = i + 1; });
 
     const model = {
-      photos, heroes, byId, bursts, outings, outingById, species, speciesByKey, speciesBySlug, life, tree, rooms, opening, stats, duplicates,
+      photos, heroes, calmHeroes, byId, bursts, outings, outingById, species, speciesByKey, speciesBySlug, life, tree, rooms, opening, stats, duplicates,
       site, raw, opts,
       search: (q) => parseQuery(q, model),
     };

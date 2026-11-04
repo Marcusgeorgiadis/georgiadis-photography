@@ -174,6 +174,7 @@
   </form>
   <div class="ws-acts">
     <button class="btn" data-ws="hide">${x.hidden ? "Show on public site" : "Hide from public site"} <kbd>H</kbd></button>
+    <button class="btn" data-ws="explicit" aria-pressed="${x.explicit ? "true" : "false"}" title="Blur this photograph until a visitor chooses to see it">${x.explicit ? "Explicit ✓ (blurred)" : "Mark explicit"}</button>
     ${b && b.size > 1 && !x.isHero ? `<button class="btn" data-ws="hero">Lead this burst</button>` : ""}
     ${b && b.size > 1 ? `<button class="btn" data-ws="unburst">Take out of this burst</button>` : ""}
     ${b && b.frames.some((f) => f.burstMark) ? `<button class="btn ghost" data-ws="autoburst" title="Go back to grouping these frames by when they were taken">Automatic grouping</button>` : ""}
@@ -205,6 +206,7 @@
     const x = b.closest(".vw") ? currentPhoto() : null;
     if (x) {
       if (a === "hide") toggleHidden([x]);
+      else if (a === "explicit") toggleExplicit([x], true);
       else if (a === "revert") saveMany([x], () => ({ ov: { common: null, scientific: null, group: null } })).then(() => toast("Back to Claude's ID"), (er) => toast(dbErrText(er)));
       else if (a === "hero") setHero(x);
       else if (a === "unburst") takeOut(x);
@@ -245,6 +247,19 @@
     const k = known(common);
     const ov = { common: k ? k.name : common, scientific: scientific || (k ? k.sci : ""), group: group || (k ? k.group : "other") };
     return saveMany(xs, () => ({ ov })).then(() => toast(`${plural(xs.length, "photo")} set to ${ov.common}`), (e) => toast(dbErrText(e)));
+  }
+  // Explicit: blurred on the site (and here) until a visitor clicks to see it, and never picked
+  // as a cover or for the home page. A selected burst marks all its frames; the viewer's button
+  // marks the photograph on screen.
+  function toggleExplicit(xs, one) {
+    if (!xs.length) { toast("Select some photos first."); return; }
+    const all = one ? xs : [...new Set(xs.flatMap((x) => (x.burst ? x.burst.frames : [x])))];
+    const on = !all.every((x) => x.explicit);
+    if (!one && GP.app.holdView) GP.app.holdView(xs[0].id);
+    saveMany(all, () => ({ ov: { explicit: on || null } })).then(() => {
+      toast(on ? `${plural(all.length, "photo")} marked explicit: blurred on the site until clicked` : `${plural(all.length, "photo")} no longer marked explicit`);
+      if (!one) { GP.app.clearSelection(); paintSel(); }
+    }, (e) => toast(dbErrText(e)));
   }
   function toggleHidden(xs) {
     const hide = !xs.every((x) => x.hidden);
@@ -364,6 +379,7 @@
 <button class="btn primary" type="submit" data-act2="species">Apply</button>
 <span class="stars" aria-label="Rate selected">${[1, 2, 3, 4, 5].map((n) => `<button type="button" data-ws="sel-rate" data-n="${n}" aria-label="${n} stars">★</button>`).join("")}</span>
 <button class="btn" type="button" data-ws="sel-hide">Hide / show</button>
+<button class="btn" type="button" data-ws="sel-explicit" title="Blur the selected photos and bursts until a visitor chooses to see them">Explicit</button>
 <button class="btn" type="button" data-ws="sel-collect">Add to collection</button>
 <button class="btn" type="button" data-ws="sel-join" title="Make the selected photos and bursts one burst">Join bursts</button>
 <button class="btn" type="button" data-ws="sel-split" title="Show every frame of the selected bursts on its own">Split burst</button>
@@ -396,6 +412,7 @@
     switch (a) {
       case "sel-rate": if (xs.length) saveMany(xs, () => ({ ov: { rating: +b.dataset.n } })).then(() => toast(`${plural(xs.length, "photo")} rated ${"★".repeat(+b.dataset.n)}`), (e) => toast(dbErrText(e))); break;
       case "sel-hide": if (xs.length) toggleHidden(xs); break;
+      case "sel-explicit": toggleExplicit(xs); break;
       case "sel-revert": if (xs.length) saveMany(xs, () => ({ ov: { common: null, scientific: null, group: null } })).then(() => toast(`${plural(xs.length, "photo")} back to Claude's ID`)); break;
       case "sel-collect": collect(xs); break;
       case "sel-join": joinBursts(xs); break;

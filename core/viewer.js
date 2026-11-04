@@ -22,6 +22,7 @@
     el.setAttribute("aria-label", "Photograph");
     el.innerHTML = `<div class="vw-bg"><div class="amb"></div></div>
 <div class="vw-stage"><img class="vw-img" alt="" draggable="false"><div class="vw-fxbox" aria-hidden="true"></div>
+  <div class="vw-veil" hidden><b>Sensitive photograph</b><span>This photograph may be upsetting.</span><button class="btn" data-v="unveil">Show photo</button></div>
   <div class="vw-ui">
     <div class="vw-top"><div class="t"><b></b><span></span></div>
       <button class="icon-btn vw-live" data-v="live" title="Play the burst (V)" aria-label="Play this burst as the moment it was" aria-pressed="false" hidden><span>LIVE</span></button>
@@ -196,6 +197,7 @@
     const lb = $('[data-v="live"]', V.el);
     const burst = framesOf(x).length >= 2;
     if (lb) lb.hidden = !burst;
+    if (x.explicit && GP.app.isRevealed && !GP.app.isRevealed(x)) return; // nothing moves under the veil
     // a burst opens still, to step through frame by frame (LIVE or V plays it); a still floats in
     // front of its background
     if (burst) return;
@@ -262,6 +264,7 @@
       V.img.animate([{ opacity: 0, translate: `${o.dir * 48}px 0` }, { opacity: 1, translate: "0 0" }], { duration: 340, easing: EASE });
     }
     V.amb.style.backgroundImage = `url("${x.lq || small}")`;
+    paintVeil(x);
     $(".vw-top .t b", V.el).textContent = h.titleOf(x);
     $(".vw-top .t span", V.el).textContent = [h.fmtDate(x.t), h.fmtTime(x), x.outing].filter(Boolean).join(" · ");
     const dl = $('[data-v="download"]', V.el);
@@ -283,12 +286,18 @@
     const hh = GP.app.parseHash();
     if (hh.q.get("p") && hh.q.get("p") !== x.id) { hh.q.set("p", x.id); history.replaceState(history.state, "", GP.app.hashFor(hh.parts, hh.q)); }
   }
+  // A photograph marked sensitive stays blurred, with its notice, until the visitor asks to see it.
+  function paintVeil(x) {
+    const on = !!(x && x.explicit && GP.app.isRevealed && !GP.app.isRevealed(x));
+    V.el.classList.toggle("veiled", on);
+    $(".vw-veil", V.el).hidden = !on;
+  }
   function strip(x) {
     const s = $(".vw-strip", V.el), fr = framesOf(x), box = $(".vw-frames", V.el);
     if (fr.length < 2) { box.hidden = true; s.innerHTML = ""; return; }
     box.hidden = false;
     const h = H();
-    s.innerHTML = fr.map((f, i) => `<button role="option" data-frame="${i}" class="${f === x ? "on" : ""}" aria-selected="${f === x}" aria-label="Frame ${i + 1} of ${fr.length}"><img src="${h.esc(h.src(f, 160))}" alt="" loading="lazy"></button>`).join("");
+    s.innerHTML = fr.map((f, i) => `<button role="option" data-frame="${i}" class="${f === x ? "on" : ""}${f.explicit && !GP.app.isRevealed(f) ? " veiled" : ""}" aria-selected="${f === x}" aria-label="Frame ${i + 1} of ${fr.length}"><img src="${h.esc(h.src(f, 160))}" alt="" loading="lazy"></button>`).join("");
     const on = s.querySelector(".on");
     if (on) on.scrollIntoView({ block: "nearest", inline: "center" });
   }
@@ -456,6 +465,7 @@ ${ws && ws.infoExtra ? ws.infoExtra(x) : ""}`;
   /* ---------- gestures ---------- */
   function onDown(e) {
     if (e.target.closest(".vw-ui > *:not(.vw-mini)") && e.target !== V.stage) return;
+    if (e.target.closest(".vw-veil")) return; // its Show photo button takes the click, not a drag
     V.stage.setPointerCapture(e.pointerId);
     V.ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
     cancelInertia();
@@ -618,6 +628,7 @@ ${ws && ws.infoExtra ? ws.infoExtra(x) : ""}`;
     }
     const v = b.dataset.v;
     if (v === "close") close();
+    else if (v === "unveil") { const x = cur(); if (GP.app.reveal) GP.app.reveal(x.id); paintVeil(x); strip(x); }
     else if (v === "prev") step(-1);
     else if (v === "next") step(1);
     else if (v === "info") toggleInfo();
@@ -781,7 +792,7 @@ ${ws && ws.infoExtra ? ws.infoExtra(x) : ""}`;
     const ae = document.activeElement;
     if (ae && V.info.contains(ae) && ae.matches("input, textarea, select")) V.infoStale = true;
     else renderInfo(x);
-    strip(x); badge();
+    strip(x); badge(); paintVeil(x);
     $(".vw-top .t b", V.el).textContent = H().titleOf(x);
   }
 

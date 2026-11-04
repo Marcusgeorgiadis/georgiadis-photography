@@ -158,6 +158,7 @@
   function lOpen(el, px, py, touch) {
     const x = photoOf(el), img = imgOf(el);
     if (!x || !img) return false;
+    if (el.closest(".veiled") || img.classList.contains("veiled-img")) return false;
     lEnsure();
     L.on = true; L.target = el; L.x = x; L.touch = touch; L.fullTried = false;
     L.mag = touch ? 2.6 : L.mag || 3;

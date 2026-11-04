@@ -97,7 +97,7 @@
     const wild = m.outings.filter((o) => o.species.length && o.photos.length >= 3 && o.cover);
     const o = wild[wild.length - 1];
     if (!o) return null;
-    const cover = o.heroes.filter((x) => x.spKey && !x.unsure).sort((a, b) => (b.ar >= 1.3) - (a.ar >= 1.3) || b.score - a.score)[0] || o.cover;
+    const cover = o.heroes.filter((x) => x.spKey && !x.unsure && !x.explicit).sort((a, b) => (b.ar >= 1.3) - (a.ar >= 1.3) || b.score - a.score)[0] || o.cover;
     return { o, cover };
   }
   // what the outing was, in a line: its summary, or the animals while the summary is still to come

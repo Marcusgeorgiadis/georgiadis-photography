@@ -149,6 +149,20 @@ main { min-height: 70vh; }
 .tile .lq { position: absolute; inset: -12px; background-size: cover; background-position: center; filter: blur(14px) saturate(1.1); transform: scale(1.06); }
 .tile img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; filter: blur(10px); transform: scale(1.03); transition: opacity 600ms var(--ease-out), filter 900ms var(--ease-out), transform 900ms var(--ease-out); }
 .tile img.in { opacity: 1; filter: none; transform: none; }
+/* sensitive photographs: blurred, with a notice, until clicked once */
+.tile.veiled img, .tile.veiled .lq, .tile.veiled .scrub-bg { filter: blur(22px) brightness(0.75) saturate(0.8) !important; transform: scale(1.12) !important; }
+.tile .veil { position: absolute; inset: 0; z-index: 2; display: grid; place-content: center; justify-items: center; gap: 6px; padding: 12px; text-align: center; color: #fff; pointer-events: none; text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5); }
+.tile .veil b { font: 600 11px/1 var(--f-data); letter-spacing: 0.16em; text-transform: uppercase; }
+.tile .veil span { font-size: 12.5px; opacity: 0.9; }
+.tile.veiled .cap, .tile.veiled .scrub { display: none; }
+img.veiled-img { filter: blur(22px) brightness(0.8) !important; }
+.vw.veiled .vw-img { filter: blur(40px) brightness(0.65); }
+.vw-veil { position: absolute; inset: 0; z-index: 3; display: grid; place-content: center; justify-items: center; gap: 10px; padding: 20px; text-align: center; color: #fff; }
+.vw-veil[hidden] { display: none; }
+.vw-veil b { font: 500 24px/1.2 var(--f-display); }
+.vw-veil span { font-size: 15px; opacity: 0.85; }
+.vw-veil .btn { margin-top: 6px; }
+.vw-strip button.veiled img { filter: blur(6px); }
 /* a burst frame of another shape: whole, over a soft copy of itself */
 .tile img.fit { object-fit: contain; }
 .tile .scrub-bg { position: absolute; inset: -16px; background: center / cover no-repeat var(--bg-2); filter: blur(16px) brightness(0.85) saturate(1.1); pointer-events: none; }

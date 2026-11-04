@@ -10,7 +10,7 @@
   // Strong, varied photographs: one per species, the best frame of each.
   function bestOf(m, n, test) {
     const seen = new Set(), out = [];
-    const pool = m.heroes.filter((x) => !x.unsure && x.group !== "scene" && x.rating >= 3 && (!test || test(x))).sort((a, b) => b.score - a.score);
+    const pool = (m.calmHeroes || m.heroes).filter((x) => !x.unsure && x.group !== "scene" && x.rating >= 3 && (!test || test(x))).sort((a, b) => b.score - a.score);
     for (const x of pool) {
       const k = x.spKey || x.id;
       if (seen.has(k)) continue;
@@ -22,7 +22,7 @@
   function heroSlides(m) {
     if (m.opening && m.opening.length) return m.opening.slice(0, 8);
     const wide = bestOf(m, 7, (x) => x.ar >= 1.3);
-    return wide.length >= 3 ? wide : m.heroes.slice(0, 5);
+    return wide.length >= 3 ? wide : (m.calmHeroes || m.heroes).slice(0, 5);
   }
   // Seven for the highlights grid: wide frames where the grid is wide.
   function highlights(m, exclude) {
@@ -48,7 +48,7 @@
     const now = new Date(), y = now.getFullYear();
     const doy = (mm, dd) => Math.round((Date.UTC(2001, mm - 1, dd) - Date.UTC(2001, 0, 1)) / 864e5);
     const t = doy(now.getMonth() + 1, now.getDate());
-    const near = m.heroes.filter((x) => x.year && x.year < y && Math.abs(doy(x.month, x.day) - t) <= 3 && x.group !== "scene").sort((a, b) => b.score - a.score);
+    const near = (m.calmHeroes || m.heroes).filter((x) => x.year && x.year < y && Math.abs(doy(x.month, x.day) - t) <= 3 && x.group !== "scene").sort((a, b) => b.score - a.score);
     return near;
   }
   // The page shows each photograph once: a room or an outing whose usual cover (or a frame of
@@ -69,7 +69,7 @@
     const now = GP.sky ? GP.sky.now() : null;
     const mins = now ? now.mins : new Date().getHours() * 60 + new Date().getMinutes();
     const dist = (a) => { const d = Math.abs(a - mins); return Math.min(d, 1440 - d); };
-    const timed = m.heroes.filter((x) => x.hasTime && x.mins != null && x.group !== "scene" && !x.unsure && x.spKey);
+    const timed = (m.calmHeroes || m.heroes).filter((x) => x.hasTime && x.mins != null && x.group !== "scene" && !x.unsure && x.spKey);
     let pool = [], win = 0;
     for (win of [30, 60, 120, 240]) { pool = timed.filter((x) => dist(x.mins) <= win); if (new Set(pool.map((x) => x.spKey)).size >= 4) break; }
     pool.sort((a, b) => (dist(a.mins) / 45 - a.score * 0.06) - (dist(b.mins) / 45 - b.score * 0.06));
@@ -339,7 +339,7 @@
 </section>` : "";
 
     /* ways in */
-    const uvTiles = m.heroes.filter((x) => x.hsl && x.hsl[0]).slice().sort((a, b) => hueKey(a) - hueKey(b));
+    const uvTiles = (m.calmHeroes || m.heroes).filter((x) => x.hsl && x.hsl[0]).slice().sort((a, b) => hueKey(a) - hueKey(b));
     const step = Math.max(1, Math.floor(uvTiles.length / 72));
     const uvArt = uvTiles.filter((_, i) => i % step === 0).slice(0, 72).map((x, i) => `<i style="--i:${i};background-image:url(${x.lq || ""});background-color:${h.esc(x.pal[0] || "#777")}"></i>`).join("");
     const famBig = [];

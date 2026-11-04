@@ -101,7 +101,7 @@ const photoPages = m.photos.map((x) => {
   const bits = [fmtDate(x.t), x.light, x.outing].filter(Boolean).join(" · ");
   const words = x.caption || (sp && sp.note ? firstSentence(sp.note) : "");
   const title = titleOf(x) + (x.sci && x.common ? ` (${x.sci})` : "");
-  return [x.id, page({ title, description: [bits, words].filter(Boolean).join(". "), img: image(x, 1200), alt: x.caption || titleOf(x), to: `#/gallery?p=${encodeURIComponent(x.id)}`, self: `p/${x.id}` })];
+  return [x.id, page({ title, description: [bits, words].filter(Boolean).join(". "), img: x.explicit ? null : image(x, 1200), alt: x.caption || titleOf(x), to: `#/gallery?p=${encodeURIComponent(x.id)}`, self: `p/${x.id}` })];
 });
 const speciesPages = m.species.filter((s) => s.best).map((s) => {
   const facts = `${s.photos.length} photograph${s.photos.length === 1 ? "" : "s"} on ${s.outingN} outing${s.outingN === 1 ? "" : "s"}, first seen ${fmtDate(s.first)}`;
@@ -139,7 +139,7 @@ function feed() {
   const isWild = (s1) => { const sp = m.speciesByKey.get(s1.key); return !sp || sp.wild !== false; };
   const wild = m.outings.filter((o) => o.species.some(isWild) && o.photos.length >= 3 && o.cover);
   const outings = wild.slice(-40).reverse().map((o) => {
-    const cover = o.heroes.filter((x) => x.spKey && !x.unsure).sort((a, b) => (b.ar >= 1.3) - (a.ar >= 1.3) || b.score - a.score)[0] || o.cover;
+    const cover = o.heroes.filter((x) => x.spKey && !x.unsure && !x.explicit).sort((a, b) => (b.ar >= 1.3) - (a.ar >= 1.3) || b.score - a.score)[0] || o.cover;
     const img = image(cover, 1200);
     const names = named(o).map((s1) => s1.name);
     // a summary still waiting to be written says only how many frames there were: name the animals instead

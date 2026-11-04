@@ -44,6 +44,7 @@
   /* ---------- icons ---------- */
   const I = (d, extra = "") => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ${extra}>${d}</svg>`;
   const ICON = {
+    eyeOff: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l18 18"/><path d="M10.6 5.1A9.8 9.8 0 0 1 12 5c5 0 9 4.5 10 7-.4 1-1.3 2.4-2.6 3.7M6.6 6.6C4.6 7.9 3.1 9.9 2 12c1 2.5 5 7 10 7 1.7 0 3.3-.5 4.7-1.3"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>',
     search: I('<circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/>'),
     play: I('<path d="M7 5.5v13l11-6.5z"/>'),
     sun: I('<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6 6 6M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/>'),
@@ -68,7 +69,7 @@
   };
 
   /* ---------- state ---------- */
-  const A = { model: null, adapter: null, site: {}, workshop: null, ctx: new Map(), ctxN: 0, sel: new Set(), selecting: false, lastKey: "", timers: [], views: [], scrollMem: new Map(), traverse: false, rendered: false };
+  const A = { revealed: new Set(), model: null, adapter: null, site: {}, workshop: null, ctx: new Map(), ctxN: 0, sel: new Set(), selecting: false, lastKey: "", timers: [], views: [], scrollMem: new Map(), traverse: false, rendered: false };
   const BUCKETS = [360, 540, 720, 960, 1280, 1600, 2048, 2560];
   const bucket = (px) => BUCKETS.find((b) => b >= px) || BUCKETS[BUCKETS.length - 1];
   const dpr = () => Math.min(2, window.devicePixelRatio || 1);
@@ -85,6 +86,8 @@
   function tile(x, o = {}) {
     const b = x.burst, fr = b ? GP.model.framesOf(b, A.ff) : [], stack = o.stacks !== false && fr.length > 1;
     const hov = fr.slice(0, SCRUB_MAX);
+    // sensitive (marked in the Workshop): blurred until clicked once; any frame marked veils the tile
+    const veiled = (x.explicit || hov.some((f) => f.explicit)) && !(stack ? hov : [x]).every((f) => !f.explicit || A.revealed.has(f.id));
     const w = rowH() * x.ar * dpr() * 1.1;
     const lq = x.lq ? `<span class="lq" style="background-image:url(${x.lq})"></span>` : `<span class="lq" style="background:${esc(x.pal[0] || "")}"></span>`;
     const sel = A.selecting ? `<span class="tick" aria-hidden="true">✓</span>` : "";
@@ -95,7 +98,8 @@
     const V = GP.visitor && !A.workshop ? GP.visitor : null;
     const fav = V && V.isFav(x.id), fresh = V && !o.noNew && V.isNew(x.id);
     const marks = V ? `<span class="fav" aria-hidden="true">${ICON.heartOn}</span>${fresh ? `<span class="new-pill">New</span>` : ""}` : "";
-    return `<button class="tile${stack ? " burst" : ""}${A.sel.has(x.id) ? " sel" : ""}${fav ? " is-fav" : ""}" data-id="${esc(x.id)}"${stack ? ` data-frames="${esc(hov.map((f) => f.id).join(","))}"` : ""} style="--ar:${x.ar.toFixed(3)}" aria-label="${esc(titleOf(x) + ", " + fmtDate(x.t) + (fav ? ", in your favourites" : ""))}">${lq}<img src="${esc(src(x, w))}" alt="" loading="lazy" decoding="async" draggable="false" style="--fx:${(x.fp[0] * 100).toFixed(1)}%;--fy:${(x.fp[1] * 100).toFixed(1)}%"><span class="cap"><b>${esc(titleOf(x))}</b><span>${esc(sub)}</span></span>${badge}${scrub}${sel}${marks}</button>`;
+    const veil = veiled ? `<span class="veil" aria-hidden="true">${ICON.eyeOff}<b>Sensitive</b><span>May be upsetting · click to show</span></span>` : "";
+    return `<button class="tile${stack ? " burst" : ""}${veiled ? " veiled" : ""}${A.sel.has(x.id) ? " sel" : ""}${fav ? " is-fav" : ""}" data-id="${esc(x.id)}"${stack ? ` data-frames="${esc(hov.map((f) => f.id).join(","))}"` : ""} style="--ar:${x.ar.toFixed(3)}" aria-label="${esc((veiled ? "Sensitive photograph, may be upsetting; activate to show. " : "") + titleOf(x) + ", " + fmtDate(x.t) + (fav ? ", in your favourites" : ""))}">${lq}<img src="${esc(src(x, w))}" alt="" loading="lazy" decoding="async" draggable="false" style="--fx:${(x.fp[0] * 100).toFixed(1)}%;--fy:${(x.fp[1] * 100).toFixed(1)}%">${veil}<span class="cap"><b>${esc(titleOf(x))}</b><span>${esc(sub)}</span></span>${badge}${scrub}${sel}${marks}</button>`;
   }
   function flow(list, o = {}) {
     const k = regCtx(list);
@@ -103,6 +107,7 @@
   }
   function cover(x, w, cls = "", alt = "") {
     if (!x) return `<span class="ph"></span>`;
+    if (x.explicit && !A.revealed.has(x.id)) cls = (cls + " veiled-img").trim();
     const fx = (x.fp[0] * 100).toFixed(1), fy = (x.fp[1] * 100).toFixed(1);
     const pos = `object-position:${fx}% ${fy}%;--fx:${fx}%;--fy:${fy}%`;
     return `<img class="${cls}" src="${esc(src(x, w))}" alt="${esc(alt)}" loading="lazy" decoding="async" style="${pos};background:${esc(x.pal[0] || "transparent")}"${x.lq ? ` data-lq="${esc(x.lq)}"` : ""}>`;
@@ -1045,6 +1050,7 @@ ${footer(nav)}
     const t = e.target.closest(".tile[data-id], .mini-flow [data-id], .wall-item figure[data-id]");
     if (!t || !A.root.contains(t)) return;
     const id = t.dataset.id;
+    if (!A.selecting && t.classList.contains("veiled")) { reveal([id, ...(t.dataset.frames || "").split(",").filter(Boolean)]); t.classList.remove("veiled"); const v = t.querySelector(".veil"); if (v) v.remove(); return; }
     if (A.selecting && t.classList.contains("tile")) {
       if (A.sel.has(id)) A.sel.delete(id); else A.sel.add(id);
       t.classList.toggle("sel", A.sel.has(id));
@@ -1059,7 +1065,7 @@ ${footer(nav)}
   // Burst scrubbing: drag the pointer across a stacked tile to flick through its frames.
   function onScrub(e) {
     const t = e.target.closest && e.target.closest(".tile.burst");
-    if (!t || e.pointerType === "touch" || t.classList.contains("living")) return;
+    if (!t || e.pointerType === "touch" || t.classList.contains("living") || t.classList.contains("veiled")) return;
     const x = A.model.byId.get(t.dataset.id);
     const fr = (t.dataset.frames || "").split(",").map((id) => A.model.byId.get(id)).filter(Boolean);
     if (!x || fr.length < 2) return;
@@ -1110,7 +1116,7 @@ ${footer(nav)}
   // A random strong photograph, with more of the same waiting behind it.
   function surprise() {
     const m = A.model;
-    const pool = m.heroes.filter((x) => x.rating >= 3 && !x.unsure);
+    const pool = (m.calmHeroes || m.heroes).filter((x) => x.rating >= 3 && !x.unsure);
     const src = pool.length > 10 ? pool : m.heroes.slice();
     for (let i = src.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [src[i], src[j]] = [src[j], src[i]]; }
     const list = src.slice(0, 40);
@@ -1264,6 +1270,8 @@ ${footer(nav)}
     A.hold = null;
     if (cur && GP.viewer.refresh) GP.viewer.refresh(A.model);
   }
+  // Sensitive photographs a visitor has chosen to see, for this visit.
+  function reveal(ids) { for (const id of [].concat(ids)) if (id) A.revealed.add(id); }
   function holdView(id) { A.hold = id ? { id, at: Date.now() } : null; }
   function setSelecting(on) {
     A.selecting = !!on;
@@ -1274,7 +1282,7 @@ ${footer(nav)}
 
   const helpers = { esc, tile, flow, cover, chip, spCard, chapterRow, pageHead, specimenTag, fmtDate, fmtShort, fmtTime, fmtN, plural, titleOf, exposure, src, ICON, regCtx, toast, hbars, table, svgBars, pageUrl, shareBtn, sharePage };
   GP.app = {
-    start, update, setSelecting, toast, helpers, holdView,
+    start, update, setSelecting, toast, helpers, holdView, reveal, isRevealed: (x) => !x || !x.explicit || A.revealed.has(x.id),
     get model() { return A.model; }, get site() { return A.site; }, get adapter() { return A.adapter; }, get workshop() { return A.workshop; },
     get selection() { return [...A.sel]; }, get frameFilter() { return A.ff || null; }, clearSelection() { A.sel.clear(); $$(".tile.sel").forEach((t) => t.classList.remove("sel")); },
     setQuery, parseHash, hashFor, exhibit, toggleTheme, openById, openList, surprise, route: () => { A.lastKey = ""; route(); },
