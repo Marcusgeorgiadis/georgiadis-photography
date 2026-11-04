@@ -1050,9 +1050,23 @@ ${footer(nav)}
     if (t._i === i) return;
     t._i = i;
     const img = t.querySelector("img"), f = fr[i];
-    img.src = src(f, rowH() * x.ar * dpr() * 1.1);
+    const url = src(f, rowH() * x.ar * dpr() * 1.1);
+    img.src = url;
+    fitFrame(t, img, f, x, url);
     t.querySelectorAll(".scrub i").forEach((el, k) => el.classList.toggle("on", k === i));
     t._frame = f.id;
+  }
+  // The tile keeps the shape of the photograph it shows. A frame of another shape (cropped
+  // differently) sits whole inside it over a soft copy of itself, instead of being cropped and
+  // blown up to fill it; frames of nearly the same shape still fill it.
+  function fitFrame(t, img, f, x, url) {
+    const fit = !!f && f !== x && Math.abs(Math.log(f.ar / x.ar)) > 0.06;
+    img.classList.toggle("fit", fit);
+    let bg = t.querySelector(":scope > .scrub-bg");
+    if (fit) {
+      if (!bg) { bg = document.createElement("i"); bg.className = "scrub-bg"; bg.setAttribute("aria-hidden", "true"); img.before(bg); }
+      bg.style.backgroundImage = `url("${url.replace(/"/g, "%22")}")`;
+    } else if (bg) bg.remove();
   }
   function onScrubEnd(e) {
     const t = e.target.closest && e.target.closest(".tile.burst");
@@ -1060,7 +1074,9 @@ ${footer(nav)}
     const x = A.model.byId.get(t.dataset.id);
     const hi = x.burst.frames.indexOf(x);
     t._i = null; t._frame = null;
-    t.querySelector("img").src = src(x, rowH() * x.ar * dpr() * 1.1);
+    const img = t.querySelector("img");
+    img.src = src(x, rowH() * x.ar * dpr() * 1.1);
+    fitFrame(t, img, null, x, "");
     t.querySelectorAll(".scrub i").forEach((el, k) => el.classList.toggle("on", k === hi));
   }
   function goSearch() {
