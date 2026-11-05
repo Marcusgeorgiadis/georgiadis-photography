@@ -9,7 +9,7 @@
   const EASE = "cubic-bezier(.16,1,.3,1)";
   const H = () => GP.app.helpers;
 
-  const V = { el: null, open: false, list: [], i: 0, x: null, k: 1, tx: 0, ty: 0, bw: 0, bh: 0, sw: 0, sh: 0, kmax: 3, full: null, ptrs: new Map(), g: null, idleT: 0, lastTap: 0, token: 0 };
+  const V = { el: null, open: false, list: [], i: 0, x: null, k: 1, tx: 0, ty: 0, bw: 0, bh: 0, sw: 0, sh: 0, kmax: 3, full: null, ptrs: new Map(), g: null, idleT: 0, lastTap: 0, token: 0, pre: new Map(), anim: null };
 
   function build() {
     if (V.el) return;
@@ -20,8 +20,8 @@
     el.setAttribute("role", "dialog");
     el.setAttribute("aria-modal", "true");
     el.setAttribute("aria-label", "Photograph");
-    el.innerHTML = `<div class="vw-bg"><div class="amb"></div></div>
-<div class="vw-stage"><img class="vw-img" alt="" draggable="false"><div class="vw-fxbox" aria-hidden="true"></div>
+    el.innerHTML = `<div class="vw-bg"><div class="amb"></div><div class="amb"></div></div>
+<div class="vw-stage"><img class="vw-img" alt="" draggable="false"><img class="vw-peek" alt="" draggable="false" aria-hidden="true"><div class="vw-fxbox" aria-hidden="true"></div>
   <div class="vw-veil" hidden><b>Sensitive photograph</b><span>This photograph may be upsetting.</span><button class="btn" data-v="unveil">Show photo</button></div>
   <div class="vw-ui">
     <div class="vw-top"><div class="t"><b></b><span></span></div>
@@ -46,7 +46,9 @@
     V.el = el;
     V.stage = $(".vw-stage", el);
     V.img = $(".vw-img", el);
-    V.amb = $(".amb", el);
+    V.peek = $(".vw-peek", el);
+    V.ambs = [...el.querySelectorAll(".amb")];
+    V.ambI = 0;
     V.info = $(".vw-info .in", el);
     V.mini = $(".vw-mini", el);
     V.fxbox = $(".vw-fxbox", el);
@@ -81,6 +83,9 @@
     V.ctok = (V.ctok || 0) + 1;
     document.querySelectorAll(".vw-fly").forEach((f) => f.remove());
     V.img.getAnimations().forEach((a) => a.cancel());
+    if (V.anim) { clearTimeout(V.slideT); V.anim = null; }
+    hidePeek();
+    V.el.classList.remove("sliding");
     V.img.style.visibility = "";
     $(".vw-ui", V.el).style.opacity = "";
     const opener = document.activeElement;
@@ -109,6 +114,10 @@
   function close(o = {}) {
     if (!V.open) return;
     V.open = false;
+    V.tinted = false;
+    if (V.anim) { clearTimeout(V.slideT); V.anim = null; }
+    hidePeek();
+    V.el.classList.remove("sliding");
     clearTimeout(V.idleT);
     fxClear();
     if (GP.tint) GP.tint.restore();
@@ -118,7 +127,9 @@
     const done = () => {
       if (tok !== V.ctok) return; // reopened meanwhile
       V.el.hidden = true;
-      V.el.classList.remove("open", "info", "idle", "dragging");
+      V.el.classList.remove("open", "info", "idle", "dragging", "sliding");
+      if (V.anim) { clearTimeout(V.slideT); V.anim = null; }
+      hidePeek();
       V.img.removeAttribute("src");
       document.documentElement.style.overflow = "";
       if (V.opener && V.opener.focus && document.contains(V.opener)) V.opener.focus({ preventScroll: true });
@@ -238,10 +249,11 @@
     V.full = null;
     fxClear();
     layout();
-    if (GP.tint) GP.tint.set(x);
+    // the page takes the photograph's colours as the viewer opens; stepping on doesn't restyle it
+    if (GP.tint) { if (V.tinted && GP.tint.context) GP.tint.context(x); else GP.tint.set(x); V.tinted = true; }
     const h = H();
     // Start from whatever is already decoded (the tile), then step up to a large rendition.
-    const small = o.fly && o.fly.currentSrc ? o.fly.currentSrc : h.src(x, 720);
+    const small = o.src || (o.fly && o.fly.currentSrc ? o.fly.currentSrc : h.src(x, 720));
     const large = h.src(x, Math.min(2560, Math.max(V.sw, V.sh) * Math.min(2, devicePixelRatio || 1)));
     V.large = large || small;
     V.img.src = small;
@@ -265,7 +277,7 @@
     } else if (o.dir && !reduced()) {
       V.img.animate([{ opacity: 0, translate: `${o.dir * 48}px 0` }, { opacity: 1, translate: "0 0" }], { duration: 340, easing: EASE });
     }
-    V.amb.style.backgroundImage = `url("${x.lq || small}")`;
+    ambient(x);
     paintVeil(x);
     $(".vw-top .t b", V.el).textContent = h.titleOf(x);
     $(".vw-top .t span", V.el).textContent = [h.fmtDate(x.t), h.fmtTime(x), x.outing].filter(Boolean).join(" · ");
@@ -288,20 +300,47 @@
     const hh = GP.app.parseHash();
     if (hh.q.get("p") && hh.q.get("p") !== x.id) { hh.q.set("p", x.id); history.replaceState(history.state, "", GP.app.hashFor(hh.parts, hh.q)); }
   }
+  // The room behind the photograph glows with its colours: the tiny preview, enlarged (it is soft
+  // already, so no blur filter has to be redrawn), cross-fading between two layers by opacity as
+  // the photographs change. A sensitive one, still veiled, lends only its palette.
+  function ambient(x) {
+    const pal = (x.pal || []).filter((c) => /^#[0-9a-f]{6}$/i.test(c));
+    const veiled = x.explicit && !GP.app.isRevealed(x);
+    const bg = x.lq && !veiled ? `url("${x.lq}")` : pal.length ? `radial-gradient(70% 70% at 30% 35%, ${pal[0]}, transparent 75%), radial-gradient(70% 70% at 75% 70%, ${pal[1] || pal[0]}, transparent 75%), ${pal[2] || pal[0]}` : "none";
+    const a = V.ambs[V.ambI], b = V.ambs[1 - V.ambI];
+    if (a.dataset.bg === bg) return;
+    b.style.background = bg.startsWith("url") ? `${bg} center / cover no-repeat` : bg;
+    b.dataset.bg = bg;
+    b.classList.add("on"); a.classList.remove("on");
+    V.ambI = 1 - V.ambI;
+  }
   // A photograph marked sensitive stays blurred, with its notice, until the visitor asks to see it.
   function paintVeil(x) {
     const on = !!(x && x.explicit && GP.app.isRevealed && !GP.app.isRevealed(x));
     V.el.classList.toggle("veiled", on);
     $(".vw-veil", V.el).hidden = !on;
   }
+  // The burst's frames under the photograph. Stepping within the same burst only moves the
+  // highlight; the strip scrolls itself (never the page behind) once the photograph has landed.
   function strip(x) {
     const s = $(".vw-strip", V.el), fr = framesOf(x), box = $(".vw-frames", V.el);
-    if (fr.length < 2) { box.hidden = true; s.innerHTML = ""; return; }
+    if (fr.length < 2) { box.hidden = true; s.innerHTML = ""; s.dataset.key = ""; return; }
     box.hidden = false;
-    const h = H();
-    s.innerHTML = fr.map((f, i) => `<button role="option" data-frame="${i}" class="${f === x ? "on" : ""}${f.explicit && !GP.app.isRevealed(f) ? " veiled" : ""}" aria-selected="${f === x}" aria-label="Frame ${i + 1} of ${fr.length}"><img src="${h.esc(h.src(f, 160))}" alt="" loading="lazy"></button>`).join("");
-    const on = s.querySelector(".on");
-    if (on) on.scrollIntoView({ block: "nearest", inline: "center" });
+    const key = fr.map((f) => f.id).join(",");
+    const same = s.dataset.key === key;
+    if (!same) {
+      const h = H();
+      s.innerHTML = fr.map((f, i) => `<button role="option" data-frame="${i}" class="${f.explicit && !GP.app.isRevealed(f) ? "veiled" : ""}" aria-selected="false" aria-label="Frame ${i + 1} of ${fr.length}"><img src="${h.esc(h.src(f, 160))}" alt="" loading="lazy"></button>`).join("");
+      s.dataset.key = key;
+    }
+    const k = fr.indexOf(x);
+    [...s.children].forEach((b, i) => { b.classList.toggle("on", i === k); b.setAttribute("aria-selected", String(i === k)); });
+    requestAnimationFrame(() => {
+      const on = s.children[k];
+      if (!on || !s.isConnected) return;
+      const left = on.offsetLeft - (s.clientWidth - on.offsetWidth) / 2;
+      if (same && !reduced()) s.scrollTo({ left, behavior: "smooth" }); else s.scrollLeft = left;
+    });
   }
   function badge(extra) {
     const x = cur(), fr = framesOf(x);
@@ -311,9 +350,15 @@
     parts.push(extra || (V.full ? `full resolution · ${x.W} × ${x.H}` : V.k > 1.02 ? `${Math.round(V.k * 100)}%` : ""));
     $(".vw-badge", V.el).textContent = parts.filter(Boolean).join(" · ");
   }
+  function bigW() { return Math.min(2560, Math.max(V.sw, V.sh) * Math.min(2, devicePixelRatio || 1)); }
   function preload() {
-    const h = H(), w = Math.min(2560, Math.max(V.sw, V.sh) * Math.min(2, devicePixelRatio || 1));
-    for (const d of [1, -1]) { const n = V.list[V.i + d]; if (n) { const im = new Image(); im.src = h.src(n, w); } }
+    const h = H(), w = bigW();
+    for (const d of [1, -1]) {
+      const t = target(d);
+      if (!t) continue;
+      for (const u of [h.src(t.x, 720), h.src(t.x, w)]) if (u && !V.pre.has(u)) { const im = new Image(); im.decoding = "async"; im.src = u; V.pre.set(u, im); }
+    }
+    if (V.pre.size > 48) V.pre = new Map([...V.pre].slice(-24));
   }
   function moreLike(x) {
     const h = H(), list = similar(x);
@@ -436,19 +481,89 @@ ${ws && ws.infoExtra ? ws.infoExtra(x) : ""}`;
   // Left and right (keys, side arrows, swipes): through every frame of a burst first, then on to
   // the next photograph. Coming into a burst forwards starts at its first frame, backwards at its
   // last, so nothing in it is skipped either way.
-  function step(d) {
-    if (V.liveStop) { V.liveStop(); V.liveStop = null; }
+  // What a step left or right would show, without going there.
+  function target(d) {
     const x = cur(), fr = framesOf(x);
     if (fr.length > 1 && !V.loose) {
       const i = fr.indexOf(x) + d;
-      if (i >= 0 && i < fr.length) { V.frame = fr[i]; show({}); return; }
+      if (i >= 0 && i < fr.length) return { i: V.i, frame: fr[i], x: fr[i] };
     }
     const n = V.i + d;
-    if (V.list.length < 2 || n < 0 || n >= V.list.length) { nudge(d); return; }
-    V.i = n;
+    if (V.list.length < 2 || n < 0 || n >= V.list.length) return null;
     const nf = framesOf(V.list[n]);
-    V.frame = nf.length > 1 && !V.loose ? nf[d > 0 ? 0 : nf.length - 1] : null;
-    show({ dir: d });
+    const frame = nf.length > 1 && !V.loose ? nf[d > 0 ? 0 : nf.length - 1] : null;
+    return { i: n, frame, x: frame || V.list[n] };
+  }
+  function commit(t, o = {}) { V.i = t.i; V.frame = t.frame; show(o); }
+  // Keys, the side arrows and a trackpad's sideways swipe slide the next frame or photograph in,
+  // exactly as a swipe does (a frame of a burst and the next photograph move the same way).
+  function step(d) {
+    if (V.anim) V.anim.finish();
+    if (V.liveStop) { V.liveStop(); V.liveStop = null; }
+    const t = target(d);
+    if (!t) { nudge(d); return; }
+    if (reduced() || V.k > 1.01 || !V.sw) { commit(t, { dir: d }); return; }
+    const pk = peekFor(t, d);
+    V.peek.style.transition = "none";
+    placePeek(pk, 0);
+    V.el.classList.add("sliding");
+    if (V.surf) V.surf.hide(true);
+    requestAnimationFrame(() => slideIn(t, d, pk, 0, 0));
+  }
+
+  /* ---------- swiping: the next frame or photograph comes in beside this one ---------- */
+  const GAP = 28, SLIDE_EASE = "cubic-bezier(.22,.72,.2,1)";
+  // the box a photograph fits on this stage, centred (as layout() fits the current one)
+  function boxFor(y) {
+    const pad = V.sw < 700 ? 0 : 0.035;
+    const fk = Math.min((V.sw * (1 - pad * 2)) / y.ar, V.sh * (1 - pad * 2.4));
+    let bh = Math.round(fk), bw = Math.round(fk * y.ar);
+    if (bw > V.sw) { bw = Math.round(V.sw); bh = Math.round(V.sw / y.ar); }
+    return { w: bw, h: bh, x: (V.sw - bw) / 2, y: (V.sh - bh) / 2 };
+  }
+  // the sharpest copy already loaded, so the incoming photograph is there the moment it shows
+  function readySrc(y) {
+    const h = H();
+    for (const u of [h.src(y, bigW()), h.src(y, 720)]) { const im = V.pre.get(u); if (im && im.complete && im.naturalWidth) return u; }
+    return h.src(y, 720);
+  }
+  function peekFor(t, d) {
+    const y = t.x, b = boxFor(y), src = readySrc(y);
+    if (V.peek.dataset.src !== src) { V.peek.src = src; V.peek.dataset.src = src; }
+    V.peek.style.width = b.w + "px"; V.peek.style.height = b.h + "px";
+    V.peek.classList.toggle("veiled", !!(y.explicit && !GP.app.isRevealed(y)));
+    V.peek.style.visibility = "visible";
+    return { b, off: d * (V.sw + GAP) };
+  }
+  function placePeek(pk, dx) { V.peek.style.transform = `translate3d(${pk.b.x + pk.off + dx}px,${pk.b.y}px,0)`; }
+  function hidePeek() { if (!V.peek) return; V.peek.style.transition = "none"; V.peek.style.visibility = "hidden"; }
+  function glide(el, tf, ms) { el.style.transition = ms ? `transform ${ms}ms ${SLIDE_EASE}` : "none"; el.style.transform = tf; }
+  // Both photographs travel together: this one out, the next to where it will rest. The speed
+  // carries on from the finger's, and the photograph that lands is the one already drawn.
+  function slideIn(t, d, pk, dx, vx) {
+    const dist = V.sw + GAP - Math.abs(dx);
+    const ms = reduced() ? 0 : Math.round(Math.min(360, Math.max(180, dist / Math.max(1.2, Math.abs(vx)))));
+    V.el.classList.add("sliding");
+    glide(V.img, `translate3d(${V.tx - d * (V.sw + GAP)}px,${V.ty}px,0)`, ms);
+    glide(V.peek, `translate3d(${pk.b.x}px,${pk.b.y}px,0)`, ms);
+    const src = V.peek.dataset.src;
+    let over = false;
+    const finish = () => {
+      if (over) return;
+      over = true; clearTimeout(V.slideT); V.anim = null;
+      V.el.classList.remove("sliding");
+      commit(t, { src });
+      hidePeek();
+    };
+    V.anim = { finish };
+    V.slideT = setTimeout(finish, ms + 30);
+  }
+  function slideBack(pk) {
+    const ms = reduced() ? 0 : 260;
+    glide(V.img, `translate3d(${V.tx}px,${V.ty}px,0) scale(1)`, ms);
+    if (pk) glide(V.peek, `translate3d(${pk.b.x + pk.off}px,${pk.b.y}px,0)`, ms);
+    clearTimeout(V.slideT);
+    V.slideT = setTimeout(() => { if (!V.g) { hidePeek(); V.el.classList.remove("sliding"); sync(); } }, ms + 30);
   }
   function frame(d) {
     if (V.liveStop) { V.liveStop(); V.liveStop = null; }
@@ -468,6 +583,7 @@ ${ws && ws.infoExtra ? ws.infoExtra(x) : ""}`;
   function onDown(e) {
     if (e.target.closest(".vw-ui > *:not(.vw-mini)") && e.target !== V.stage) return;
     if (e.target.closest(".vw-veil")) return; // its Show photo button takes the click, not a drag
+    if (V.anim) V.anim.finish();
     V.stage.setPointerCapture(e.pointerId);
     V.ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
     cancelInertia();
@@ -510,7 +626,16 @@ ${ws && ws.infoExtra ? ws.infoExtra(x) : ""}`;
       // at fit: horizontal swipes page, a downward drag dismisses
       if (!g.axis) g.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
       V.el.classList.add("dragging");
-      if (g.axis === "x" && V.list.length > 1) { V.img.style.transition = "none"; V.img.style.transform = `translate3d(${V.tx + dx}px,${V.ty}px,0)`; }
+      if (g.axis === "x") {
+        if (!g.nb) { g.nb = { 1: target(1), "-1": target(-1) }; if (V.surf) V.surf.hide(true); }
+        const d = dx < 0 ? 1 : -1, t = g.nb[d];
+        // at either end of the list the photograph pulls against the finger
+        const mx = t ? dx : dx * 0.32;
+        V.img.style.transition = "none";
+        V.img.style.transform = `translate3d(${V.tx + mx}px,${V.ty}px,0) scale(1)`;
+        if (t) { if (g.pd !== d) { V.peek.style.transition = "none"; g.pk = peekFor(t, d); g.pd = d; } placePeek(g.pk, dx); }
+        else if (g.pd) { hidePeek(); g.pd = 0; g.pk = null; }
+      }
       else if (g.axis === "y" && dy > 0) {
         const s = 1 - Math.min(0.25, dy / 1600);
         V.img.style.transition = "none";
@@ -540,7 +665,13 @@ ${ws && ws.infoExtra ? ws.infoExtra(x) : ""}`;
     if (!g.moved) { tap(e, g); return; }
     const v = velocity(g.samples);
     if (V.k > 1.01) { inertia(v); return; }
-    if (g.axis === "x" && (V.list.length > 1 || framesOf(cur()).length > 1) && (Math.abs(dx) > 70 || Math.abs(v.x) > 0.5)) { step(dx < 0 ? 1 : -1); return; }
+    if (g.axis === "x") {
+      const d = dx < 0 ? 1 : -1, t = g.nb && g.nb[d];
+      const flick = Math.abs(v.x) > 0.35 && Math.sign(v.x) === Math.sign(dx);
+      if (t && g.pk && (Math.abs(dx) > Math.min(70, V.sw * 0.18) || flick)) { slideIn(t, d, g.pk, dx, v.x); return; }
+      slideBack(g.pd ? g.pk : null);
+      return;
+    }
     if (g.axis === "y" && (dy > 110 || v.y > 0.7)) { close(); return; }
     apply(260);
   }

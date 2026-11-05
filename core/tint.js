@@ -83,6 +83,13 @@
     T.slot = 1 - T.slot;
     if (reduced()) T.el.classList.add("still");
   }
+  // The photograph in front of the visitor changes without the page's colours following (the
+  // viewer stepping through photographs over a page it hides): restyling the whole page behind it
+  // on every swipe cost a visible hitch. The soundscape still hears about each photograph.
+  function context(x) {
+    T.cur = x || null;
+    document.dispatchEvent(new CustomEvent("gp:photo-context", { detail: { x: T.cur } }));
+  }
   // A page's own photograph, kept so the viewer and the player can hand the colours back.
   function page(x) { T.base = x || null; set(T.base); }
   function restore() { set(T.base); }
@@ -112,5 +119,5 @@
   // The theme changing changes what reads: redo the accent for the same photograph.
   new MutationObserver(() => { if (T.key) set(T.cur, { force: true }); }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 
-  GP.tint = { set, page, restore, follow, accentOf, get base() { return T.base; }, get current() { return T.cur || null; } };
+  GP.tint = { set, page, restore, follow, accentOf, context, get base() { return T.base; }, get current() { return T.cur || null; } };
 })(window.GP = window.GP || {});

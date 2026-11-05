@@ -409,7 +409,8 @@ img.veiled-img { filter: blur(22px) brightness(0.8) !important; }
 /* ---------- viewer ---------- */
 .vw { position: fixed; inset: 0; z-index: 100; display: grid; grid-template-columns: minmax(0, 1fr) auto; color: #f1efe8; background: transparent; }
 .vw-bg { position: absolute; inset: 0; background: #070807; overflow: hidden; opacity: 0; transition: opacity var(--t-scene) var(--ease-out); }
-.vw-bg .amb { position: absolute; inset: -20%; background-size: cover; background-position: center; filter: blur(70px) saturate(1.3) brightness(0.45); transform: scale(1.1); transition: background-image 900ms ease, opacity 900ms ease; }
+.vw-bg .amb { position: absolute; inset: -4%; opacity: 0; transition: opacity 700ms ease; }
+.vw-bg .amb.on { opacity: 0.42; }
 .vw.open .vw-bg { opacity: 1; }
 .vw-stage { position: relative; overflow: hidden; touch-action: none; min-width: 0; }
 .vw-img { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; user-select: none; -webkit-user-drag: none; max-width: none; box-shadow: 0 40px 120px -40px rgba(0, 0, 0, 0.8); }
@@ -686,3 +687,8 @@ kbd { font-family: var(--f-data); font-size: 12px; border: 1px solid var(--line)
 .scroll-shield { position: fixed; inset: 0; z-index: 19; display: none; }
 .scroll-shield.on { display: block; }
 .tile img { pointer-events: none; }
+
+/* the viewer's incoming photograph while swiping; the light and depth layers wait for the landing */
+.vw-peek { position: absolute; left: 0; top: 0; transform-origin: 0 0; visibility: hidden; pointer-events: none; user-select: none; -webkit-user-drag: none; max-width: none; will-change: transform; box-shadow: 0 40px 120px -40px rgba(0, 0, 0, 0.8); }
+.vw-peek.veiled { filter: blur(40px) brightness(0.65); }
+.vw.sliding .vw-fxbox, .vw.dragging .vw-fxbox { visibility: hidden; }
