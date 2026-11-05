@@ -177,7 +177,8 @@
       if (due() && !busy() && !P.el) { show(false); clearInterval(W.timer); W.timer = 0; }
     }, 1000);
   }
-  addEventListener("scroll", () => { const y = scrollY; W.scrolled += Math.abs(y - W.lastY); W.lastY = y; }, { passive: true });
+  const onScroll = () => { if (!W.timer) return; const y = scrollY; W.scrolled += Math.abs(y - W.lastY); W.lastY = y; };
+  addEventListener("scroll", onScroll, { passive: true });
   addEventListener("hashchange", () => { W.pages++; });
 
   /* ---------- the header, the footer ---------- */

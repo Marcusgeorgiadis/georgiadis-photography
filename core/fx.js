@@ -75,6 +75,7 @@
   function arrive(img) {
     if (reduced() || img.dataset.arrived) return;
     img.dataset.arrived = "1";
+    if (img.parentElement && img.parentElement.classList.contains("tile")) return;
     const r = img.getBoundingClientRect();
     if (r.width < 140 || r.height < 90 || r.bottom < 0 || r.top > innerHeight || arriving >= 8) return;
     arriving++;
@@ -92,7 +93,7 @@
   function develop(img, o = {}) {
     if (reduced()) return;
     const host = o.host || img.parentElement;
-    img.classList.remove("fx-develop"); void img.offsetWidth;
+    if (img.classList.contains("fx-develop")) return;
     img.classList.add("fx-develop");
     if (host && !host.querySelector(":scope > .fx-tray")) {
       const tray = document.createElement("i");

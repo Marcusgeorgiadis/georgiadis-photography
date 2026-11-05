@@ -50,6 +50,27 @@
 </defs><g filter="url(#${id})">${blobs}</g></svg><i class="paper-grain"></i>`;
   }
 
+  // The wash painted once into a small canvas and scaled up softly. Its SVG filters (turbulence,
+  // displacement) are drawn in software: at full screen size they took a large share of a species
+  // page's first seconds; at a few hundred pixels they cost almost nothing, and a watercolour
+  // loses nothing to the enlargement.
+  const washes = new Map();
+  function paintWash(canvas, s) {
+    if (!canvas || !canvas.getContext || !s) return;
+    const W = canvas.width, H = canvas.height, key = (s.key || s.name) + "@" + W;
+    const draw = (img) => { if (!canvas.isConnected) return; const ctx = canvas.getContext("2d"); ctx.clearRect(0, 0, W, H); ctx.drawImage(img, 0, 0, W, H); };
+    let img = washes.get(key);
+    if (!img) {
+      const svg = wash(s).replace(/<i class="paper-grain"><\/i>$/, "");
+      if (!svg) return;
+      img = new Image();
+      img.decoding = "async";
+      img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg.replace('<svg class="paper-wash"', `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}"`));
+      washes.set(key, img);
+    }
+    if (img.complete && img.naturalWidth) draw(img); else img.addEventListener("load", () => draw(img), { once: true });
+  }
+
   /* ---------- the plates ---------- */
   function layout(n) { return n <= 1 ? 1 : n <= 2 ? 2 : n <= 3 ? 3 : n === 4 ? 2 : n <= 6 ? 3 : n <= 8 ? 4 : n <= 12 ? 4 : 5; }
   function plateHtml(f, h, site, years) {
@@ -90,6 +111,6 @@
     return { html, title: "Plates" };
   }
 
-  GP.plates = { families, plateOf, wash, roman: ROMAN };
+  GP.plates = { paintWash, families, plateOf, wash, roman: ROMAN };
   (GP.views = GP.views || []).push({ id: "plates", label: "Plates", nav: false, render });
 })(window.GP = window.GP || {});

@@ -165,8 +165,8 @@
 .tl-svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
 .tl-ring { fill: none; stroke: var(--hair); stroke-dasharray: 2 7; }
 .tl-l { fill: none; stroke: var(--ink-2); stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; opacity: 0.5;
-  transition: stroke-dashoffset 1000ms var(--ease-out), opacity 300ms, stroke 300ms, stroke-width 300ms; }
-.tl-l.on { stroke-dashoffset: 0; animation: tl-glow 1800ms var(--ease-out); }
+  transition: stroke-dashoffset 700ms var(--ease-out), opacity 300ms, stroke 300ms, stroke-width 300ms; }
+.tl-l.on { stroke-dashoffset: 0; }
 @keyframes tl-glow { from { stroke: var(--accent); opacity: 1; } }
 .tl-l.k-cls { stroke-width: 3.2; } .tl-l.k-order { stroke-width: 2.3; } .tl-l.k-fam { stroke-width: 1.6; } .tl-l.k-leaf { stroke-width: 1.1; }
 .tl.hovering .tl-l { opacity: 0.22; }

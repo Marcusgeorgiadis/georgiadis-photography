@@ -89,26 +89,25 @@
 
   // Galleries: the photograph nearest the middle of the screen sets the colours, gently.
   function follow(root, signal) {
-    if (!("IntersectionObserver" in window)) return;
-    const vis = new Set();
     let t = 0;
     const pick = () => {
       t = 0;
-      const mid = innerHeight / 2;
-      let best = null, bd = Infinity;
-      for (const el of vis) { const r = el.getBoundingClientRect(); const d = Math.abs(r.top + r.height / 2 - mid); if (d < bd) { bd = d; best = el; } }
-      const x = best && GP.app.model.byId.get(best.dataset.id);
-      if (x && !(GP.viewer && GP.viewer.isOpen()) && !document.querySelector(".ex2")) { T.base = x; set(x); }
+      if ((GP.viewer && GP.viewer.isOpen()) || document.querySelector(".ex2")) return;
+      // the photograph at the middle of the screen (or, between photographs, either side of it)
+      const y = innerHeight / 2;
+      let el = null;
+      for (const fx of [0.5, 0.35, 0.65, 0.2, 0.8]) {
+        const hit = document.elementFromPoint(innerWidth * fx, y);
+        el = hit && hit.closest && hit.closest(".tile[data-id]");
+        if (el && root.contains(el)) break;
+        el = null;
+      }
+      const x = el && GP.app.model.byId.get(el.dataset.id);
+      if (x) { T.base = x; set(x); }
     };
-    const io = new IntersectionObserver((es) => { for (const e of es) (e.isIntersecting ? vis.add(e.target) : vis.delete(e.target)); }, { rootMargin: "-30% 0px -30% 0px" });
-    const watch = () => root.querySelectorAll(".tile[data-id]").forEach((el) => io.observe(el));
-    watch();
-    const mo = new MutationObserver(() => watch());
-    mo.observe(root, { childList: true, subtree: true });
-    const onScroll = () => { if (!t) t = setTimeout(pick, 700); };
-    addEventListener("scroll", onScroll, { passive: true, signal });
-    setTimeout(pick, 400);
-    signal.addEventListener("abort", () => { io.disconnect(); mo.disconnect(); clearTimeout(t); });
+    addEventListener("scroll", () => { clearTimeout(t); t = setTimeout(pick, 450); }, { passive: true, signal });
+    t = setTimeout(pick, 400);
+    signal.addEventListener("abort", () => clearTimeout(t));
   }
   // The theme changing changes what reads: redo the accent for the same photograph.
   new MutationObserver(() => { if (T.key) set(T.cur, { force: true }); }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });

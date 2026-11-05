@@ -90,8 +90,33 @@
       for (let i = 0; i < 2600; i++) { const x = (rr() - 0.5) * bg.width * 2, y = (rr() + rr() + rr() - 1.5) * bg.height * 0.16; g.fillStyle = `rgba(220,225,255,${(rr() * 0.35).toFixed(3)})`; g.fillRect(x, y, dpr * 0.8, dpr * 0.8); }
       for (let i = 0; i < 26; i++) { const x = (rr() - 0.5) * bg.width * 1.6, y = (rr() - 0.5) * bg.height * 0.2, r2 = (40 + rr() * 120) * dpr; const n = g.createRadialGradient(x, y, 0, x, y, r2); n.addColorStop(0, `rgba(${rr() > 0.5 ? "190,170,255" : "150,190,255"},0.06)`); n.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = n; g.fillRect(x - r2, y - r2, r2 * 2, r2 * 2); }
       g.restore();
+      sprites.clear();
       place();
     }
+    // Each species star (glow, core and spikes) drawn once into a small sprite at full brightness;
+    // a frame stamps the sprites with the twinkle as their alpha, instead of building a gradient
+    // for every star on every frame.
+    const sprites = new Map();
+    function sprite(s, hov) {
+      const k = s.key || s.name || s.x + ":" + s.y, id = k + (hov ? "*" : "");
+      let sp = sprites.get(id);
+      if (sp) return sp;
+      const r = (1.1 + s.mag * 3.4) * dpr * (hov ? 1.6 : 1), R = Math.ceil(r * 5) + 2;
+      const c = document.createElement("canvas"); c.width = c.height = R * 2;
+      const g = c.getContext("2d");
+      const glow = g.createRadialGradient(R, R, 0, R, R, r * 5);
+      glow.addColorStop(0, s.col.replace("hsl(", "hsla(").replace(")", " / 0.55)"));
+      glow.addColorStop(1, "rgba(0,0,0,0)");
+      g.fillStyle = glow; g.beginPath(); g.arc(R, R, r * 5, 0, TAU); g.fill();
+      g.fillStyle = s.col; g.globalAlpha = Math.min(1, 0.55 + s.mag * 0.6);
+      g.beginPath(); g.arc(R, R, r, 0, TAU); g.fill();
+      g.globalAlpha = 1;
+      if (s.mag > 0.55) { g.strokeStyle = "rgba(255,255,255,0.25)"; g.lineWidth = dpr * 0.6; g.beginPath(); g.moveTo(R - r * 4, R); g.lineTo(R + r * 4, R); g.moveTo(R, R - r * 4); g.lineTo(R, R + r * 4); g.stroke(); }
+      sp = { c, R };
+      sprites.set(id, sp);
+      return sp;
+    }
+    let lastDraw = 0;
     // Constellation names: biggest families first, below their stars or else above, never over
     // another name or the page's heading; a name with no room waits until its stars are hovered.
     function place() {
@@ -115,15 +140,20 @@
     function frame(now) {
       raf = 0;
       if (!visible) return;
+      const moving = Math.abs(px - cx) + Math.abs(py - cy) > 0.002;
+      if (!moving && !meteor && now - lastDraw < 31 && !reduced()) { raf = requestAnimationFrame(frame); return; }
+      lastDraw = now;
       const t = (now - t0) / 1000;
       cx += (px - cx) * 0.05; cy += (py - cy) * 0.05;
       ctx.drawImage(bg, cx * 3 * dpr, cy * 3 * dpr);
       // field stars
+      const still = reduced();
+      ctx.fillStyle = "rgb(225,230,255)";
       for (const f of field) {
-        const a = f.a * (reduced() ? 1 : 0.75 + 0.25 * Math.sin(t * 1.3 + f.ph));
-        ctx.fillStyle = `rgba(225,230,255,${a.toFixed(3)})`;
+        ctx.globalAlpha = f.a * (still ? 1 : 0.75 + 0.25 * Math.sin(t * 1.3 + f.ph));
         ctx.fillRect((f.x * W + cx * 4) * dpr, (f.y * H + cy * 4) * dpr, f.s * dpr, f.s * dpr);
       }
+      ctx.globalAlpha = 1;
       // constellations
       const hf = hover && hover.f;
       ctx.lineWidth = dpr * 0.8;
@@ -143,18 +173,11 @@
       }
       // the species
       for (const s of stars) {
-        const tw = reduced() ? 1 : 0.78 + 0.22 * Math.sin(t * s.sp + s.ph);
-        const r = (1.1 + s.mag * 3.4) * dpr * (s === hover ? 1.6 : 1);
-        const x = X(s), y = Y(s);
-        const glow = ctx.createRadialGradient(x, y, 0, x, y, r * 5);
-        glow.addColorStop(0, s.col.replace("hsl(", "hsla(").replace(")", ` / ${(0.55 * tw).toFixed(2)})`));
-        glow.addColorStop(1, "rgba(0,0,0,0)");
-        ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(x, y, r * 5, 0, TAU); ctx.fill();
-        ctx.fillStyle = s.col; ctx.globalAlpha = Math.min(1, 0.55 + s.mag * 0.6) * tw;
-        ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill();
-        ctx.globalAlpha = 1;
-        if (s.mag > 0.55) { ctx.strokeStyle = `rgba(255,255,255,${(0.25 * tw).toFixed(2)})`; ctx.lineWidth = dpr * 0.6; ctx.beginPath(); ctx.moveTo(x - r * 4, y); ctx.lineTo(x + r * 4, y); ctx.moveTo(x, y - r * 4); ctx.lineTo(x, y + r * 4); ctx.stroke(); }
+        const sp = sprite(s, s === hover);
+        ctx.globalAlpha = still ? 1 : 0.78 + 0.22 * Math.sin(t * s.sp + s.ph);
+        ctx.drawImage(sp.c, Math.round(X(s) - sp.R), Math.round(Y(s) - sp.R));
       }
+      ctx.globalAlpha = 1;
       if (hover) { ctx.strokeStyle = "rgba(255,226,170,0.9)"; ctx.lineWidth = dpr * 1.2; ctx.beginPath(); ctx.arc(X(hover), Y(hover), (12 + hover.mag * 6) * dpr, 0, TAU); ctx.stroke(); }
       // a falling star, now and then
       if (!reduced()) {

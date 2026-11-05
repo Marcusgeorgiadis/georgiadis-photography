@@ -36,7 +36,7 @@
   /* ---------- viewfinder ---------- */
   // Over a photograph the cursor becomes a lens: a small reticle with the camera's readout under
   // it, which turns green over the subject (the photograph's stored focus point) once it settles.
-  const VF = { ret: null, target: null, t: 0, hint: 0, box: null, lock: false, raf: 0, px: 0, py: 0 };
+  const VF = { ret: null, target: null, t: 0, hint: 0, box: null, lock: false, raf: 0, px: 0, py: 0, scrollT: 0 };
   function vfEnsure() {
     if (VF.ret) return;
     VF.ret = document.createElement("div");
@@ -75,12 +75,13 @@
     const side = Math.max(44, Math.min(150, Math.min(r.width, r.height) * 0.36));
     const cx = Math.max(r.left + side / 2 + 4, Math.min(r.right - side / 2 - 4, g.ox + fp[0] * g.W));
     const cy = Math.max(r.top + side / 2 + 4, Math.min(r.bottom - side / 2 - 4, g.oy + fp[1] * g.H));
+    if (VF.target && VF.target !== el) VF.target.classList.remove("vf-on");
     VF.target = el;
+    el.classList.add("vf-on");
     VF.box = [cx - side / 2, cy - side / 2, cx + side / 2, cy + side / 2];
     VF.lock = false;
     VF.ret.querySelector(".vf-lcd").innerHTML = lcd(x);
     VF.ret.classList.add("on");
-    document.documentElement.classList.add("gp-lens");
     clearTimeout(VF.t);
     VF.t = setTimeout(() => { if (VF.target !== el) return; VF.lock = true; retMove(); }, reduced() ? 0 : 340);
     // first time: tell people about the loupe
@@ -92,6 +93,7 @@
     }
   }
   function vfHide() {
+    if (VF.target) VF.target.classList.remove("vf-on");
     VF.target = null;
     VF.box = null;
     VF.lock = false;
@@ -99,7 +101,6 @@
     if (VF.hint) { clearTimeout(VF.hint); VF.hint = 0; }
     if (!VF.ret) return;
     VF.ret.classList.remove("on", "focus");
-    document.documentElement.classList.remove("gp-lens");
   }
 
   /* ---------- loupe ---------- */
@@ -197,11 +198,18 @@
     if (e.pointerType !== "mouse" || viewerOpen()) return;
     const el = targetAt(e.target, VF_SEL);
     if (L.on) return;
+    // photographs sliding under a still pointer while the page scrolls don't wake the lens
+    if (el && performance.now() - VF.scrollT < 250) return;
     if (el && el !== VF.target && finePointer() && !document.documentElement.classList.contains("gp-selecting")) { VF.px = e.clientX; VF.py = e.clientY; vfShow(el); retMove(); }
     else if (!el && VF.target) vfHide();
   }, { passive: true });
   document.addEventListener("pointermove", (e) => {
     last = { x: e.clientX, y: e.clientY, el: e.target };
+    // the pointer moving again after a scroll brings the lens back over the photograph it's on
+    if (!VF.target && !L.on && e.pointerType === "mouse" && performance.now() - VF.scrollT > 250 && !viewerOpen() && finePointer() && !document.documentElement.classList.contains("gp-selecting")) {
+      const el = targetAt(e.target, VF_SEL);
+      if (el) { VF.px = e.clientX; VF.py = e.clientY; vfShow(el); retMove(); }
+    }
     if (VF.target && VF.ret && e.pointerType === "mouse") { VF.px = e.clientX; VF.py = e.clientY; if (!VF.raf) VF.raf = requestAnimationFrame(retMove); }
     if (L.on) {
       if (L.touch && e.pointerType !== "touch") return;
@@ -215,7 +223,7 @@
   document.addEventListener("pointerout", (e) => {
     if (VF.target && !(e.relatedTarget && VF.target.contains(e.relatedTarget)) && e.target.closest && e.target.closest(VF_SEL) === VF.target) vfHide();
   }, { passive: true });
-  addEventListener("scroll", () => { if (VF.target) vfHide(); if (L.on && !L.touch) lClose(); }, { passive: true });
+  addEventListener("scroll", () => { VF.scrollT = performance.now(); if (VF.target) vfHide(); if (L.on && !L.touch) lClose(); }, { passive: true });
   addEventListener("resize", () => { vfHide(); lClose(); });
 
   // Shift held: the loupe

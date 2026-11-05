@@ -101,7 +101,9 @@
     // sensitive (marked in the Workshop): blurred until clicked once; any frame marked veils the tile
     const veiled = (x.explicit || hov.some((f) => f.explicit)) && !(stack ? hov : [x]).every((f) => !f.explicit || A.revealed.has(f.id));
     const w = rowH() * x.ar * dpr() * 1.1;
-    const lq = x.lq ? `<span class="lq" style="background-image:url(${x.lq})"></span>` : `<span class="lq" style="background:${esc(x.pal[0] || "")}"></span>`;
+    // the soft preview is the tile's own background (none for a veiled one: even soft, it shows too much)
+    const bg = x.lq && !veiled ? `;background-image:url(${x.lq})` : x.pal[0] ? `;background-color:${esc(x.pal[0])}` : "";
+    const lq = "";
     const sel = A.selecting ? `<span class="tick" aria-hidden="true">✓</span>` : "";
     const bt = o.badge ? o.badge(x) : A.workshop && A.workshop.badge ? A.workshop.badge(x) : "";
     const badge = bt ? `<span class="badge">${esc(bt)}</span>` : "";
@@ -111,7 +113,7 @@
     const fav = V && V.isFav(x.id), fresh = V && !o.noNew && V.isNew(x.id);
     const marks = V ? `<span class="fav" aria-hidden="true">${ICON.heartOn}</span>${fresh ? `<span class="new-pill">New</span>` : ""}` : "";
     const veil = veiled ? `<span class="veil" aria-hidden="true">${ICON.eyeOff}<b>Sensitive</b><span>May be upsetting · click to show</span></span>` : "";
-    return `<button class="tile${stack ? " burst" : ""}${loose ? " loose" : ""}${veiled ? " veiled" : ""}${A.sel.has(x.id) ? " sel" : ""}${fav ? " is-fav" : ""}" data-id="${esc(x.id)}"${stack ? ` data-frames="${esc(hov.map((f) => f.id).join(","))}"` : ""}${loose ? ` data-burst="${esc(fr[0].id)}" data-k="${fr.indexOf(x) + 1}"` : ""} style="--ar:${x.ar.toFixed(3)}" aria-label="${esc((veiled ? "Sensitive photograph, may be upsetting; activate to show. " : "") + titleOf(x) + ", " + fmtDate(x.t) + (fav ? ", in your favourites" : ""))}">${lq}<img src="${esc(src(x, w))}" alt="" loading="lazy" decoding="async" draggable="false" style="--fx:${(x.fp[0] * 100).toFixed(1)}%;--fy:${(x.fp[1] * 100).toFixed(1)}%">${veil}${loose ? `<span class="bk" aria-hidden="true">${fr.indexOf(x) + 1}<i>/</i>${fr.length}</span>` : ""}<span class="cap"><b>${esc(titleOf(x))}</b><span>${esc(sub)}</span></span>${badge}${scrub}${sel}${marks}</button>`;
+    return `<button class="tile${stack ? " burst" : ""}${loose ? " loose" : ""}${veiled ? " veiled" : ""}${A.sel.has(x.id) ? " sel" : ""}${fav ? " is-fav" : ""}" data-id="${esc(x.id)}"${stack ? ` data-frames="${esc(hov.map((f) => f.id).join(","))}"` : ""}${loose ? ` data-burst="${esc(fr[0].id)}" data-k="${fr.indexOf(x) + 1}"` : ""} style="--ar:${x.ar.toFixed(3)}${bg}" aria-label="${esc((veiled ? "Sensitive photograph, may be upsetting; activate to show. " : "") + titleOf(x) + ", " + fmtDate(x.t) + (fav ? ", in your favourites" : ""))}">${lq}<img src="${esc(src(x, w))}" alt="" loading="lazy" decoding="async" draggable="false" style="--fx:${(x.fp[0] * 100).toFixed(1)}%;--fy:${(x.fp[1] * 100).toFixed(1)}%">${veil}${loose ? `<span class="bk" aria-hidden="true">${fr.indexOf(x) + 1}<i>/</i>${fr.length}</span>` : ""}<span class="cap"><b>${esc(titleOf(x))}</b><span>${esc(sub)}</span></span>${badge}${scrub}${sel}${marks}</button>`;
   }
   // With bursts opened (the header's bursts button, or X), a list's burst tiles give way to every
   // frame of the burst, each a tile of its own, in the burst's order; the viewer steps them as
@@ -253,7 +255,8 @@
 <main id="gp-main" tabindex="-1"></main>
 ${footer(nav)}
 <nav class="gp-tabs" aria-label="Sections" style="--n:${tabs.length}">${tabs.map(([id, l, ic]) => `<a href="#/${id}" data-tab="${id}">${ICON[ic]}<span>${esc(l)}</span></a>`).join("")}</nav>
-<button class="to-top icon-btn" data-act="top" aria-label="Back to top" title="Back to top">${ICON.up}</button>`;
+<button class="to-top icon-btn" data-act="top" aria-label="Back to top" title="Back to top">${ICON.up}</button>
+<div class="scroll-shield" aria-hidden="true"></div>`;
     paintTheme();
     if (GP.sky) GP.sky.start();
     if (GP.newsletter) { GP.newsletter.paint(); GP.newsletter.watch(); }
@@ -863,7 +866,8 @@ ${filterPanel(q)}
     }
     if (Q.jobs.length) {
       qLater();
-      addEventListener("scroll", () => { if (Q.jobs.length) fillNear(); }, { passive: true, signal });
+      let fr = 0;
+      addEventListener("scroll", () => { if (Q.jobs.length && !fr) fr = requestAnimationFrame(() => { fr = 0; fillNear(); }); }, { passive: true, signal });
     }
     mountScrubber(root, signal);
   }
@@ -1250,7 +1254,7 @@ ${filterPanel(q)}
     const flag = s.captive ? "Photographed in captivity." : s.domestic ? "A domestic animal." : s.review ? "Rare or out of range in Florida: this identification deserves a second look." : s.uncertain ? "Identification uncertain." : "";
     const plate = GP.plates && s.lifeNo && s.family ? GP.plates.plateOf(m, s.family) : null;
     const html = `<div class="wrap page sp-page">
-  ${GP.plates ? `<div class="sp-paper">${GP.plates.wash(s)}</div>` : ""}
+  ${GP.plates ? `<div class="sp-paper">${GP.plates.paintWash ? `<canvas class="paper-wash" width="640" height="448" data-wash aria-hidden="true"></canvas><i class="paper-grain"></i>` : GP.plates.wash(s)}</div>` : ""}
   <div class="sp-head reveal"><div>
     <div class="kicker">${esc([s.famName, s.order].filter(Boolean).join(" · ") || "Species")}${s.lifeNo ? ` · Life list No. ${s.lifeNo}` : ""}</div>
     <h1${s.call ? ` data-sing="${esc(s.slug)}"` : ""}>${esc(s.name)}</h1>${s.bin ? `<div class="binomial">${esc(s.bin)}</div>` : ""}
@@ -1279,6 +1283,7 @@ ${filterPanel(q)}
 </div>`;
     const after = (main, signal) => {
       if (GP.calls) GP.calls.onSpeciesPage(s);
+      if (GP.plates && GP.plates.paintWash) GP.plates.paintWash(main.querySelector("canvas[data-wash]"), s);
       main.addEventListener("click", (e) => { if (e.target.closest('[data-sp="play"]')) GP.exhibit(s.heroes, { title: s.name }); }, { signal });
       if (GP.tint) GP.tint.page(s.best);
     };
@@ -1723,7 +1728,19 @@ ${filterPanel(q)}
     else if ((e.key === "s" || e.key === "S") && GP.scape) GP.scape.toggle();
   }
   let lastY = 0;
+  // While the page is moving, what slides under a still pointer isn't hovered: a clear layer over
+  // the content takes the pointer, so no lift, shadow or caption animation starts and stops on
+  // every frame and the browser doesn't hit-test the grid underneath. (One element changes, not
+  // the whole page.) The header, toolbar, scrubber and menus sit above it.
+  function scrollingNow() {
+    const sh = A.shield && A.shield.isConnected ? A.shield : (A.shield = $(".scroll-shield"));
+    if (!sh) return;
+    if (!A.scrolling) { A.scrolling = true; sh.classList.add("on"); }
+    clearTimeout(A.scrollT);
+    A.scrollT = setTimeout(() => { A.scrolling = false; sh.classList.remove("on"); }, 180);
+  }
   function onScroll() {
+    scrollingNow();
     const y = window.scrollY, head = $(".gp-head");
     if (!head) return;
     if (A.tipOn) { tipFor(null); A.tipOn = false; }
@@ -1764,7 +1781,7 @@ ${filterPanel(q)}
         if (img.tagName !== "IMG") return;
         img.classList.add("in");
         // photographs come into focus from their subject outward
-        if (GP.fx && (img.dataset.lq || img.parentElement && img.parentElement.classList.contains("tile")) && !img.closest(".no-arrive")) GP.fx.arrive(img);
+        if (GP.fx && img.dataset.lq && !img.closest(".no-arrive")) GP.fx.arrive(img);
       }, true);
       document.addEventListener("error", (e) => { if (e.target.tagName === "IMG") e.target.classList.add("bad"); }, true);
       document.addEventListener("pointerover", (e) => { const el = e.target.closest && e.target.closest("[data-tip]"); if (el) tipFor(el, e); }, { passive: true });

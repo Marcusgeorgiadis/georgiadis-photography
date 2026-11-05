@@ -99,7 +99,7 @@
       <div class="kicker">The life list, grown in order</div>
       <div class="tl-date display">${h.esc(h.fmtDate(first.first))}</div>
       <div class="tl-bar" aria-hidden="true"><i></i><span class="sc">${h.esc(h.fmtShort(first.first))}</span><span class="sc">${h.esc(h.fmtShort(last.first))}</span></div>
-      <a class="tl-now" href="#/species/${h.esc(first.slug)}"><span class="tl-now-img">${h.cover(first.best, 240)}</span><span class="tl-now-t"><span class="sc">New · No. <b>001</b></span><b class="nm">${h.esc(first.name)}</b><i class="binomial">${h.esc(first.bin || "")}</i><span class="tl-lin sc"></span></span></a>
+      <a class="tl-now" href="#/species/${h.esc(first.slug)}"><span class="tl-now-img no-arrive">${h.cover(first.best, 240)}</span><span class="tl-now-t"><span class="sc">New · No. <b>001</b></span><b class="nm">${h.esc(first.name)}</b><i class="binomial">${h.esc(first.bin || "")}</i><span class="tl-lin sc"></span></span></a>
       <p class="tl-hint sc">Scroll to grow the tree</p>
       <button class="btn tl-play" data-tl="play" aria-pressed="false">▶ Grow it for me</button>
     </div>
@@ -121,13 +121,19 @@
     const lineage = (s) => [s.cls ? (model.tree.get(s.cls) || {}).common || s.cls : "", s.order, s.famName].filter(Boolean).join(" › ");
     const t0 = Date.parse(life[0].first), t1 = Date.parse(life[N - 1].first);
     let shown = -1;
+    // each branch, label and leaf with the step it appears at; a step only touches what changes
+    const items = [...links, ...labels, ...leaves].map((e) => ({ e, t: +e.dataset.t }));
+    const byT = new Map(leaves.map((e) => [+e.dataset.t, e]));
+    let newLeaf = null;
 
     function setK(k) {
       if (k === shown) return;
+      const lo = Math.min(k, shown), hi = Math.max(k, shown);
+      for (const it of items) if (shown < 0 || (it.t > lo && it.t <= hi)) it.e.classList.toggle("on", it.t <= k);
       shown = k;
-      for (const l of links) l.classList.toggle("on", +l.dataset.t <= k);
-      for (const l of labels) l.classList.toggle("on", +l.dataset.t <= k);
-      for (const l of leaves) { const t = +l.dataset.t; l.classList.toggle("on", t <= k); l.classList.toggle("new", t === k); }
+      if (newLeaf) newLeaf.classList.remove("new");
+      newLeaf = byT.get(k) || null;
+      if (newLeaf) newLeaf.classList.add("new");
       core.textContent = h.fmtN(k);
       const s = life[Math.max(0, k - 1)];
       date.textContent = h.fmtDate(s.first);
@@ -140,18 +146,22 @@
       now.querySelector(".tl-lin").textContent = lineage(s);
       now.classList.toggle("empty", k === 0);
       hint.textContent = k >= N ? `${h.plural(N, "species", "species")} in ${h.plural(T.nodes.filter((n) => n.kind === "fam").length, "family", "families")}, and counting` : "Scroll to grow the tree";
-      now.classList.remove("pop"); void now.offsetWidth; now.classList.add("pop");
+      const pic = now.querySelector(".tl-now-img");
+      if (pic.animate && !reduced()) pic.animate([{ transform: "scale(0.72)", opacity: 0.2 }, { transform: "none", opacity: 1 }], { duration: 640, easing: "cubic-bezier(.34,1.56,.64,1)" });
     }
 
     if (reduced()) { el.classList.add("still"); setK(N); }
     else {
-      let raf = 0;
+      let raf = 0, head = 64, stage = 0;
+      const measure = () => { head = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--head-h")) || 64; stage = el.querySelector(".tl-stage").offsetHeight; };
+      measure();
+      addEventListener("resize", measure, { passive: true, signal });
       const onScroll = () => {
         if (raf) return;
         raf = requestAnimationFrame(() => {
           raf = 0;
-          const r = el.getBoundingClientRect(), stage = el.querySelector(".tl-stage").offsetHeight;
-          const head = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--head-h")) || 64;
+          const r = el.getBoundingClientRect();
+          if (r.bottom < 0 || r.top > innerHeight) return;
           const run = Math.max(1, r.height - stage);
           const p = Math.max(0, Math.min(1, (head - r.top) / run));
           // the first species is already there when the tree comes into view
