@@ -69,6 +69,7 @@
     grid: I('<rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/>'),
     rows: I('<path d="M4 6h16M4 12h16M4 18h16"/>'),
     menu: I('<path d="M4 7h16M4 12h16M4 17h10"/>'),
+    sliders: I('<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>'),
     home: I('<path d="M4 10.5 12 4l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5.5h-5V20H5a1 1 0 0 1-1-1z"/>'),
     frame: I('<rect x="4" y="4" width="16" height="16" rx="1.5"/><rect x="7.5" y="7.5" width="9" height="9" rx=".5"/><path d="m7.5 14.5 2.6-2.8 2.4 2.3 1.6-1.6 2.4 2.6"/>'),
     feather: I('<path d="M19.5 4.5c-6 0-11 4.6-11 11v4"/><path d="M19.5 4.5c.4 6.8-3.7 11-9.6 11H8.5"/><path d="M12.6 11.4H17M10.3 13.8h4.6"/>'),
@@ -85,7 +86,8 @@
     if (!x) return "";
     try { return A.adapter.src(x, bucket(w)) || ""; } catch (e) { return ""; }
   }
-  function rowH() { return parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--rowh")) || 240; }
+  let rowMemo = 0;
+  function rowH() { return rowMemo || (rowMemo = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--rowh")) || 240); }
   function regCtx(list) { const k = "c" + ++A.ctxN; A.ctx.set(k, list); return k; }
   const ctxBase = new Map(); // grid context -> the list (and its parts) it was drawn from, before opening bursts
 
@@ -423,6 +425,8 @@ ${footer(nav)}
 
   function render(r) {
     clearTimers();
+    qReset();
+    if (A.resAC) { A.resAC.abort(); A.resAC = null; }
     A.ff = null; // a filtered gallery sets its frame filter as it builds its list
     tipFor(null);
     if (GP.tint) GP.tint.page(null);
@@ -509,6 +513,18 @@ ${footer(nav)}
   /* ---------- gallery ---------- */
   const GROUPS = [["", "Everything"], ["bird", "Birds"], ["mammal", "Mammals"], ["reptile", "Reptiles"], ["small", "Small lives"], ["scene", "Scenes"]];
   const SORTS = [["new", "Newest first"], ["old", "Oldest first"], ["best", "Highest rated"], ["colour", "By colour"]];
+  const LIGHTS = ["Golden hour", "Blue hour", "Morning", "Midday", "Afternoon", "Night"];
+  const SWATCH = { red: "#c4402f", orange: "#e07b25", yellow: "#e6c23a", green: "#4f8a3a", teal: "#2c8c8c", blue: "#2f6db3", purple: "#7a4fa3", pink: "#e58fb5", brown: "#7a5232", white: "#f4f2ec", black: "#151515", grey: "#8c8c88" };
+  // The panel's filters besides type and rating: one value each, each with its own key in the
+  // address, so a filtered gallery can be shared or bookmarked.
+  const FACETS = [
+    { k: "l", label: "Light", opts: () => LIGHTS.map((v) => [v, v]), test: (v) => (x) => x.light === v },
+    { k: "b", label: "Doing", opts: () => M.BEHAVIOURS.map(([v]) => [v, v]), test: (v) => (x) => (x.behaviours || []).includes(v) },
+    { k: "c", label: "Colour", opts: () => Object.keys(SWATCH).map((v) => [v, v[0].toUpperCase() + v.slice(1)]), test: (v) => { const f = M.COLOURS && M.COLOURS[v]; return f ? (x) => (x.hsl || []).slice(0, 3).some(f) : () => true; }, chip: (v, l) => `<i class="sw" style="background:${SWATCH[v]}"></i>${l}`, name: (v, l) => l + " tones" },
+    { k: "mo", label: "Month", opts: () => { const have = new Set(A.model.photos.map((x) => x.month)); return MONTHS.map((m, i) => [String(i + 1), MON[i]]).filter(([v]) => have.has(+v)); }, test: (v) => (x) => x.month === +v, name: (v) => MONTHS[+v - 1] || v },
+    { k: "y", label: "Year", opts: () => [...new Set(A.model.photos.map((x) => x.year).filter(Boolean))].sort().map((y) => [String(y), String(y)]), test: (v) => (x) => x.year === +v },
+  ];
+  const FILTER_KEYS = ["g", "r", "sort", "all"].concat(FACETS.map((f) => f.k));
   function hueKey(x) {
     const c = x.hsl.slice(0, 4).sort((a, b) => b[1] * (1 - Math.abs(2 * b[2] - 1)) - a[1] * (1 - Math.abs(2 * a[2] - 1)))[0];
     if (!c) return 999;
@@ -519,13 +535,15 @@ ${footer(nav)}
     const m = A.model, all = q.get("all") === "1";
     const query = q.get("q") || "", g = q.get("g") || "", rmin = +(q.get("r") || 0), sort = q.get("sort") || (query ? "best" : "new");
     const sq = m.search(query), fresh = q.get("new") === "1" && GP.visitor;
+    const fv = FACETS.map((f) => (q.get(f.k) ? f.test(q.get(f.k)) : null)).filter(Boolean);
     const pass = (x) => {
       if (fresh && !GP.visitor.isNew(x.id)) return false;
       if (g === "small" ? !["insect", "other"].includes(x.group) : g && x.group !== g) return false;
       if (rmin && x.rating < rmin) return false;
+      for (const t of fv) if (!t(x)) return false;
       return sq.test(x);
     };
-    const filtering = !!(fresh || g || rmin || !sq.empty);
+    const filtering = !!(fresh || g || rmin || fv.length || !sq.empty);
     let list;
     if (all) list = m.photos.filter(pass);
     else if (!filtering) list = m.heroes.slice();
@@ -548,41 +566,139 @@ ${footer(nav)}
     else if (sort === "best") list.sort((a, b) => b.score - a.score);
     else if (sort === "colour") list.sort((a, b) => hueKey(a) - hueKey(b));
     else list.sort((a, b) => -byT(a, b));
-    return { list, sq, sort, all, g, rmin, query, fresh: !!fresh };
+    return { list, sq, sort, all, g, rmin, query, fresh: !!fresh, q };
+  }
+  // The filters in force, as [address key, label] pairs, for the chips above the results.
+  function activeFilters(q) {
+    const out = [], query = q.get("q") || "";
+    const g = q.get("g"); if (g) out.push(["g", (GROUPS.find((x) => x[0] === g) || [g, g])[1]]);
+    const r = +(q.get("r") || 0); if (r) out.push(["r", `★ ${r}${r < 5 ? "+" : ""}`]);
+    for (const f of FACETS) {
+      const v = q.get(f.k);
+      if (!v) continue;
+      const opt = f.opts().find((o) => o[0] === v), l = opt ? opt[1] : v;
+      out.push([f.k, f.name ? f.name(v, l) : l]);
+    }
+    const so = q.get("sort");
+    if (so && so !== (query ? "best" : "new")) out.push(["sort", (SORTS.find((x) => x[0] === so) || [so, so])[1]]);
+    if (q.get("all") === "1") out.push(["all", "Every frame"]);
+    return out;
+  }
+  function densButtons() {
+    return `<span class="dens" role="group" aria-label="Photograph size">${[["s", "Small"], ["m", "Medium"], ["l", "Large"]].map(([d, l]) => `<button class="dens-b" data-dens="${d}" aria-pressed="${density() === d}" title="${l} photographs" aria-label="${l} photographs"><i></i></button>`).join("")}</span>`;
+  }
+  // Everything that narrows or orders the gallery, in one panel: a popover under the Filters
+  // button, or a sheet from the foot of the screen on a phone. Changes apply as they're made.
+  function filterPanel(q) {
+    const g = q.get("g") || "", r = +(q.get("r") || 0), query = q.get("q") || "", sort = q.get("sort") || (query ? "best" : "new"), all = q.get("all") === "1";
+    const sec = (label, body, cls = "") => `<section class="${cls}"><h3 class="sc">${label}</h3><div class="chips">${body}</div></section>`;
+    return `<div class="gfp-scrim" data-gf="close" aria-hidden="true"></div>
+<div class="gfp" id="gp-filters" role="dialog" aria-label="Filters" tabindex="-1" hidden>
+  <div class="gfp-h"><b>Filters</b><span class="gfp-n"></span><button class="link gfp-clear" type="button" data-gf="clear">Clear all</button><button class="icon-btn" type="button" data-gf="close" aria-label="Close filters">${ICON.close}</button></div>
+  <div class="gfp-b">
+    ${sec("Type", GROUPS.map(([v, l]) => chip(esc(l), `data-g="${v}"`, g === v)).join(""))}
+    ${sec("Rating", [0, 3, 4, 5].map((n) => chip(n ? `★ ${n}${n < 5 ? "+" : ""}` : "Any", `data-r="${n}"`, r === n)).join(""))}
+    ${FACETS.map((f) => { const v = q.get(f.k) || ""; return sec(f.label, chip("Any", `data-f="${f.k}" data-v=""`, !v) + f.opts().map(([o, l]) => chip(f.chip ? f.chip(o, esc(l)) : esc(l), `data-f="${f.k}" data-v="${esc(o)}"`, v === o)).join("")); }).join("")}
+    ${sec("Order", SORTS.map(([v, l]) => chip(esc(l), `data-sort="${v}"`, sort === v)).join(""))}
+    ${sec("Show", chip("Photographs", 'data-all="0"', !all) + chip("Every frame", 'data-all="1"', all))}
+    <section class="gfp-phone"><h3 class="sc">Photograph size</h3>${densButtons()}</section>
+  </div>
+  <div class="gfp-f"><button class="chip gfp-phone" type="button" data-gal="surprise">${ICON.shuffle} Surprise me</button><button class="chip gfp-phone" type="button" data-gal="play">${ICON.play} Play these</button><button class="btn primary gfp-done" type="button" data-gf="close">Show <span class="gfp-n2"></span></button></div>
+</div>`;
+  }
+  // The panel's buttons, the Filters count and the totals follow the address after each change.
+  function paintFilters(q, n, all) {
+    const g = q.get("g") || "", r = +(q.get("r") || 0), query = q.get("q") || "", sort = q.get("sort") || (query ? "best" : "new");
+    $$(".gfp [data-g]").forEach((c) => c.setAttribute("aria-pressed", String(g === c.dataset.g)));
+    $$(".gfp [data-r]").forEach((c) => c.setAttribute("aria-pressed", String(r === +c.dataset.r)));
+    $$(".gfp [data-f]").forEach((c) => c.setAttribute("aria-pressed", String((q.get(c.dataset.f) || "") === c.dataset.v)));
+    $$(".gfp [data-sort]").forEach((c) => c.setAttribute("aria-pressed", String(sort === c.dataset.sort)));
+    $$(".gfp [data-all]").forEach((c) => c.setAttribute("aria-pressed", String((c.dataset.all === "1") === all)));
+    const k = activeFilters(q).length, b = $(".tb-n");
+    if (b) { b.textContent = k; b.hidden = !k; }
+    const txt = plural(n, all ? "frame" : "photograph");
+    $$(".gfp-n").forEach((e) => (e.textContent = txt));
+    $$(".gfp-n2").forEach((e) => (e.textContent = txt));
   }
   function viewGallery(q) {
-    const { list, sq, sort, all, g, rmin, query, fresh } = galleryList(q);
+    const { list, sq, sort, all, query, fresh } = galleryList(q);
+    const nf = activeFilters(q).length;
     const html = `
-<div class="toolbar"><div class="wrap">
-  <label class="search">${ICON.search}<span class="visually-hidden">Search</span><input id="gp-q" type="search" autocomplete="off" spellcheck="false" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="gp-sugg" placeholder="Try “herons in flight”, “golden hour”, “otters”, “5 stars October”" value="${esc(query)}"><div class="sugg" id="gp-sugg" role="listbox" hidden></div></label>
-  <div class="facet-row" role="group" aria-label="Filters">
-    ${GROUPS.map(([v, l]) => chip(esc(l), `data-g="${v}"`, g === v)).join("")}
-    <span class="lbl">Rating</span>${[0, 3, 4, 5].map((n) => chip(n ? `★ ${n}${n < 5 ? "+" : ""}` : "Any", `data-r="${n}"`, rmin === n)).join("")}
-    <span class="lbl">Order</span><select id="gp-sort" aria-label="Order">${SORTS.map(([v, l]) => `<option value="${v}"${sort === v ? " selected" : ""}>${l}</option>`).join("")}</select>
-    ${chip("Every frame", 'data-all="1"', all)}
-    <span class="facet-tools"><span class="dens" role="group" aria-label="Photograph size">${[["s", "Small"], ["m", "Medium"], ["l", "Large"]].map(([d, l]) => `<button class="dens-b" data-dens="${d}" aria-pressed="${density() === d}" title="${l} photographs"><i></i></button>`).join("")}</span>
-      <button class="chip" data-gal="surprise" title="A random photograph (R)">${ICON.shuffle} Surprise me</button>
-      <button class="chip" data-gal="play" title="Play these as an exhibition">${ICON.play} Play these</button></span>
-  </div>
+<div class="toolbar"><div class="wrap tb-row">
+  <label class="search">${ICON.search}<span class="visually-hidden">Search</span><input id="gp-q" type="search" autocomplete="off" spellcheck="false" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="gp-sugg" placeholder="Try “herons in flight”, “golden hour”, “otters”" value="${esc(query)}"><div class="sugg" id="gp-sugg" role="listbox" hidden></div></label>
+  <button class="btn tb-filters" type="button" data-gal="filters" aria-haspopup="dialog" aria-expanded="false" aria-controls="gp-filters">${ICON.sliders}<span>Filters</span><b class="tb-n"${nf ? "" : " hidden"}>${nf}</b></button>
+  <span class="tb-tools">${densButtons()}<button class="chip" type="button" data-gal="surprise" title="A random photograph (R)">${ICON.shuffle} Surprise me</button><button class="chip" type="button" data-gal="play" title="Play these as an exhibition">${ICON.play} Play these</button></span>
 </div></div>
-<div class="wrap page" style="padding-top:0">${fresh ? `<div class="gal-new"><span><b>New since your last visit.</b> ${plural(list.length, "photograph")} arrived since ${GP.visitor.previousVisit ? esc(fmtDate(GP.visitor.previousVisit)) : "you were last here"}.</span><a class="btn ghost" href="#/gallery">Show everything</a></div>` : ""}<div id="gp-results">${galleryResults(list, sq, sort, all, query)}</div></div>`;
+${filterPanel(q)}
+<div class="wrap page" style="padding-top:0">${fresh ? `<div class="gal-new"><span><b>New since your last visit.</b> ${plural(list.length, "photograph")} arrived since ${GP.visitor.previousVisit ? esc(fmtDate(GP.visitor.previousVisit)) : "you were last here"}.</span><a class="btn ghost" href="#/gallery">Show everything</a></div>` : ""}<div id="gp-results">${galleryResults(list, sq, sort, all, query, q)}</div></div>`;
     const after = (main, signal) => {
-      const input = $("#gp-q", main);
+      const input = $("#gp-q", main), panel = $("#gp-filters", main), fbtn = $(".tb-filters", main), tb = $(".toolbar", main);
+      paintFilters(q, list.length, all);
+      if (innerWidth <= 640) input.placeholder = "Try “herons in flight”";
+      const tbh = () => document.documentElement.style.setProperty("--tb-h", tb.offsetHeight + "px");
+      tbh();
+      if ("ResizeObserver" in window) { const ro = new ResizeObserver(tbh); ro.observe(tb); signal.addEventListener("abort", () => ro.disconnect()); }
       let t;
       input.addEventListener("input", () => { clearTimeout(t); t = setTimeout(() => updateGallery((qq) => { if (input.value.trim()) qq.set("q", input.value.trim()); else qq.delete("q"); }), 160); });
       input.addEventListener("keydown", (e) => { if (e.key === "Escape" && input.value) { input.value = ""; updateGallery((qq) => qq.delete("q")); e.stopPropagation(); } });
-      $("#gp-sort", main).addEventListener("change", (e) => updateGallery((qq) => qq.set("sort", e.target.value)));
       suggestions(input, signal, () => updateGallery((qq) => { if (input.value.trim()) qq.set("q", input.value.trim()); else qq.delete("q"); }));
+      // the panel
+      const phone = () => innerWidth <= 860;
+      const place = () => {
+        if (phone()) { panel.style.top = panel.style.right = ""; return; }
+        const r = fbtn.getBoundingClientRect();
+        panel.style.top = Math.round(r.bottom + 8) + "px";
+        panel.style.right = Math.max(12, Math.round(innerWidth - r.right)) + "px";
+      };
+      const isOpen = () => !panel.hidden && panel.classList.contains("on");
+      const openP = () => {
+        clearTimeout(panel._t);
+        panel.hidden = false; place();
+        fbtn.setAttribute("aria-expanded", "true");
+        document.documentElement.classList.add("gp-sheet");
+        requestAnimationFrame(() => panel.classList.add("on"));
+        panel.focus({ preventScroll: true });
+      };
+      const closeP = (restore = true) => {
+        if (panel.hidden) return;
+        panel.classList.remove("on");
+        fbtn.setAttribute("aria-expanded", "false");
+        document.documentElement.classList.remove("gp-sheet");
+        panel._t = setTimeout(() => { if (!panel.classList.contains("on")) panel.hidden = true; }, reduced() ? 0 : 260);
+        if (restore && panel.contains(document.activeElement)) fbtn.focus({ preventScroll: true });
+      };
+      addEventListener("resize", () => { if (isOpen()) place(); }, { passive: true, signal });
+      panel.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.stopPropagation(); closeP(); } });
+      document.addEventListener("pointerdown", (e) => {
+        if (!isOpen() || phone() || !e.target.closest) return;
+        if (e.target.closest("#gp-filters, .tb-filters")) return;
+        closeP(false); A.eatClick = performance.now() + 500;
+      }, { capture: true, signal });
+      signal.addEventListener("abort", () => document.documentElement.classList.remove("gp-sheet"));
       main.addEventListener("click", (e) => {
         const d = e.target.closest("[data-dens]");
-        if (d) { setDensity(d.dataset.dens); $$("[data-dens]", main).forEach((b) => b.setAttribute("aria-pressed", String(b === d))); return; }
+        if (d) { setDensity(d.dataset.dens); $$("[data-dens]", main).forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.dens === d.dataset.dens))); return; }
+        const gf = e.target.closest("[data-gf]");
+        if (gf) {
+          if (gf.dataset.gf === "close") closeP();
+          else if (gf.dataset.gf === "clear") updateGallery((qq) => FILTER_KEYS.forEach((k) => qq.delete(k)));
+          return;
+        }
         const ga = e.target.closest("[data-gal]");
-        if (ga) { if (ga.dataset.gal === "surprise") surprise(); else { const l = galleryList(parseHash().q).list; if (l.length) GP.exhibit(l, { title: (parseHash().q.get("q") ? `“${parseHash().q.get("q")}”` : "The gallery") }); } return; }
-        const c = e.target.closest(".facet-row .chip, .understood .chip");
+        if (ga) {
+          if (ga.dataset.gal === "filters") { if (isOpen()) closeP(); else openP(); }
+          else if (ga.dataset.gal === "surprise") { closeP(false); surprise(); }
+          else { closeP(false); const l = galleryList(parseHash().q).list; if (l.length) GP.exhibit(l, { title: (parseHash().q.get("q") ? `“${parseHash().q.get("q")}”` : "The gallery") }); }
+          return;
+        }
+        const c = e.target.closest(".gfp .chip, .result-chips .chip");
         if (!c) return;
         if (c.dataset.g != null) updateGallery((qq) => (c.dataset.g ? qq.set("g", c.dataset.g) : qq.delete("g")));
         else if (c.dataset.r != null) updateGallery((qq) => (+c.dataset.r ? qq.set("r", c.dataset.r) : qq.delete("r")));
-        else if (c.dataset.all) updateGallery((qq) => (qq.get("all") === "1" ? qq.delete("all") : qq.set("all", "1")));
+        else if (c.dataset.f != null) updateGallery((qq) => (c.dataset.v ? qq.set(c.dataset.f, c.dataset.v) : qq.delete(c.dataset.f)));
+        else if (c.dataset.sort != null) updateGallery((qq) => (c.dataset.sort === (qq.get("q") ? "best" : "new") ? qq.delete("sort") : qq.set("sort", c.dataset.sort)));
+        else if (c.dataset.all != null) updateGallery((qq) => (c.dataset.all === "1" ? qq.set("all", "1") : qq.delete("all")));
+        else if (c.dataset.unset != null) updateGallery((qq) => qq.delete(c.dataset.unset));
         else if (c.dataset.drop != null) {
           const cur = parseHash().q.get("q") || "";
           const now = GP.model.parseQuery(cur, A.model);
@@ -598,6 +714,7 @@ ${footer(nav)}
           input.value = rest; updateGallery((qq) => (rest ? qq.set("q", rest) : qq.delete("q")));
         }
       }, { signal });
+      armResults($("#gp-results", main));
     };
     const after2 = (main, signal) => { after(main, signal); if (GP.tint) GP.tint.follow(main, signal); };
     return { html, after: after2, title: "Gallery" };
@@ -608,6 +725,7 @@ ${footer(nav)}
     store.set("gp-density", d);
     document.documentElement.classList.remove("dens-s", "dens-m", "dens-l");
     document.documentElement.classList.add("dens-" + d);
+    rowMemo = 0;
     // tiles are already laid out by flex; new sources at the new size come with the next render
   }
   let vocab = null;
@@ -679,21 +797,206 @@ ${footer(nav)}
     box.addEventListener("pointerdown", (e) => { const b = e.target.closest("[data-i]"); if (b) { e.preventDefault(); pick(+b.dataset.i); } }, { signal });
     input.addEventListener("blur", () => setTimeout(close, 120), { signal });
   }
-  function galleryResults(list, sq, sort, all, query) {
-    const understood = sq.terms.length ? `<div class="understood chips" aria-label="Understood as">${sq.terms.map((t, i) => `<button class="chip" data-drop="${i}" title="Remove" aria-pressed="true">${esc(t.label)} ×</button>`).join("")}</div>` : "";
-    const head = `<div class="result-line"><span class="count" aria-live="polite">${plural(list.length, all ? "frame" : "photograph")}${query ? "" : all ? "" : A.expand ? " · bursts opened" : " · bursts stacked"}</span>${understood}</div>`;
-    if (!list.length) return head + `<div class="empty"><h2>Nothing matches yet</h2><p>Try fewer words, or a species, month, behaviour or colour: “egrets”, “March”, “fishing”, “golden hour”, “red”.</p></div>`;
-    if ((sort === "new" || sort === "old") && !query) {
-      const groups = [];
-      for (const x of list) { const g = groups[groups.length - 1]; if (g && g.fid === x.oid) g.items.push(x); else groups.push({ fid: x.oid, items: [x] }); }
-      const k = regCtx(expand(list, { stacks: !all }));
-      ctxBase.set(k, { list, o: { stacks: !all }, parts: groups.map((g) => g.items) });
-      return head + groups.map((g, gi) => {
-        const o = A.model.outingById.get(g.fid);
-        return `<section class="sec"><div class="sec-h"><h2><a href="#/outings/${esc(g.fid)}" style="text-decoration:none">${esc(fmtDate(o ? o.date : g.items[0].t))}</a></h2><span class="meta">${esc(o ? o.type : "")} · ${plural(g.items.length, all ? "frame" : "photograph")}${o ? " · " + plural(o.species.length, "species", "species") : ""}</span></div><div class="flow" data-ctx="${k}" data-part="${gi}">${expand(g.items, { stacks: !all }).map((x) => tile(x, { stacks: !all })).join("")}</div></section>`;
-      }).join("");
+  // An outing's day, as a small card in the run of photographs where that outing begins.
+  function dayMark(oid, n, x) {
+    const o = A.model.outingById.get(oid), iso = o ? o.date : x.t;
+    const d = ymd(iso) || [0, 1, 1];
+    return `<a class="day-mark" href="#/outings/${esc(oid)}" style="--ar:0.62" aria-label="${esc(`${fmtDate(iso)}${o && o.type ? ", " + o.type : ""}: ${plural(n, "photograph")}`)}"><b>${d[2]}</b><span class="dm-m">${esc(MON[d[1] - 1])} · ${esc(weekday(iso).slice(0, 3))}</span>${o && o.type ? `<span class="dm-t">${esc(o.type)}</span>` : ""}<span class="dm-n">${plural(n, "photo")}</span></a>`;
+  }
+  // Long grids are drawn a screenful at a time: the first part at once, the rest in small batches
+  // while the page is idle, and straight away wherever the visitor scrolls or jumps to. Each batch
+  // is appended to its grid in order, so a grid only ever grows at its end.
+  const Q = { jobs: [], t: 0, idle: false, staged: [] };
+  const CHUNK = 36;
+  function qReset() {
+    Q.jobs = [];
+    if (Q.t) { if (Q.idle && window.cancelIdleCallback) cancelIdleCallback(Q.t); else clearTimeout(Q.t); Q.t = 0; }
+  }
+  function qStep() {
+    const j = Q.jobs.shift();
+    if (!j || !j.el.isConnected) return;
+    j.el.insertAdjacentHTML("beforeend", j.html);
+    if (j.last) { j.el.style.minHeight = ""; delete j.el.dataset.pending; }
+  }
+  function qPump() {
+    Q.t = 0;
+    const t0 = performance.now();
+    do qStep(); while (Q.jobs.length && performance.now() - t0 < 10);
+    if (Q.jobs.length) qLater();
+  }
+  function qLater() {
+    if (Q.t) return;
+    Q.idle = !!window.requestIdleCallback;
+    Q.t = Q.idle ? requestIdleCallback(qPump, { timeout: 250 }) : setTimeout(qPump, 40);
+  }
+  // draw every batch still waiting (before the grids are redrawn, or the page held in place)
+  function fillAll() { while (Q.jobs.length) qStep(); }
+  function fillTo(el) { const p = +el.dataset.part; while (Q.jobs.length && Q.jobs[0].part <= p) qStep(); }
+  function fillNear() {
+    while (Q.jobs.length) {
+      const j = Q.jobs[0], lc = j.el.lastElementChild;
+      const y = lc ? lc.getBoundingClientRect().bottom : j.el.getBoundingClientRect().top;
+      if (y > innerHeight * 2.5) break;
+      qStep();
     }
-    return head + `<div style="margin-top:14px">${flow(list, { stacks: !all })}</div>`;
+  }
+  // roughly how tall a grid of these photographs will be at this width, to hold its place
+  function estHeight(items, width) {
+    const rh = rowH(), gap = innerWidth <= 640 ? 4 : 8;
+    let w = 0, rows = 1;
+    for (const x of items) { const tw = rh * (x.ar || 1.5) + gap; if (w && w + tw > width) { rows++; w = tw; } else w += tw; }
+    return Math.round(rows * (rh * 1.1 + gap));
+  }
+  // After the results are in the page: queue what was held back and give the scrubber its legs.
+  function armResults(root) {
+    if (!root) return;
+    qReset();
+    if (A.resAC) A.resAC.abort();
+    A.resAC = new AbortController();
+    const signal = A.resAC.signal, staged = Q.staged;
+    Q.staged = [];
+    for (const st of staged) {
+      const el = root.querySelector(`.flow[data-ctx="${st.k}"][data-part="${st.part}"]`);
+      if (!el) continue;
+      if (st.chunks.length) { el.dataset.pending = "1"; el.style.minHeight = Math.max(0, estHeight(st.items, el.clientWidth || root.clientWidth) ) + "px"; }
+      st.chunks.forEach((html, i) => Q.jobs.push({ el, html, part: st.part, last: i === st.chunks.length - 1 }));
+    }
+    if (Q.jobs.length) {
+      qLater();
+      addEventListener("scroll", () => { if (Q.jobs.length) fillNear(); }, { passive: true, signal });
+    }
+    mountScrubber(root, signal);
+  }
+  // A grid's pieces (tiles, and in date order a day card where each outing begins), split into
+  // what is drawn now and the batches that follow.
+  function pieces(items, o, marks, counts) {
+    const out = [];
+    let last = null;
+    for (const x of expand(items, o)) {
+      if (marks && x.oid !== last) { out.push(dayMark(x.oid, counts.get(x.oid) || 0, x)); last = x.oid; }
+      out.push(tile(x, o));
+    }
+    return out;
+  }
+  function galleryResults(list, sq, sort, all, query, q) {
+    q = q || parseHash().q;
+    const chips = activeFilters(q).map(([k, l]) => `<button class="chip" data-unset="${k}" title="Remove" aria-label="Remove ${esc(l)}" aria-pressed="true">${esc(l)} ×</button>`).join("")
+      + sq.terms.map((t, i) => `<button class="chip" data-drop="${i}" title="Remove" aria-pressed="true">${esc(t.label)} ×</button>`).join("");
+    const head = `<div class="result-line"><span class="count" aria-live="polite">${plural(list.length, all ? "frame" : "photograph")}${query ? "" : all ? "" : A.expand ? " · bursts opened" : " · bursts stacked"}</span>${chips ? `<div class="result-chips understood chips" aria-label="Filters in force">${chips}</div>` : ""}</div>`;
+    Q.staged = [];
+    if (!list.length) return head + `<div class="empty"><h2>Nothing matches yet</h2><p>Try fewer words or filters, or a species, month, behaviour or colour: “egrets”, “March”, “fishing”, “golden hour”, “red”.</p></div>`;
+    const o = { stacks: !all };
+    // drawing everything at once (holding the page in place after a rebuild) or a screenful
+    let budget = A.keepScroll ? Infinity : innerWidth <= 640 ? 40 : 110;
+    const split = (k, part, items, ps) => {
+      const now = Math.max(0, Math.min(ps.length, budget));
+      budget -= now;
+      const rest = ps.slice(now), chunks = [];
+      for (let i = 0; i < rest.length; i += CHUNK) chunks.push(rest.slice(i, i + CHUNK).join(""));
+      if (chunks.length) Q.staged.push({ k, part, items, chunks });
+      return ps.slice(0, now).join("");
+    };
+    if ((sort === "new" || sort === "old") && !query) {
+      // by month, each outing's photographs following a card with its day
+      const months = [];
+      for (const x of list) {
+        const key = `${x.year}-${String(x.month).padStart(2, "0")}`;
+        let mo = months[months.length - 1];
+        if (!mo || mo.key !== key) months.push((mo = { key, y: x.year, m: x.month, items: [] }));
+        mo.items.push(x);
+      }
+      const counts = new Map();
+      for (const x of list) counts.set(x.oid, (counts.get(x.oid) || 0) + 1);
+      const k = regCtx(expand(list, o));
+      ctxBase.set(k, { list, o, parts: months.map((mo) => mo.items), paint: (items) => pieces(items, o, true, counts).join("") });
+      const secs = months.map((mo, i) => {
+        const outs = new Set(mo.items.map((x) => x.oid)).size, label = `${MONTHS[mo.m - 1] || ""} ${mo.y}`;
+        const inner = split(k, i, mo.items, pieces(mo.items, o, true, counts));
+        return `<section class="sec mon" data-month="${mo.key}" data-label="${esc(label)}"><div class="sec-h"><h2>${esc(label)}</h2><span class="meta">${plural(outs, "outing")} · ${plural(mo.items.length, all ? "frame" : "photograph")}</span></div><div class="flow" data-ctx="${k}" data-part="${i}">${inner}</div></section>`;
+      }).join("");
+      const yearAt = new Map();
+      months.forEach((mo, i) => { if (!yearAt.has(mo.y)) yearAt.set(mo.y, i); });
+      const n = months.length;
+      const scrub = n >= 3 ? `<div class="dscrub" aria-hidden="false"><div class="ds-track" aria-hidden="true">${months.map((mo, i) => `<i class="ds-tick${yearAt.get(mo.y) === i ? " y" : ""}" style="--k:${(i / n).toFixed(4)}"></i>`).join("")}${[...yearAt].map(([y, i]) => `<span class="ds-year" style="--k:${(i / n).toFixed(4)}">${y}</span>`).join("")}</div><div class="ds-thumb" role="slider" tabindex="0" aria-label="Jump to a month" aria-valuemin="0" aria-valuemax="${n - 1}" aria-valuenow="0"><span class="ds-tip"></span></div></div>` : "";
+      return head + secs + scrub;
+    }
+    const k = regCtx(expand(list, o));
+    ctxBase.set(k, { list, o, parts: [list] });
+    return head + `<div style="margin-top:14px"><div class="flow" data-ctx="${k}" data-part="0">${split(k, 0, list, pieces(list, o, false))}</div></div>`;
+  }
+  // The date scrubber: a rail down the right edge with a mark for each month, shown while the
+  // page moves (or the pointer nears the edge). Drag it, or use the arrow keys on it, to go
+  // straight to any month; its label names the month at the top of the screen.
+  function mountScrubber(root, signal) {
+    const el = root.querySelector(".dscrub");
+    if (!el) return;
+    const secs = [...root.querySelectorAll(".sec.mon")], n = secs.length;
+    const thumb = el.querySelector(".ds-thumb"), tip = el.querySelector(".ds-tip");
+    const tb = $(".toolbar");
+    let drag = false, over = false, hideT = 0, cur = -1, raf = 0;
+    const line = () => (tb ? tb.getBoundingClientRect().bottom : 120) + 6;
+    const pos = () => {
+      const y = line();
+      for (let i = n - 1; i >= 0; i--) { const r = secs[i].getBoundingClientRect(); if (r.top <= y) return i + Math.min(0.999, (y - r.top) / Math.max(1, r.height)); }
+      return 0;
+    };
+    const paint = () => {
+      raf = 0;
+      const p = pos(), i = Math.min(n - 1, Math.floor(p)), th = thumb.offsetHeight, H = el.clientHeight;
+      thumb.style.transform = `translateY(${Math.round((p / n) * Math.max(0, H - th))}px)`;
+      if (i !== cur) { cur = i; tip.textContent = secs[i].dataset.label; thumb.setAttribute("aria-valuenow", i); thumb.setAttribute("aria-valuetext", secs[i].dataset.label); }
+    };
+    const show = () => { clearTimeout(hideT); el.classList.add("on"); };
+    const later = () => { clearTimeout(hideT); hideT = setTimeout(() => { if (!drag && !over && document.activeElement !== thumb) el.classList.remove("on"); }, 1500); };
+    const jump = (p) => {
+      p = Math.max(0, Math.min(n - 0.001, p));
+      const i = Math.floor(p), s = secs[i];
+      fillTo(s.querySelector(".flow"));
+      if (p < 0.02) { window.scrollTo(0, 0); return; }
+      const r = s.getBoundingClientRect(), y = window.scrollY + r.top + (p - i) * r.height;
+      const down = y > window.scrollY;
+      const off = (down ? 0 : parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--head-h")) || 64) + (tb ? tb.offsetHeight : 70) + 6;
+      window.scrollTo(0, Math.max(0, y - off));
+    };
+    const fromY = (cy) => {
+      const r = el.getBoundingClientRect(), th = thumb.offsetHeight;
+      jump(((cy - r.top - th / 2) / Math.max(1, r.height - th)) * n);
+    };
+    addEventListener("scroll", () => {
+      if (!raf) raf = requestAnimationFrame(paint);
+      if (window.scrollY > 360) { show(); later(); } else if (!drag) el.classList.remove("on");
+    }, { passive: true, signal });
+    addEventListener("resize", () => { if (!raf) raf = requestAnimationFrame(paint); }, { passive: true, signal });
+    document.addEventListener("pointermove", (e) => { if (e.pointerType === "mouse" && e.clientX > innerWidth - 64 && window.scrollY > 360) { show(); later(); } }, { passive: true, signal });
+    el.addEventListener("pointerenter", () => { over = true; show(); });
+    el.addEventListener("pointerleave", () => { over = false; later(); });
+    el.addEventListener("pointerdown", (e) => {
+      if (!el.classList.contains("on")) return;
+      e.preventDefault();
+      drag = true; el.classList.add("drag");
+      try { el.setPointerCapture(e.pointerId); } catch (err) { /* already released */ }
+      if (!thumb.contains(e.target) || e.pointerType !== "mouse") fromY(e.clientY);
+      thumb._dy = thumb.contains(e.target) ? e.clientY - thumb.getBoundingClientRect().top - thumb.offsetHeight / 2 : 0;
+    });
+    el.addEventListener("pointermove", (e) => { if (drag) fromY(e.clientY - (thumb._dy || 0)); });
+    const end = () => { if (!drag) return; drag = false; el.classList.remove("drag"); later(); };
+    el.addEventListener("pointerup", end);
+    el.addEventListener("pointercancel", end);
+    thumb.addEventListener("keydown", (e) => {
+      const p = pos(), i = Math.floor(p);
+      let to = null;
+      if (e.key === "ArrowDown" || e.key === "PageDown") to = i + 1;
+      else if (e.key === "ArrowUp" || e.key === "PageUp") to = p - i > 0.04 ? i : i - 1;
+      else if (e.key === "Home") to = 0;
+      else if (e.key === "End") to = n - 1;
+      if (to == null) return;
+      e.preventDefault(); show();
+      jump(Math.max(0, Math.min(n - 1, to)));
+    });
+    thumb.addEventListener("focus", show);
+    thumb.addEventListener("blur", later);
+    signal.addEventListener("abort", () => { clearTimeout(hideT); if (raf) cancelAnimationFrame(raf); });
+    paint();
   }
   function updateGallery(fn) {
     setQuery(fn);
@@ -701,11 +1004,12 @@ ${footer(nav)}
     if (!res) return;
     const q = parseHash().q;
     const { list, sq, sort, all, query } = galleryList(q);
-    $$(".facet-row [data-g]").forEach((c) => c.setAttribute("aria-pressed", String((q.get("g") || "") === c.dataset.g)));
-    $$(".facet-row [data-r]").forEach((c) => c.setAttribute("aria-pressed", String(+(q.get("r") || 0) === +c.dataset.r)));
-    $$(".facet-row [data-all]").forEach((c) => c.setAttribute("aria-pressed", String(all)));
-    const so = $("#gp-sort"); if (so) so.value = sort;
-    flip(res, () => { A.ctx.clear(); ctxBase.clear(); res.innerHTML = galleryResults(list, sq, sort, all, query); markLoaded(res); });
+    paintFilters(q, list.length, all);
+    // a new set of results starts at its top
+    const tb = $(".toolbar"), top = res.getBoundingClientRect().top - (tb ? tb.getBoundingClientRect().bottom : 0) - 8;
+    if (top < 0) window.scrollBy(0, top);
+    flip(res, () => { qReset(); A.ctx.clear(); ctxBase.clear(); res.innerHTML = galleryResults(list, sq, sort, all, query, q); markLoaded(res); });
+    armResults(res);
   }
   // A murmuration: when the gallery re-sorts, the tiles that stay fly to their new places along
   // curving paths that all bank the same way, in a wave across the screen, dipping as they go;
@@ -1143,6 +1447,7 @@ ${footer(nav)}
   }
   /* ---------- bursts, grouped or opened ---------- */
   function regrid() {
+    qReset();
     const done = new Set();
     // photographs already on screen stay sharp in their new tiles (no fade-in again); only frames
     // appearing for the first time develop in
@@ -1152,7 +1457,8 @@ ${footer(nav)}
       if (!base) continue;
       if (!done.has(k)) { A.ctx.set(k, expand(base.list, base.o)); done.add(k); }
       const items = base.parts ? base.parts[+el.dataset.part] || [] : base.list;
-      el.innerHTML = expand(items, base.o).map((x) => tile(x, base.o)).join("");
+      el.innerHTML = base.paint ? base.paint(items) : expand(items, base.o).map((x) => tile(x, base.o)).join("");
+      el.style.minHeight = ""; delete el.dataset.pending;
       for (const img of el.querySelectorAll(".tile img")) if (ready.has(img.getAttribute("src"))) { img.classList.add("in", "now"); img.dataset.arrived = "1"; }
       markLoaded(el);
     }
@@ -1469,6 +1775,7 @@ ${footer(nav)}
       window.addEventListener("popstate", () => { A.traverse = true; });
       if ("scrollRestoration" in history) history.scrollRestoration = "manual";
       window.addEventListener("scroll", onScroll, { passive: true });
+      window.addEventListener("resize", () => { rowMemo = 0; }, { passive: true });
       matchMedia("(prefers-color-scheme: dark)").addEventListener("change", paintTheme);
     }
     A.lastKey = "";
@@ -1548,7 +1855,7 @@ ${footer(nav)}
 
   const helpers = { esc, tile, flow, cover, chip, spCard, chapterRow, pageHead, specimenTag, fmtDate, fmtShort, fmtTime, fmtN, plural, titleOf, exposure, src, ICON, regCtx, toast, hbars, table, svgBars, pageUrl, shareBtn, sharePage };
   GP.app = {
-    start, update, setSelecting, toast, helpers, holdView, toggleBursts, get burstsExpanded() { return A.expand; }, reveal, isRevealed: (x) => !x || !x.explicit || A.revealed.has(x.id),
+    start, update, setSelecting, toast, helpers, holdView, toggleBursts, fillAll, get burstsExpanded() { return A.expand; }, reveal, isRevealed: (x) => !x || !x.explicit || A.revealed.has(x.id),
     get model() { return A.model; }, get site() { return A.site; }, get adapter() { return A.adapter; }, get workshop() { return A.workshop; },
     get selection() { return [...A.sel]; }, get frameFilter() { return A.ff || null; }, clearSelection() { A.sel.clear(); $$(".tile.sel").forEach((t) => t.classList.remove("sel")); },
     setQuery, parseHash, hashFor, exhibit, toggleTheme, openById, openList, surprise, route: () => { A.lastKey = ""; route(); },

@@ -391,7 +391,7 @@ a.way-tree:hover .tm-d circle { animation: tm-pop 600ms var(--ease-spring) both;
 
 /* ---------- gallery ---------- */
 .dens-s { --rowh: 170px; } .dens-l { --rowh: 360px; }
-@media (max-width: 640px) { .dens-s { --rowh: 110px; } .dens-m { --rowh: 150px; } .dens-l { --rowh: 230px; } }
+@media (max-width: 640px) { .dens-s { --rowh: 72px; } .dens-m { --rowh: 100px; } .dens-l { --rowh: 170px; } }
 .facet-tools { display: flex; align-items: center; gap: 8px; margin-left: auto; flex: none; padding-left: 12px; }
 .dens { display: flex; gap: 2px; padding: 2px; border: 1px solid var(--line); border-radius: 999px; }
 .dens-b { width: 30px; height: 26px; border: 0; background: none; border-radius: 999px; cursor: pointer; display: grid; place-items: center; color: var(--muted); }

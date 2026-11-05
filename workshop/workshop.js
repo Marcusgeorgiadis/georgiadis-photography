@@ -519,7 +519,7 @@
       case "sel-collect": collect(xs); break;
       case "sel-join": joinBursts(xs); break;
       case "sel-split": splitBursts(xs); break;
-      case "sel-all": $$("#gp-main .tile[data-id]").forEach((t) => { if (!t.classList.contains("sel")) t.click(); }); break;
+      case "sel-all": if (GP.app.fillAll) GP.app.fillAll(); $$("#gp-main .tile[data-id]").forEach((t) => { if (!t.classList.contains("sel")) t.click(); }); break;
       case "sel-clear": GP.app.clearSelection(); paintSel(); break;
       case "sel-done": GP.app.setSelecting(false); paintSel(); break;
       case "scan": scan(); break;

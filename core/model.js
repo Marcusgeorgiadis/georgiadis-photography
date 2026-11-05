@@ -547,5 +547,5 @@
     const top = f.reduce((a, c) => (c.score > a.score ? c : a));
     return [top].concat(f.filter((y) => y !== top));
   }
-  GP.model = { build, framesOf, parseQuery, splitName, binomial, nameKey, slug, frameNo, rawId, sunTimes, lightOf, easternOffset, hexHsl, cleanLens, shutter, MONTHS, MON, SEASONS, BEHAVIOURS, NONE_RE, UNSURE_RE };
+  GP.model = { build, framesOf, parseQuery, splitName, binomial, nameKey, slug, frameNo, rawId, sunTimes, lightOf, easternOffset, hexHsl, cleanLens, shutter, MONTHS, MON, SEASONS, BEHAVIOURS, COLOURS, NONE_RE, UNSURE_RE };
 })(window.GP = window.GP || {});
