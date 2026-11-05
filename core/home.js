@@ -86,7 +86,8 @@
     if (/^\w+ing\b/.test(b)) return "was " + b;
     return "was " + b;
   }
-  function hourHtml(m, h) {
+  // At this hour: the frame made nearest this time of day, on any day, and the line it tells.
+  function hourCard(m, h) {
     const a = atThisHour(m);
     if (!a.pick.length) return "";
     const lead = a.pick[0], sp = m.speciesByKey.get(lead.spKey);
@@ -95,14 +96,13 @@
     const verb = doing(lead);
     const when = part === "night" ? "a night" : (/^[aeiou]/.test(part) ? "an " : "a ") + part;
     const line = `Around ${GP.sky ? GP.sky.clock(q) : ""} on ${when} like this, ${article(sp ? sp.name : h.titleOf(lead))} ${verb || "was in front of the lens"}.`;
-    return `<section class="hm-sec wrap hm-hour" data-hour="${q}">
-  <div class="hm-sec-h"><div><div class="kicker">${a.now ? `It's ${h.esc(a.now.time)} in Central Florida` : "At this hour"}</div><h2>At this hour</h2></div><span class="sc">${a.win > 60 ? `Frames from within ${Math.round(a.win / 60)} hours of now` : `Frames from within ${a.win} minutes of now`}, on any day</span></div>
-  <div class="hh-grid" data-ctx="${h.regCtx(a.pick)}">
-    <button class="hh-lead" data-open="${h.esc(lead.id)}" aria-label="${h.esc(h.titleOf(lead))}">${h.cover(lead, 1400, "", h.titleOf(lead))}<span class="hh-time mono">${h.esc(h.fmtTime(lead))}</span></button>
-    <div class="hh-t"><p class="hh-line display">${h.esc(line)}</p><p class="hh-sub sc">${h.esc(h.fmtDate(lead.t))} · ${h.esc(lead.outing)}${lead.light ? " · " + h.esc(lead.light) : ""}</p>
-      <div class="hh-more">${a.pick.slice(1).map((x) => `<button class="hh-pic" data-open="${h.esc(x.id)}" aria-label="${h.esc(h.titleOf(x) + " at " + h.fmtTime(x))}">${h.cover(x, 420, "", h.titleOf(x))}<span><b>${h.esc(h.fmtTime(x))}</b> ${h.esc(h.titleOf(x))}</span></button>`).join("")}</div></div>
-  </div>
-</section>`;
+    return `<article class="rn-card rn-hour" data-hour="${q}" data-ctx="${h.regCtx(a.pick)}">
+  <div class="rn-k"><span class="sc">At this hour</span><span class="sc">${a.win > 60 ? `within ${Math.round(a.win / 60)} hours, any day` : `within ${a.win} minutes, any day`}</span></div>
+  <button class="rn-pic hh-lead" data-open="${h.esc(lead.id)}" aria-label="${h.esc(h.titleOf(lead))}">${h.cover(lead, 900, "", h.titleOf(lead))}<span class="hh-time mono">${h.esc(h.fmtTime(lead))}</span></button>
+  <p class="rn-line display">${h.esc(line)}</p>
+  <p class="rn-sub sc">${h.esc(h.fmtDate(lead.t))} · ${h.esc(lead.outing)}</p>
+  ${a.pick.length > 1 ? `<div class="rn-more">${a.pick.slice(1, 4).map((x) => `<button class="hh-pic" data-open="${h.esc(x.id)}" aria-label="${h.esc(h.titleOf(x) + " at " + h.fmtTime(x))}">${h.cover(x, 300, "", h.titleOf(x))}<span><b>${h.esc(h.fmtTime(x))}</b></span></button>`).join("")}</div>` : ""}
+</article>`;
   }
 
   /* ---------- who's around now ---------- */
@@ -139,19 +139,18 @@
     const ta = (a.t / 365) * Math.PI * 2 - Math.PI / 2;
     const months = GP.model.MON.map((mo, i) => { const an = mAng(i + 0.5), r = R1 + 16; return `<text x="${(Math.cos(an) * r).toFixed(1)}" y="${(Math.sin(an) * r + 3.5).toFixed(1)}" text-anchor="middle">${mo}</text>`; }).join("");
     const ticks = Array.from({ length: 12 }, (_, i) => { const an = mAng(i); return `<line x1="${(Math.cos(an) * (R0 - 6)).toFixed(1)}" y1="${(Math.sin(an) * (R0 - 6)).toFixed(1)}" x2="${(Math.cos(an) * (R1 + 4)).toFixed(1)}" y2="${(Math.sin(an) * (R1 + 4)).toFixed(1)}"/>`; }).join("");
-    const top = a.list.slice(0, 6);
-    return `<section class="hm-sec wrap hm-around">
-  <div class="hm-sec-h"><div><div class="kicker">The year, and where we are in it</div><h2>Who's around now</h2></div></div>
+    const top = a.list.slice(0, 4);
+    return `<article class="rn-card rn-around">
+  <div class="rn-k"><span class="sc">Who's around</span><span class="sc">${h.plural(a.list.length, "species", "species")} this week in past years</span></div>
   <div class="ya">
     <figure class="ya-wheel"><svg viewBox="-215 -215 430 430" role="img" aria-label="The months each species has been photographed, with today marked">
       <g class="ya-ticks">${ticks}</g>${rings}<g class="ya-months">${months}</g>
       <g class="ya-hand" style="--a:${((a.t / 365) * 360).toFixed(1)}deg"><line x1="0" y1="0" x2="${(Math.cos(ta) * (R1 + 8)).toFixed(1)}" y2="${(Math.sin(ta) * (R1 + 8)).toFixed(1)}"/><circle cx="${(Math.cos(ta) * (R1 + 8)).toFixed(1)}" cy="${(Math.sin(ta) * (R1 + 8)).toFixed(1)}" r="4"/></g>
       <circle r="${R0 - 12}" class="ya-core"/><text class="ya-today" y="-4" text-anchor="middle">${a.L.d} ${GP.model.MON[a.L.mo - 1]}</text><text class="ya-today-s" y="12" text-anchor="middle">TODAY</text>
-    </svg><figcaption class="sc">Each ring is a species; its arcs are the months it has been photographed.</figcaption></figure>
-    <div class="ya-t"><p class="lede">In past years around this week, ${h.plural(a.list.length, "species was", "species were")} photographed. Likely at the water now:</p>
-      <div class="ya-list">${top.map((e) => `<a class="ya-sp" href="#/species/${h.esc(e.s.slug)}" data-sp="${h.esc(e.s.slug)}"><span class="ya-pic">${h.cover(e.s.best, 240, "", e.s.name)}</span><span><b>${h.esc(e.s.name)}</b><span class="sc">${h.plural(e.n, "outing")} this time of year</span></span></a>`).join("")}</div></div>
+    </svg><figcaption class="sc">Each ring a species, its arcs the months it's been seen</figcaption></figure>
+    <div class="ya-list">${top.map((e) => `<a class="ya-sp" href="#/species/${h.esc(e.s.slug)}" data-sp="${h.esc(e.s.slug)}"><span class="ya-pic">${h.cover(e.s.best, 200, "", e.s.name)}</span><span><b>${h.esc(e.s.name)}</b><span class="sc">${h.plural(e.n, "outing")}</span></span></a>`).join("")}</div>
   </div>
-</section>`;
+</article>`;
   }
 
   /* ---------- from the field ---------- */
@@ -164,7 +163,6 @@
     const d = /^(\d{4})-(\d\d)-(\d\d)/.exec(o.date);
     if (!d) return null;
     const age = (Date.UTC(L.y, L.mo - 1, L.d) - Date.UTC(+d[1], +d[2] - 1, +d[3])) / 864e5;
-    if (age < 0 || age > 7) return null;
     const cover = o.heroes.filter((x) => x.spKey && !x.unsure).sort((a, b) => (b.ar >= 1.3) - (a.ar >= 1.3) || b.score - a.score)[0] || o.cover;
     return { o, cover, age };
   }
@@ -173,10 +171,10 @@
     if (!dp || !dp.cover) return "";
     const { o, cover, age } = dp;
     const hook = (o.note || "").split(/(?<=[.!?])\s+/)[0] || o.title;
-    return `<section class="hm-dispatch" data-copy="${(cover.fp[0] > 0.5) ? "l" : "r"}">
+    return `<section class="hm-dispatch" id="hm-start" data-copy="${(cover.fp[0] > 0.5) ? "l" : "r"}">
   <a class="hd-cv" href="#/story/${h.esc(o.id)}" aria-label="Read the story of ${h.esc(h.fmtDate(o.date))}">${h.cover(cover, 2000, "", h.titleOf(cover))}</a>
   <div class="hd-t">
-    <div class="hd-mast"><span class="hd-from display">From the field</span><span class="sc">Dispatch No. ${o.no} · ${h.esc(h.fmtDate(o.date))}${age <= 1 ? " · new" : ""}</span></div>
+    <div class="hd-mast"><span class="hd-from display">From the field</span><span class="sc">${age >= 0 && age <= 7 ? "The latest outing" : "The last outing"} · ${h.esc(h.fmtDate(o.date))}${age >= 0 && age <= 2 ? " · new" : ""}</span></div>
     <h2 class="display">${h.esc(o.title)}</h2>
     <p>${h.esc(hook)}</p>
     <div class="hd-stats mono">${h.plural(o.photos.length, "frame")} · ${h.plural(o.species.length, "species", "species")}${o.companions.length > 1 ? " · with " + h.esc(o.companions.slice(1).join(", ")) : ""}</div>
@@ -310,16 +308,22 @@
   <a class="hm-down" href="#hm-start" aria-label="Into the archive"><span></span></a>
 </section>`;
 
-    /* introduction */
-    const intro = `<section class="hm-intro wrap" id="hm-start">
-  <p class="hm-lede">A field archive of <b>${h.plural(st.species, "species", "species")}</b> from <b>${h.plural(st.outings, "outing")}</b> into Central Florida's marshes, woods and shorelines, ${y0 === y1 ? "made in " + y0 : "made between " + y0 + " and " + y1}. Start with the highlights, wander every frame in the Universe, or open the cabinet of specimens.</p>
-  <dl class="hm-stats">
-    <div><dt>Photographs</dt><dd data-count="${st.photos}">${h.fmtN(st.photos)}</dd></div>
-    <div><dt>Species</dt><dd data-count="${st.species}">${h.fmtN(st.species)}</dd></div>
-    <div><dt>Outings</dt><dd data-count="${st.outings}">${h.fmtN(st.outings)}</dd></div>
-    <div><dt>Families</dt><dd data-count="${st.families}">${h.fmtN(st.families)}</dd></div>
-  </dl>
-</section>`;
+    // a photograph shown in one section isn't the cover of another
+    const shown = new Set();
+    const mark = (x) => { if (!x) return; shown.add(burstKey(x)); if (x.spKey) shown.add("sp:" + x.spKey); };
+    slides.forEach(mark);
+
+    /* from the field: the latest outing as a dispatch; the two before it, and the way to all */
+    const wildOuts = m.outings.filter((o) => o.species.length && o.photos.length >= 3);
+    const dp = dispatch(m);
+    if (dp && dp.cover) mark(dp.cover);
+    const earlier = (wildOuts.length >= 3 ? wildOuts : m.outings).slice().reverse().filter((o) => !dp || o !== dp.o).slice(0, 2);
+    const outCard = (o) => `<a class="hm-out" href="#/outings/${h.esc(o.id)}"><span class="hm-out-cv">${h.cover(fresh(o.cover, o.photos.filter((x) => x.isHero && x.spKey).sort((a, b) => b.score - a.score), shown), 700, "", o.title)}</span><span class="hm-out-d"><b>${h.esc(h.fmtDate(o.date).split(" ")[0])}</b><span class="sc">${h.esc(h.fmtDate(o.date).split(" ").slice(1).join(" "))}</span></span><span class="hm-out-t"><b>${h.esc(o.title)}</b><span class="sc">${h.plural(o.photos.length, "frame")} · ${h.plural(o.species.length, "species", "species")}</span></span></a>`;
+    const fieldHtml = dispatchHtml(m, h) + (earlier.length ? `<section class="hm-sec wrap hm-earlier"${dp ? "" : ' id="hm-start"'}>
+  <div class="hm-sec-h"><div><div class="kicker">The field diary</div><h2>${dp ? "Before that" : "Latest outings"}</h2></div><a class="btn ghost" href="#/outings">All ${h.plural(st.outings, "outing")} ${h.ICON.arrow}</a></div>
+  <div class="hm-outs">${earlier.map(outCard).join("")}<a class="hm-out-all" href="#/outings"><span class="display">${h.fmtN(st.outings)}</span><span class="sc">outings since ${h.esc(h.fmtShort(st.first || ""))}</span><span class="hm-out-go">The whole field diary ${h.ICON.arrow}</span></a></div>
+  <p class="hm-outs-story">Every outing can also be read as a story, its birds calling as they appear. <a href="#/story/${h.esc((dp ? dp.o : earlier[0]).id)}">Start with ${h.esc(h.fmtDate((dp ? dp.o : earlier[0]).date))} ${h.ICON.arrow}</a></p>
+</section>` : "");
 
     /* for you: only once there's something personal to show */
     const favs = V ? V.favPhotos() : [], last = V ? V.lastSeen() : null;
@@ -332,73 +336,72 @@
 
     /* highlights */
     const high = highlights(m, slides.slice(0, 1));
+    high.forEach(mark);
     const hk2 = h.regCtx(high);
     const highHtml = high.length >= 5 ? `<section class="hm-sec wrap">
   <div class="hm-sec-h"><div><div class="kicker">From the Collection</div><h2>Highlights</h2></div><a class="btn ghost" href="#/rooms/collection">Walk through the Collection ${h.ICON.arrow}</a></div>
   <div class="hm-high" data-ctx="${hk2}">${high.map((x, i) => `<button class="hm-pic p${i}" data-open="${h.esc(x.id)}" aria-label="${h.esc(h.titleOf(x) + ", " + h.fmtDate(x.t))}">${h.cover(x, i === 0 ? 1600 : 900, "", h.titleOf(x))}<span class="hm-pic-cap"><b>${h.esc(h.titleOf(x))}</b><span>${h.esc([h.fmtShort(x.t), x.light].filter(Boolean).join(" · "))}</span></span></button>`).join("")}</div>
 </section>` : "";
 
-    /* ways in */
-    const uvTiles = (m.calmHeroes || m.heroes).filter((x) => x.hsl && x.hsl[0]).slice().sort((a, b) => hueKey(a) - hueKey(b));
-    const step = Math.max(1, Math.floor(uvTiles.length / 72));
-    const uvArt = uvTiles.filter((_, i) => i % step === 0).slice(0, 72).map((x, i) => `<i style="--i:${i};background-image:url(${x.lq || ""});background-color:${h.esc(x.pal[0] || "#777")}"></i>`).join("");
-    const famBig = [];
-    for (const c of m.tree.values()) for (const o of c.orders.values()) for (const f of o.families.values()) { const sp = f.species.filter((s) => s.lifeNo); if (sp.length) famBig.push({ f, sp }); }
-    famBig.sort((a, b) => b.sp.length - a.sp.length);
-    const drawers = famBig.slice(0, 3).map(({ f, sp }) => `<span class="cab-drawer"><span class="cab-window">${h.cover(sp[0].best, 160)}</span><span class="cab-holder"><span class="cab-card"><b>${h.esc(f.name)}</b><i>${h.esc(f.common)}</i></span></span><span class="cab-pull"></span></span>`).join("");
-    const listenSp = (() => {
-      const withCall = m.life.filter((s) => s.call && s.best);
-      if (!withCall.length || !GP.calls) return null;
-      return withCall[(Math.floor(Date.now() / 864e5) + 7) % withCall.length];
-    })();
-    const lastOuting = m.outings[m.outings.length - 1];
-    const ways = `<section class="hm-sec wrap">
-  <div class="hm-sec-h"><div><div class="kicker">Ways in</div><h2>Explore the archive</h2></div></div>
-  <div class="hm-ways">
-    <a class="way way-uv" href="#/universe"><span class="way-art uv-art" aria-hidden="true">${uvArt}</span><span class="way-t"><span class="sc">The Universe</span><b>Every photograph on one canvas</b><span>All ${h.fmtN(st.photos)}, arranged by colour, by the hour they were taken, by outing or by family. Zoom into any one to open it.</span></span></a>
-    <a class="way way-cab" href="#/species"><span class="way-art cab cab-mini" aria-hidden="true">${drawers}</span><span class="way-t"><span class="sc">The cabinet</span><b>${h.plural(m.life.length, "species", "species")} in ${h.plural(famBig.length, "drawer")}</b><span>The field guide as a natural-history cabinet: open a family's drawer to see its specimens.</span></span></a>
-    <a class="way way-day" href="#/day"><span class="way-art day-art" aria-hidden="true"><span class="day-ring"><i class="day-hand"></i>${m.life.filter((sp2) => sp2.call && sp2.best).slice(0, 12).map((sp2, k) => `<span class="day-dot" style="--k:${k}">${h.cover(sp2.best, 120)}</span>`).join("")}</span></span><span class="way-t"><span class="sc">Listen</span><b>A day in the marsh, in 60 seconds</b><span>Dawn chorus, quiet noon, evening herons: every call placed at the hour its bird is photographed.</span></span></a>
-    <a class="way way-sky" href="#/sky"><span class="way-art sky-art" aria-hidden="true">${Array.from({ length: 46 }, (_, k) => `<i style="--x:${((k * 37) % 97) + 1.5}%;--y:${((k * 53) % 89) + 4}%;--s:${(1 + (k % 5) * 0.7).toFixed(1)}px;--d:${(k % 7) * 0.4}s"></i>`).join("")}</span><span class="way-t"><span class="sc">The life list</span><b>The night sky</b><span>Every species a star, brighter the more it has been photographed; every family a constellation.</span></span></a>
-    <a class="way way-plates" href="#/plates"><span class="way-art plates-art" aria-hidden="true">${famBig.slice(0, 1).map(({ sp: fs }) => fs.slice(0, 4).map((sp2) => `<span>${h.cover(sp2.best, 200)}</span>`).join("")).join("")}</span><span class="way-t"><span class="sc">For the wall</span><b>Natural-history plates</b><span>Each family as a plate from an old field guide, numbered and named, ready to print.</span></span></a>
-    <a class="way way-tree" href="#/journal?tree=1"><span class="way-art tree-art" aria-hidden="true">${GP.treeOfLife && GP.treeOfLife.mini ? GP.treeOfLife.mini(m) : ""}</span><span class="way-t"><span class="sc">The tree of life</span><b>Watch the life list grow</b><span>Every species in the order it was first photographed, branch by branch.</span></span></a>
-    ${listenSp ? `<div class="way way-listen"><span class="way-art listen-art"><a class="listen-pic" href="#/species/${h.esc(listenSp.slug)}" aria-label="${h.esc(listenSp.name)}">${h.cover(listenSp.best, 360)}</a>${GP.calls.player(listenSp, true)}</span><span class="way-t"><span class="sc">Listen</span><b>Hear the ${h.esc(listenSp.name)}</b><span>${h.plural(m.species.filter((s) => s.call).length, "species", "species")} have their calls beside the photographs. <a href="#/species?view=calls">All the calls ${h.ICON.arrow}</a></span></span></div>` : ""}
-  </div>
-</section>`;
-
-    /* species of the day */
+    /* right now in Florida: this hour, this week of the year, and today's species */
     const sp = spotlight(m);
-    const spot = sp ? `<section class="hm-sec wrap hm-spot">
-  <div class="hm-spot-t"><div class="kicker">Species of the day · ${h.esc(sp.famName || "")}</div><h2 class="display" data-sing="${h.esc(sp.slug)}">${h.esc(sp.name)}</h2><div class="binomial">${h.esc(sp.bin || "")}</div><p class="lede">${h.esc(sp.note)}</p>
-    ${GP.calls && sp.call ? GP.calls.player(sp) : ""}
-    <div class="hm-spot-a"><a class="btn" href="#/species/${h.esc(sp.slug)}">${h.plural(sp.photos.length, "photograph")} ${h.ICON.arrow}</a><span class="sc">First seen ${h.esc(h.fmtDate(sp.first))} · ${h.plural(sp.outingN, "outing")}</span></div></div>
-  <button class="hm-spot-pic" data-open="${h.esc(sp.best.id)}" data-ripple="${h.esc(sp.slug)}" style="--fx:${(sp.best.fp[0] * 100).toFixed(1)}%;--fy:${(sp.best.fp[1] * 100).toFixed(1)}%" aria-label="Open ${h.esc(sp.name)}">${h.cover(sp.best, 1400, "", sp.name)}</button>
+    let spK = "";
+    if (sp) { mark(sp.best); spK = h.regCtx(sp.heroes); }
+    const spotCard = sp ? `<article class="rn-card rn-spot" data-ctx="${spK}">
+  <div class="rn-k"><span class="sc">Species of the day</span><span class="sc">${h.esc(sp.famName || "")}</span></div>
+  <button class="rn-pic hm-spot-pic" data-open="${h.esc(sp.best.id)}" data-ripple="${h.esc(sp.slug)}" style="--fx:${(sp.best.fp[0] * 100).toFixed(1)}%;--fy:${(sp.best.fp[1] * 100).toFixed(1)}%" aria-label="Open ${h.esc(sp.name)}">${h.cover(sp.best, 900, "", sp.name)}</button>
+  <h3 class="display rn-name" data-sing="${h.esc(sp.slug)}"><a href="#/species/${h.esc(sp.slug)}">${h.esc(sp.name)}</a></h3>
+  <div class="binomial">${h.esc(sp.bin || "")}</div>
+  <p class="rn-note">${h.esc(sp.note)}</p>
+  ${GP.calls && sp.call ? GP.calls.player(sp, true) : ""}
+  <a class="rn-go" href="#/species/${h.esc(sp.slug)}">${h.plural(sp.photos.length, "photograph")} · first seen ${h.esc(h.fmtShort(sp.first))} ${h.ICON.arrow}</a>
+</article>` : "";
+    const L = GP.sky ? GP.sky.local() : null, nowA = atThisHour(m).now;
+    const rnCards = [hourCard(m, h), aroundHtml(m, h), spotCard].filter(Boolean);
+    const nowHtml = rnCards.length ? `<section class="hm-sec wrap hm-now-fl">
+  <div class="hm-sec-h"><div><div class="kicker">${nowA ? `It's ${h.esc(nowA.time)}` : "Today"}${L ? ` · ${L.d} ${h.esc(GP.model.MONTHS[L.mo - 1])}` : ""} in Central Florida</div><h2>Right now</h2></div></div>
+  <div class="rn-row">${rnCards.join("")}</div>
 </section>` : "";
-    if (sp) h.regCtx(sp.heroes);
 
     /* exhibitions */
-    const shown = new Set();
-    for (const x of [...slides, ...high, ...(sp ? [sp.best] : [])]) { shown.add(burstKey(x)); if (x.spKey) shown.add("sp:" + x.spKey); }
     const rooms = m.rooms.filter((r) => r.photos.length);
     const roomsHtml = rooms.length ? `<section class="hm-sec hm-rooms">
   <div class="wrap hm-sec-h"><div><div class="kicker">Exhibitions</div><h2>Rooms to walk through</h2></div><div class="hm-rail-btns"><button class="icon-btn" data-rail="-1" aria-label="Scroll back">${h.ICON.left}</button><button class="icon-btn" data-rail="1" aria-label="Scroll on">${h.ICON.right}</button><a class="btn ghost" href="#/rooms">All exhibitions ${h.ICON.arrow}</a></div></div>
   <div class="hm-rail" tabindex="0" aria-label="Exhibitions">${rooms.map((r) => `<a class="rm-card" href="#/rooms/${h.esc(r.id)}">${h.cover(fresh(r.cover, r.photos, shown), 700, "", r.title)}<span class="rm-t"><span class="sc">${h.plural(r.photos.length, "photograph")}</span><b>${h.esc(r.title)}</b><span>${h.esc(r.sub)}</span></span></a>`).join("")}</div>
 </section>` : "";
 
-    /* latest outings */
-    // the latest outings that found wildlife (a day of only people or scenery isn't a first impression)
-    const wildOuts = m.outings.filter((o) => o.species.length && o.photos.length >= 3);
-    const outs = (wildOuts.length >= 3 ? wildOuts : m.outings).slice(-3).reverse();
-    const outsHtml = outs.length ? `<section class="hm-sec wrap">
-  <div class="hm-sec-h"><div><div class="kicker">The field diary</div><h2>Latest outings</h2></div><a class="btn ghost" href="#/outings">All ${h.plural(st.outings, "outing")} ${h.ICON.arrow}</a></div>
-  <div class="hm-outs">${outs.map((o) => `<a class="hm-out" href="#/outings/${h.esc(o.id)}"><span class="hm-out-cv">${h.cover(fresh(o.cover, o.photos.filter((x) => x.isHero && x.spKey).sort((a, b) => b.score - a.score), shown), 900, "", o.title)}</span><span class="hm-out-d"><b>${h.esc(h.fmtDate(o.date).split(" ")[0])}</b><span class="sc">${h.esc(h.fmtDate(o.date).split(" ").slice(1).join(" "))}</span></span><span class="hm-out-t"><b>${h.esc(o.title)}</b><span class="sc">${h.plural(o.photos.length, "frame")} · ${h.plural(o.species.length, "species", "species")}</span></span></a>`).join("")}</div>
-  <p class="hm-outs-story">Each outing can be read as a story: the day's light from first frame to last, with its birds calling as they appear. <a href="#/story/${h.esc(outs[0].id)}">Start with ${h.esc(h.fmtDate(outs[0].date))} ${h.ICON.arrow}</a></p>
+    /* ways in: the other ways round the archive, as a row of small doors */
+    const uvTiles = (m.calmHeroes || m.heroes).filter((x) => x.hsl && x.hsl[0]).slice().sort((a, b) => hueKey(a) - hueKey(b));
+    const step = Math.max(1, Math.floor(uvTiles.length / 48));
+    const uvArt = uvTiles.filter((_, i) => i % step === 0).slice(0, 48).map((x, i) => `<i style="--i:${i};background-image:url(${x.lq || ""});background-color:${h.esc(x.pal[0] || "#777")}"></i>`).join("");
+    const famBig = [];
+    for (const c of m.tree.values()) for (const o of c.orders.values()) for (const f of o.families.values()) { const fsp = f.species.filter((s2) => s2.lifeNo); if (fsp.length) famBig.push({ f, sp: fsp }); }
+    famBig.sort((a, b) => b.sp.length - a.sp.length);
+    const drawers = famBig.slice(0, 2).map(({ f, sp: fsp }) => `<span class="cab-drawer"><span class="cab-window">${h.cover(fsp[0].best, 120)}</span><span class="cab-holder"><span class="cab-card"><b>${h.esc(f.name)}</b></span></span><span class="cab-pull"></span></span>`).join("");
+    const hasCalls = GP.calls && m.life.some((s2) => s2.call);
+    const door = (cls, art, href, inner, k, t) => `<a class="way ${cls}" href="${href}"><span class="way-art ${art}" aria-hidden="true">${inner}</span><span class="way-t"><span class="sc">${k}</span><b>${t}</b></span></a>`;
+    const ways = `<section class="hm-sec wrap hm-ways-sec">
+  <div class="hm-sec-h"><div><div class="kicker">Ways in</div><h2>Other ways round</h2></div></div>
+  <div class="hm-ways">
+    ${door("way-uv", "uv-art", "#/universe", uvArt, "The Universe", `All ${h.fmtN(st.photos)} on one canvas`)}
+    ${door("way-cab", "cab cab-mini", "#/species?view=cabinet", drawers, "The cabinet", `${h.plural(famBig.length, "drawer")} of specimens`)}
+    ${hasCalls ? door("way-day", "day-art", "#/day", `<span class="day-ring"><i class="day-hand"></i>${m.life.filter((sp2) => sp2.call && sp2.best).slice(0, 8).map((sp2, k) => `<span class="day-dot" style="--k:${k}">${h.cover(sp2.best, 80)}</span>`).join("")}</span>`, "Listen", "A day in the marsh") : ""}
+    ${door("way-sky", "sky-art", "#/sky", Array.from({ length: 30 }, (_, k) => `<i style="--x:${((k * 37) % 97) + 1.5}%;--y:${((k * 53) % 89) + 4}%;--s:${(1 + (k % 5) * 0.6).toFixed(1)}px;--d:${(k % 7) * 0.4}s"></i>`).join(""), "The life list", "The night sky")}
+    ${door("way-plates", "plates-art", "#/plates", famBig.slice(0, 1).map(({ sp: fs }) => fs.slice(0, 4).map((sp2) => `<span>${h.cover(sp2.best, 140)}</span>`).join("")).join(""), "For the wall", "Natural-history plates")}
+    ${door("way-tree", "tree-art", "#/journal?tree=1", GP.treeOfLife && GP.treeOfLife.mini ? GP.treeOfLife.mini(m) : "", "The tree of life", "Watch the list grow")}
+    ${hasCalls ? door("way-calls", "calls-art", "#/species?view=calls", Array.from({ length: 22 }, (_, k) => `<i style="--h:${(18 + ((k * 29) % 70))}%"></i>`).join(""), "Listen", "Every bird's call") : ""}
+  </div>
+</section>`;
+
+    /* on this day: a small strip, when there is one */
+    const otd = onThisDay(m);
+    const otdK = otd.length ? h.regCtx(otd) : "";
+    const otdHtml = otd.length ? `<section class="hm-sec wrap hm-otd">
+  <div class="hm-otd-h"><span class="kicker">On this day</span><span class="sc">${h.esc(h.fmtShort(otd[0].t))}</span></div>
+  <div class="hm-otd-row" data-ctx="${otdK}">${otd.slice(0, 10).map((x) => `<button class="hm-otd-pic" data-open="${h.esc(x.id)}" style="--ar:${x.ar.toFixed(3)}" aria-label="${h.esc(h.titleOf(x) + ", " + h.fmtDate(x.t))}">${h.cover(x, 360, "", h.titleOf(x))}</button>`).join("")}</div>
 </section>` : "";
 
-    /* on this day */
-    const otd = onThisDay(m);
-    const otdHtml = otd.length ? `<section class="hm-sec wrap"><div class="hm-sec-h"><div><div class="kicker">${h.esc(h.fmtShort(otd[0].t))}</div><h2>On this day</h2></div></div>${h.flow(otd.slice(0, 10))}</section>` : "";
-
-    const html = hero + dispatchHtml(m, h) + intro + forYouHtml + hourHtml(m, h) + highHtml + ways + aroundHtml(m, h) + spot + roomsHtml + outsHtml + otdHtml;
+    const html = hero + fieldHtml + forYouHtml + highHtml + nowHtml + roomsHtml + ways + otdHtml;
     return { html, title: "", after: (main, signal) => mount(main, signal, m, h, slides) };
   }
 
@@ -530,20 +533,20 @@
         return;
       }
       const down = e.target.closest(".hm-down");
-      if (down) { e.preventDefault(); const tgt = main.querySelector("#hm-start"); if (tgt) window.scrollTo({ top: tgt.getBoundingClientRect().top + scrollY - (parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--head-h")) || 64), behavior: reduced() ? "auto" : "smooth" }); return; }
+      if (down) { e.preventDefault(); const tgt = main.querySelector("#hm-start") || main.querySelector(".hm-sec"); if (tgt) window.scrollTo({ top: tgt.getBoundingClientRect().top + scrollY - (parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--head-h")) || 64), behavior: reduced() ? "auto" : "smooth" }); return; }
       const rb = e.target.closest("[data-rail]");
       if (rb) { const rail = main.querySelector(".hm-rail"); rail.scrollBy({ left: +rb.dataset.rail * rail.clientWidth * 0.8, behavior: reduced() ? "auto" : "smooth" }); }
     }, { signal });
     // "At this hour" keeps up with the clock while the page is open
-    const hourBox = main.querySelector(".hm-hour");
-    if (hourBox) {
+    if (main.querySelector(".rn-hour")) {
       const it = setInterval(() => {
+        const box = main.querySelector(".rn-hour");
+        if (!box) return;
         const a = atThisHour(m), q = Math.round(a.mins / 15) * 15;
-        if (String(q) === hourBox.dataset.hour) return;
+        if (String(q) === box.dataset.hour) return;
         const tmp = document.createElement("div");
-        tmp.innerHTML = hourHtml(m, h);
-        const fresh2 = tmp.firstElementChild;
-        if (fresh2) { fresh2.classList.add("hm-rise", "in"); hourBox.replaceWith(fresh2); }
+        tmp.innerHTML = hourCard(m, h);
+        if (tmp.firstElementChild) box.replaceWith(tmp.firstElementChild);
       }, 60e3);
       signal.addEventListener("abort", () => clearInterval(it));
     }

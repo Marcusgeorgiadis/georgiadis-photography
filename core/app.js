@@ -1607,7 +1607,9 @@ ${filterPanel(q)}
       return;
     }
     const opener = e.target.closest("[data-open]");
-    if (opener) { const x = A.model.byId.get(opener.dataset.open); if (x) { const ctx = [...A.ctx.values()].find((l) => l.includes(x)); openList(ctx || [x], ctx ? ctx.indexOf(x) : 0, opener.querySelector("img") || opener); } return; }
+    // a photograph opens among its own section's photographs (the nearest list holding it), not the
+    // first list on the page that happens to include it
+    if (opener) { const x = A.model.byId.get(opener.dataset.open); if (x) { const box = opener.closest("[data-ctx]"), own = box && A.ctx.get(box.dataset.ctx); const ctx = own && own.includes(x) ? own : [...A.ctx.values()].find((l) => l.includes(x)); openList(ctx || [x], ctx ? ctx.indexOf(x) : 0, opener.querySelector("img") || opener); } return; }
     const t = e.target.closest(".tile[data-id], .mini-flow [data-id], .wall-item figure[data-id]");
     if (!t || !A.root.contains(t)) return;
     const id = t.dataset.id;
