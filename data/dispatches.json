@@ -2,7 +2,7 @@
  "v": 1,
  "site": {
   "title": "Georgiadis Photography",
-  "tagline": "Wildlife of Central Florida",
+  "tagline": "Wildlife of South Florida",
   "url": "https://marcusgeorgiadis.github.io/georgiadis-photography/"
  },
  "outings": [
@@ -676,12 +676,12 @@
    ],
    "url": "https://marcusgeorgiadis.github.io/georgiadis-photography/#/outings/1raGNCPpjJvFDwpZoHsjBTrFbGnvScZaG",
    "cover": {
-    "url": "https://lh3.googleusercontent.com/d/1_4UqTKDVXW1qeXnUURk2L5P9R2l0Xabo=w1200",
+    "url": "https://lh3.googleusercontent.com/d/1KCbY1WMGEi9lEKZvJ4swGMKCSiLFjrc_=w1200",
     "width": 1200,
     "height": 800,
-    "alt": "Rhesus Macaque"
+    "alt": "Double-crested Cormorant"
    },
-   "accent": "#826436"
+   "accent": "#7b663d"
   },
   {
    "id": "1nhboH7g_q_vVlYRyocSMpi_mJD9jWX7u",
@@ -701,12 +701,12 @@
    ],
    "url": "https://marcusgeorgiadis.github.io/georgiadis-photography/#/outings/1nhboH7g_q_vVlYRyocSMpi_mJD9jWX7u",
    "cover": {
-    "url": "https://lh3.googleusercontent.com/d/1arQUQPjYDAhdn9RuZ_4Hthhip_rDdPRP=w1200",
+    "url": "https://lh3.googleusercontent.com/d/1hLC_-jpxqkbX1hjCQiAWnTkeNGgrndwk=w1200",
     "width": 1200,
     "height": 800,
     "alt": "Black-crowned Night Heron"
    },
-   "accent": "#794d3e"
+   "accent": "#795d3e"
   },
   {
    "id": "1Y3APe9Trf63tev6nO6gzYJc59PE7IYno",
@@ -1016,7 +1016,7 @@
    "type": "Birding MG",
    "hook": "A busy day with flocks of American White Ibis, newly arrived Palm Warblers and starlings, plus Anhingas and Wood Ducks on the water.",
    "frames": 62,
-   "speciesN": 17,
+   "speciesN": 18,
    "species": [
     "American White Ibis",
     "Palm Warbler",
