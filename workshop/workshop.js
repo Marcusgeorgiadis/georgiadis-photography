@@ -8,6 +8,11 @@
   const DRIVE = "Google Drive";
   const CCR = "Claude Code Remote";
   const TRIGGER_ID = "trig_01LJPueQUNJgbuv4DXhzvYsb";
+  // The scheduled job runs in one long-lived cloud session, the only one set up to write to this
+  // Workshop and push the site. "Run it now" therefore schedules a one-off run into that same
+  // session a minute ahead (firing the job directly would start a bare session that can't publish).
+  const JOB_SESSION = "session_014K7mTU1zPaAZx1Lasa6o2T";
+  const JOB_ENV = "env_01EZAUSf9MGMtn5HNZPYNGqg";
   const FOLDER = "application/vnd.google-apps.folder";
   // The Drive connector hands this page files up to about 6 MB; larger Finals get cloud previews.
   const CONNECTOR_SAFE = 6 * 1000 * 1000;
@@ -729,15 +734,38 @@ ${fresh.length ? `<section class="sec"><div class="sec-h"><h2>Sorted this week</
       refresh(true);
     } catch (e) { toast(dbErrText(e)); }
   }
+  // Start the cloud job now: read the scheduled job's instructions, then schedule one run of them
+  // into the job's own session, a minute and a half ahead (the scheduler works to the minute).
+  async function runJobNow(why, initiation = "human_request") {
+    const got = await W.cap.mcp.callTool(CCR, "get_trigger", { trigger_id: TRIGGER_ID }, { cache: false });
+    const t = (got && got.payload && got.payload.trigger) || {};
+    const prompt = t.derived_state && t.derived_state.prompt;
+    if (!prompt) throw { code: "tool_error", message: "the scheduled job has no instructions" };
+    if (t.enabled === false) throw { code: "tool_error", message: "the scheduled job is turned off" };
+    await W.cap.mcp.callTool(CCR, "create_trigger", {
+      name: "Georgiadis Photography publish (now)",
+      prompt: prompt + "\n\n" + why + " In step 13, take the time from `date -u +%Y-%m-%dT%H:%M:%SZ`; never estimate it.",
+      persistent_session_id: t.persistent_session_id || JOB_SESSION,
+      environment_id: JOB_ENV,
+      run_once_at: new Date(Date.now() + 90 * 1000).toISOString().replace(/\.\d+Z$/, "Z"),
+      initiation,
+    }, { cache: false });
+  }
+  const jobErrText = (e) => e && e.code === "tool_error" ? "The cloud job couldn't be started" + (e.message ? `: ${String(e.message).slice(0, 160)}` : ".") : driveErrText(e, CCR);
   async function publishNow() {
     if (!W.cap.mcp || !W.cap.db) return;
-    try {
-      await W.cap.mcp.callTool(CCR, "fire_trigger", { trigger_id: TRIGGER_ID, text: "Publish the public site now (requested from the Workshop)." }, { cache: false });
-      await W.cap.db.doc("meta/publish").set(Object.assign({}, W.publish || {}, { requestedAt: new Date().toISOString() }));
-      toast("Publishing. The cloud job rebuilds the site in a few minutes.");
-    } catch (e) {
-      toast(e && e.code === "tool_error" ? "The cloud job couldn't be started" + (e.message ? `: ${String(e.message).slice(0, 160)}` : ".") : driveErrText(e, CCR));
+    const p = W.publish || {};
+    const asked = Date.parse(p.requestedAt || "");
+    if (asked && Date.now() - asked < 20 * 60 * 1000 && !(Date.parse(p.at || "") > asked)) {
+      toast(`Already on its way: publishing was requested ${ago(p.requestedAt)}.`);
+      return;
     }
+    try {
+      await runJobNow("Publish the public site now (requested from the Workshop).");
+      await W.cap.db.doc("meta/publish").set(Object.assign({}, p, { requestedAt: new Date().toISOString() }));
+      toast("Publishing. The cloud job starts in about two minutes and the site updates when it finishes.");
+      refresh(true);
+    } catch (e) { toast(jobErrText(e)); }
   }
 
   /* ---------- run indicator ---------- */
@@ -1351,11 +1379,11 @@ Reply with only JSON: {"frames": [{"n": 1, "group": string, "common": string, "s
     }
     W.cloudErr = "";
     try {
-      await W.cap.mcp.callTool(CCR, "fire_trigger", { trigger_id: TRIGGER_ID, text: "Started from the Workshop: make cloud previews." }, { cache: false });
+      await runJobNow("Started from the Workshop: make cloud previews.", auto ? "own_initiative" : "human_request");
       await W.cap.db.doc("meta/cloud").set({ requestedAt: new Date().toISOString() });
       if (!auto) toast("Cloud job started. Previews appear here as soon as it finishes.");
     } catch (e) {
-      W.cloudErr = e && e.code === "tool_error" ? "The cloud job couldn't be started" + (e.message ? `: ${String(e.message).slice(0, 160)}` : ".") : driveErrText(e, CCR);
+      W.cloudErr = jobErrText(e);
       if (!auto) toast(W.cloudErr);
     }
     paintWorkshop();
