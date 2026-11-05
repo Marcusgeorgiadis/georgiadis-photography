@@ -69,6 +69,7 @@
     grid: I('<rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/>'),
     rows: I('<path d="M4 6h16M4 12h16M4 18h16"/>'),
     menu: I('<path d="M4 7h16M4 12h16M4 17h10"/>'),
+    orbit: I('<circle cx="12" cy="12" r="2.2"/><ellipse cx="12" cy="12" rx="9" ry="4" transform="rotate(-25 12 12)"/><circle cx="19.2" cy="8.2" r="1.1" fill="currentColor"/><circle cx="5.6" cy="16.4" r="0.8" fill="currentColor"/>'),
     sliders: I('<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>'),
     home: I('<path d="M4 10.5 12 4l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5.5h-5V20H5a1 1 0 0 1-1-1z"/>'),
     frame: I('<rect x="4" y="4" width="16" height="16" rx="1.5"/><rect x="7.5" y="7.5" width="9" height="9" rx=".5"/><path d="m7.5 14.5 2.6-2.8 2.4 2.3 1.6-1.6 2.4 2.6"/>'),
@@ -169,6 +170,22 @@
     const d = ymd(o.date) || [0, 1, 1];
     return `<a class="chapter-row reveal" href="#/outings/${esc(o.id)}"><div class="when"><b>${d[2]}</b><span>${MON[d[1] - 1]} ${d[0]} · ${esc(weekday(o.date).slice(0, 3))}</span></div><div class="txt"><div class="kicker">Chapter ${o.no} · ${esc(o.type)}</div><h3>${esc(o.title)}</h3>${o.note ? `<p>${esc(o.note)}</p>` : ""}<div class="sc">${plural(o.photos.length, "frame")} · ${plural(o.species.length, "species", "species")}</div></div><div class="cv">${cover(o.cover, 900, "", o.title)}</div></a>`;
   }
+  // Outings: the diary as a list, the field notebook, the archive in numbers.
+  function outingsTabs(active) {
+    return `<div class="chips" role="tablist" aria-label="Outings">${[["", "List"], ["notebook", "Field notebook"], ["numbers", "In numbers"]].map(([v, l]) => `<a class="chip" role="tab" href="#/outings${v ? `?view=${v}` : ""}" aria-pressed="${active === v}">${l}</a>`).join("")}</div>`;
+  }
+  // Species: every way to see the life list, the night sky and the plates among them.
+  function speciesTabs(active) {
+    const m = A.model, has = (id) => A.views.some((v) => v.id === id);
+    const callN = GP.calls ? m.species.filter((x) => x.call).length : 0;
+    const tabs = [["family", "By family", "#/species"]].concat(GP.cabinet ? [["cabinet", "Cabinet", "#/species?view=cabinet"]] : [], [["life", "Life list", "#/species?view=life"], ["az", "A–Z", "#/species?view=az"]], callN ? [["calls", "Calls", "#/species?view=calls"]] : [], has("sky") ? [["sky", "Night sky", "#/sky"]] : [], has("plates") ? [["plates", "Plates", "#/plates"]] : []);
+    return `<div class="chips sp-tabs" role="tablist" aria-label="Species">${tabs.map(([v, l, href]) => `<a class="chip" role="tab" href="${href}" aria-pressed="${active === v}">${l}</a>`).join("")}</div>`;
+  }
+  // The Gallery: the grid, or every photograph on one canvas.
+  function viewSwitch(active) {
+    if (!A.views.some((v) => v.id === "universe")) return "";
+    return `<div class="vswitch" role="group" aria-label="Gallery view"><a href="#/gallery" aria-pressed="${active === "grid"}" title="The grid">${ICON.grid}<span>Grid</span></a><a href="#/universe" aria-pressed="${active === "universe"}" title="Every photograph on one canvas">${ICON.orbit}<span>Universe</span></a></div>`;
+  }
   function pageHead(kicker, h1, p, extra = "") {
     return `<header class="page-head reveal">${kicker ? `<div class="kicker">${kicker}</div>` : ""}<h1>${h1}</h1>${p ? `<p>${p}</p>` : ""}${extra}</header>`;
   }
@@ -221,7 +238,7 @@
 
   /* ---------- shell ---------- */
   // The logo is the way home; registered views (Exhibitions, Universe) slot in beside these.
-  const NAV = [["gallery", "Gallery"], ["species", "Species"], ["outings", "Outings"], ["journal", "Journal"]];
+  const NAV = [["gallery", "Gallery"], ["species", "Species"], ["outings", "Outings"]];
   // A phone keeps these in a tab bar at the foot of the screen, in reach of a thumb; a page that
   // belongs to one of them lights its tab. Sections without a tab are in the menu.
   const TABS = [["", "Home", "home"], ["gallery", "Gallery", "grid"], ["rooms", "Exhibitions", "frame"], ["species", "Species", "feather"], ["outings", "Outings", "compass"]];
@@ -320,11 +337,15 @@ ${footer(nav)}
     const pages = (A.nav || []).filter(([id]) => !tabbed.has(id)); // a phone's tab bar has no room for these
     const calls = GP.calls && GP.calls.available();
     const explore = [
-      GP.visitor && ["rooms/favourites", "Your favourites"],
+      has("universe") && ["universe", "The Universe"],
+      ["outings?view=notebook", "Field notebook"],
+      ["outings?view=numbers", "Outings in numbers"],
+      GP.treeOfLife && ["species?view=life", "The tree of life"],
       has("sky") && ["sky", "The night sky"],
       has("plates") && ["plates", "Natural-history plates"],
       calls && has("day") && ["day", "A day in the marsh"],
       calls && ["species?view=calls", "Bird calls"],
+      GP.visitor && ["rooms/favourites", "Your favourites"],
     ].filter(Boolean);
     const sw = (btn, t, sub) => (btn ? `<div class="mn-row" data-mn-row>${btn}<span class="mn-l"><b>${t}</b><small>${sub}</small></span><span class="mn-sw" aria-hidden="true"></span></div>` : "");
     const act = (a, ic, t, tip) => `<button class="mn-act" data-act="${a}" data-mn-close title="${tip}">${ic}<span>${t}</span></button>`;
@@ -442,8 +463,9 @@ ${footer(nav)}
     const main = $("#gp-main");
     const [v, a, b] = r.parts;
     $$(".gp-nav a").forEach((n) => n.toggleAttribute("aria-current", false));
-    const navEl = $(`.gp-nav a[data-nav="${v || ""}"]`);
-    if (navEl) navEl.setAttribute("aria-current", "page");
+    const navKey = v ? TAB_OF[v] || v : "";
+    const navEl = $(`.gp-nav a[data-nav="${navKey}"]`);
+    if (navEl) navEl.setAttribute("aria-current", navKey === (v || "") ? "page" : "true");
     const tabKey = v ? TAB_OF[v] || v : "";
     $$(".gp-tabs a").forEach((n) => n.toggleAttribute("aria-current", false));
     const tabEl = $(`.gp-tabs a[data-tab="${tabKey}"]`);
@@ -456,10 +478,11 @@ ${footer(nav)}
       if (ext) { const res = ext.render({ parts: r.parts, q: r.q, model: A.model, h: helpers, signal }); html = typeof res === "string" ? res : res.html; after = res.after; title = res.title != null ? res.title : ext.label; full = !!res.full; }
       else if (v === "gallery") ({ html, after, title } = viewGallery(r.q));
       else if (v === "outings" && a) ({ html, after, title } = viewOuting(a));
+      else if (v === "outings" && (r.q.get("view") === "notebook" || r.q.get("view") === "numbers")) ({ html, after, title } = viewJournal(r.q, r.q.get("view")));
       else if (v === "outings") ({ html, after, title } = viewOutings());
       else if (v === "species" && a) ({ html, after, title } = viewSpecies(a));
       else if (v === "species") ({ html, after, title } = viewSpeciesIndex(r.q));
-      else if (v === "journal") ({ html, after, title } = viewJournal(r.q));
+      else if (v === "journal") { location.replace(r.q.get("tree") ? hashFor(["species"], new URLSearchParams({ view: "life" })) : hashFor(["outings"], new URLSearchParams({ view: r.q.get("view") === "numbers" ? "numbers" : "notebook" }))); return; }
       else if (v === "photo" && a) { location.replace(hashFor(["gallery"], new URLSearchParams({ p: a }))); return; }
       else ({ html, after, title } = viewMissing());
     } catch (e) {
@@ -629,6 +652,7 @@ ${footer(nav)}
     const html = `
 <div class="toolbar"><div class="wrap tb-row">
   <label class="search">${ICON.search}<span class="visually-hidden">Search</span><input id="gp-q" type="search" autocomplete="off" spellcheck="false" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="gp-sugg" placeholder="Try “herons in flight”, “golden hour”, “otters”" value="${esc(query)}"><div class="sugg" id="gp-sugg" role="listbox" hidden></div></label>
+  ${viewSwitch("grid")}
   <button class="btn tb-filters" type="button" data-gal="filters" aria-haspopup="dialog" aria-expanded="false" aria-controls="gp-filters">${ICON.sliders}<span>Filters</span><b class="tb-n"${nf ? "" : " hidden"}>${nf}</b></button>
   <span class="tb-tools">${densButtons()}<button class="chip" type="button" data-gal="surprise" title="A random photograph (R)">${ICON.shuffle} Surprise me</button><button class="chip" type="button" data-gal="play" title="Play these as an exhibition">${ICON.play} Play these</button></span>
 </div></div>
@@ -637,7 +661,7 @@ ${filterPanel(q)}
     const after = (main, signal) => {
       const input = $("#gp-q", main), panel = $("#gp-filters", main), fbtn = $(".tb-filters", main), tb = $(".toolbar", main);
       paintFilters(q, list.length, all);
-      if (innerWidth <= 640) input.placeholder = "Try “herons in flight”";
+      if (innerWidth <= 640) input.placeholder = innerWidth <= 480 ? "Search" : "Try “herons in flight”";
       const tbh = () => document.documentElement.style.setProperty("--tb-h", tb.offsetHeight + "px");
       tbh();
       if ("ResizeObserver" in window) { const ro = new ResizeObserver(tbh); ro.observe(tb); signal.addEventListener("abort", () => ro.disconnect()); }
@@ -1070,7 +1094,7 @@ ${filterPanel(q)}
       body += chapterRow(o);
     }
     const st = m.stats;
-    return { html: `<div class="wrap page">${pageHead("The field diary", "Outings", `${plural(st.outings, "outing")} between ${esc(fmtDate(st.first))} and ${esc(fmtDate(st.last))}. Each date is a chapter.`)}<div class="chapter-list">${body}</div></div>`, title: "Outings" };
+    return { html: `<div class="wrap page">${pageHead("The field diary", "Outings", `${plural(st.outings, "outing")} between ${esc(fmtDate(st.first))} and ${esc(fmtDate(st.last))}. Each date is a chapter.`, outingsTabs(""))}<div class="chapter-list">${body}</div></div>`, title: "Outings" };
   }
   function viewOuting(id) {
     const m = A.model, o = m.outingById.get(id);
@@ -1158,13 +1182,15 @@ ${filterPanel(q)}
   }
 
   /* ---------- species ---------- */
+  // Every species by class, order and family, as nested lists.
+  function taxonomy(m) {
+    return [...m.tree.values()].sort((a, b) => b.n - a.n).map((c) => `<details${c.n > 20 ? " open" : ""}><summary><span class="lvl">Class</span><span class="nm">${esc(c.common)}</span><span class="binomial">${esc(c.name)}</span><span class="cnt">${plural(c.n, "species", "species")}</span></summary>${[...c.orders.values()].sort((a, b) => b.n - a.n).map((o) => `<details><summary><span class="lvl">Order</span><span class="nm">${esc(o.name)}</span><span class="cnt">${o.n}</span></summary>${[...o.families.values()].sort((a, b) => b.n - a.n).map((f) => `<details><summary><span class="lvl">Family</span><span class="nm">${esc(f.common)}</span><span class="binomial">${esc(f.name)}</span><span class="cnt">${f.n}</span></summary><div class="leaves">${f.species.map((s) => `<a class="leaf" href="#/species/${esc(s.slug)}">${cover(s.best, 160)}<span><b>${esc(s.name)}</b><i>${esc(s.bin || "")}</i></span></a>`).join("")}</div></details>`).join("")}</details>`).join("")}</details>`).join("");
+  }
   const MILESTONES = [10, 25, 50, 75, 100, 150, 200, 250, 300, 400, 500];
   function viewSpeciesIndex(q) {
     const m = A.model, cab = !!GP.cabinet, mode = q.get("view") || "family";
     const callN = GP.calls ? m.species.filter((x) => x.call).length : 0;
-    const tabs = [["family", "By family"]].concat(cab ? [["cabinet", "Cabinet"]] : [], [["life", "Life list"], ["az", "A–Z"]], callN ? [["calls", "Calls"]] : []);
-    const head = pageHead("Field guide", "Species", `${plural(m.life.length, "species", "species")} on the life list across ${plural(m.stats.families, "family", "families")}, plus ${fmtN(m.species.length - m.life.length)} more photographed as captive animals or not identified to species.`,
-      `<div class="chips" role="tablist">${tabs.map(([v, l], i) => `<a class="chip" role="tab" href="#/species${i ? `?view=${v}` : ""}" aria-pressed="${mode === v}">${l}</a>`).join("")}${A.views.some((v) => v.id === "sky") ? `<a class="chip" href="#/sky">Night sky</a>` : ""}${A.views.some((v) => v.id === "plates") ? `<a class="chip" href="#/plates">Plates</a>` : ""}</div>`);
+    const head = pageHead("Field guide", "Species", `${plural(m.life.length, "species", "species")} on the life list across ${plural(m.stats.families, "family", "families")}, plus ${fmtN(m.species.length - m.life.length)} more photographed as captive animals or not identified to species.`, speciesTabs(mode));
     let body = "", after = null;
     const wild = m.species.filter((s) => s.lifeNo);
     const rest = m.species.filter((s) => !s.lifeNo);
@@ -1181,9 +1207,11 @@ ${filterPanel(q)}
       after = (main, signal) => GP.cabinet.mount(main, signal, m, helpers);
     } else if (mode === "life") {
       const n = m.life.length;
+      const tree = GP.treeOfLife ? `<section class="sp-tree tl-card"><div class="family-h" style="margin-top:8px"><h2>The tree of life</h2><span class="n">Grows in the order they were first photographed · hover a leaf to trace it to the root</span></div>${GP.treeOfLife.html(m, helpers)}</section>` : "";
+      after = (main, signal) => { if (GP.treeOfLife) GP.treeOfLife.mount(main, signal, m, helpers); };
       const ms = MILESTONES.filter((v, i) => v <= n || MILESTONES[i - 1] < n || i === 0).slice(0, 8);
-      body = `<div class="milestones" style="margin-bottom:30px">${ms.map((v) => { const s = m.life[v - 1]; return `<div class="milestone${s ? " got" : ""}"><b>${v}</b>${s ? `${esc(s.name)} · ${esc(fmtShort(s.first))}` : `${v - n} to go`}</div>`; }).join("")}</div>
-<ol class="life">${m.life.map((s) => `<li><a href="#/species/${esc(s.slug)}"><span class="no mono">${String(s.lifeNo).padStart(3, "0")}</span>${cover(s.best, 160)}<span class="nm"><b>${esc(s.name)}</b><i>${esc(s.bin)}</i></span><span class="fam">${esc(s.famName)}</span><span class="when mono">${esc(fmtShort(s.first))}</span></a></li>`).join("")}</ol>`;
+      body = tree + `<div class="family-h" style="margin-top:56px"><h2>In order</h2><span class="n">${plural(n, "species", "species")}, numbered as they were first photographed</span></div><div class="milestones" style="margin-bottom:30px">${ms.map((v) => { const s = m.life[v - 1]; return `<div class="milestone${s ? " got" : ""}"><b>${v}</b>${s ? `${esc(s.name)} · ${esc(fmtShort(s.first))}` : `${v - n} to go`}</div>`; }).join("")}</div>
+<ol class="life">${m.life.map((s) => `<li><a href="#/species/${esc(s.slug)}"><span class="no mono">${String(s.lifeNo).padStart(3, "0")}</span>${cover(s.best, 160)}<span class="nm"><b>${esc(s.name)}</b><i>${esc(s.bin)}</i></span><span class="fam">${esc(s.famName)}</span><span class="when mono">${esc(fmtShort(s.first))}</span></a></li>`).join("")}</ol><details class="tl-list" style="margin-top:40px"><summary class="chip">Every species by class, order and family, including captive and unidentified</summary><div class="tree">${taxonomy(m)}</div></details>`;
     } else if (mode === "az") {
       body = `<section class="sp-fam" data-fam=""><div class="sp-grid">${wild.slice().sort((a, b) => a.name.localeCompare(b.name)).map(spCard).join("")}</div></section>`;
     } else {
@@ -1358,7 +1386,7 @@ ${filterPanel(q)}
     if (reach) out.push({ n: `${Math.round(reach.exif.fl)} mm`, l: "the longest reach", d: `${titleOf(reach)} · ${fmtShort(reach.t)}`, x: reach, open: reach.id });
     return out.filter((r) => r.x);
   }
-  function viewJournal(q) {
+  function viewJournal(q, part = "notebook") {
     const m = A.model, ph = m.photos;
     // months across the archive
     const keys = [];
@@ -1394,7 +1422,6 @@ ${filterPanel(q)}
       const k = regCtx(best);
       return `<div class="year-card"><div><b class="y">${y}</b><div class="sc" style="margin-top:10px">${plural(ph.filter((x) => x.year === y).length, "photograph")}<br>${plural(m.outings.filter((o) => o.date.startsWith(String(y))).length, "outing")}<br>${plural(sp.size, "species", "species")}</div></div><div style="display:grid;gap:14px"><p class="lede" style="font-size:16px">${lif.length ? `${plural(lif.length, "new species", "new species")} for the life list: ${lif.slice(0, 14).map((s) => `<a href="#/species/${esc(s.slug)}">${esc(s.name)}</a>`).join(", ")}${lif.length > 14 ? ` and ${lif.length - 14} more` : ""}.` : "No new species this year."}</p><div class="mini-flow" data-ctx="${k}">${best.map((x) => `<button data-id="${esc(x.id)}" aria-label="${esc(titleOf(x))}">${cover(x, 300)}</button>`).join("")}</div></div></div>`;
     }).join("");
-    const tree = [...m.tree.values()].sort((a, b) => b.n - a.n).map((c) => `<details${c.n > 20 ? " open" : ""}><summary><span class="lvl">Class</span><span class="nm">${esc(c.common)}</span><span class="binomial">${esc(c.name)}</span><span class="cnt">${plural(c.n, "species", "species")}</span></summary>${[...c.orders.values()].sort((a, b) => b.n - a.n).map((o) => `<details><summary><span class="lvl">Order</span><span class="nm">${esc(o.name)}</span><span class="cnt">${o.n}</span></summary>${[...o.families.values()].sort((a, b) => b.n - a.n).map((f) => `<details><summary><span class="lvl">Family</span><span class="nm">${esc(f.common)}</span><span class="binomial">${esc(f.name)}</span><span class="cnt">${f.n}</span></summary><div class="leaves">${f.species.map((s) => `<a class="leaf" href="#/species/${esc(s.slug)}">${cover(s.best, 160)}<span><b>${esc(s.name)}</b><i>${esc(s.bin || "")}</i></span></a>`).join("")}</div></details>`).join("")}</details>`).join("")}</details>`).join("");
     // notes for the margins, from the numbers
     const NB = GP.notebook, ink = (t) => (NB ? NB.ink(t) : "");
     const busiest = monthRows.slice().sort((a, b) => b.v - a.v)[0];
@@ -1411,29 +1438,28 @@ ${filterPanel(q)}
       const green = arr.sort((a, b) => b[1].g / b[1].n - a[1].g / a[1].n)[0][0], warm = arr.sort((a, b) => b[1].w / b[1].n - a[1].w / a[1].n)[0][0];
       return green === warm ? "" : `green in ${MONTHS[+green - 1]}, gold in ${MONTHS[+warm - 1]}`;
     })();
-    const html = `<div class="wrap page notebook">${pageHead("Journal", "The archive, read closely", "When the photographs were made, in what light, of whom, and with what: a field notebook kept by the archive itself.")}
-<div class="j-grid">
-  ${NB && timeline.length > 20 ? `<section class="j-card wide reveal"><h2>The archive in colour</h2><p>Every photograph's colours, one sliver each, in the order they were made. Hover to see one; click to open it.</p>${NB.barcode(timeline, { label: "The colours of every photograph in time order" })}${seasonNote ? ink(seasonNote) : ""}</section>` : ""}
-  ${NB ? NB.notebook(m, helpers) : ""}
-  <section class="j-card wide reveal"><h2>The year in the field</h2><p>Photographs per month. Hover a month for outings and new species.</p>${busiest && busiest.v ? ink(`busiest: ${MONTHS[busiest.mo - 1]} ${busiest.y}, ${fmtN(busiest.v)} frames`) : ""}<div class="scroll-x">${svgBars(monthRows, { w: Math.max(560, Math.min(1680, (A.root.clientWidth || innerWidth) - 48)), h: 240, aria: "Photographs per month" })}</div>${table(["Month", "Photographs", "Outings", "New species"], monthRows.map((r) => [`${MONTHS[r.mo - 1]} ${r.y}`, r.v, r.o, r.l]))}</section>
+    const st = m.stats;
+    const head = pageHead("The field diary", "Outings", part === "numbers" ? "When the photographs were made, in what light, of whom and with what: the archive in numbers." : "A page for every month: where we went, what we saw, the prints taped in, new species ticked off.", outingsTabs(part));
+    const notebookHtml = `${NB && timeline.length > 20 ? `<section class="j-card wide reveal"><h2>The archive in colour</h2><p>Every photograph's colours, one sliver each, in the order they were made. Hover to see one; click to open it.</p>${NB.barcode(timeline, { label: "The colours of every photograph in time order" })}${seasonNote ? ink(seasonNote) : ""}</section>` : ""}
+  ${NB ? NB.notebook(m, helpers) : ""}`;
+    const numbersHtml = `  <section class="j-card wide reveal"><h2>The year in the field</h2><p>Photographs per month. Hover a month for outings and new species.</p>${busiest && busiest.v ? ink(`busiest: ${MONTHS[busiest.mo - 1]} ${busiest.y}, ${fmtN(busiest.v)} frames`) : ""}<div class="scroll-x">${svgBars(monthRows, { w: Math.max(560, Math.min(1680, (A.root.clientWidth || innerWidth) - 48)), h: 240, aria: "Photographs per month" })}</div>${table(["Month", "Photographs", "Outings", "New species"], monthRows.map((r) => [`${MONTHS[r.mo - 1]} ${r.y}`, r.v, r.o, r.l]))}</section>
   <section class="j-card reveal"><h2>Hours of light</h2><p>Photographs by hour on the camera clock; the inner arc marks typical daylight.</p>${hours[peakH] ? ink(`most frames between ${peakH}:00 and ${peakH + 1}:00`) : ""}${dial(hours, avgSun)}${table(["Hour", "Photographs"], hours.map((v, i) => [`${String(i).padStart(2, "0")}:00`, v]))}</section>
   <section class="j-card reveal"><h2>Light</h2><p>Each frame placed against that day's sunrise and sunset.</p>${ph.length ? ink(`golden hour: ${Math.round((gold / ph.length) * 100)}% of every frame`) : ""}${hbars(lights, "Photographs by light")}<h2 style="margin-top:18px">Behaviour</h2>${hbars(beh, "Photographs by behaviour")}</section>
   ${otd ? `<section class="j-card wide reveal"><h2>${esc(otd.title)}</h2><p>${esc(otd.sub)}</p>${flow(otd.photos.slice(0, 10))}</section>` : ""}
   <section class="j-card wide reveal"><h2>Records</h2><p>The archive's superlatives, and the photographs that hold them.</p>${m.species.length ? ink(`the ${m.species.slice().sort((a, b) => b.photos.length - a.photos.length)[0].name}, again!`) : ""}<div class="recs" data-ctx="${regCtx(recs.filter((r) => r.open).map((r) => r.x))}">${recs.map((r) => `<${r.href ? `a href="${esc(r.href)}"` : `button data-open="${esc(r.open)}"`} class="rec">${cover(r.x, 480)}<span class="rec-t"><b>${esc(String(r.n))}</b><span>${esc(r.l)}</span><span class="sc">${esc(r.d)}</span></span></${r.href ? "a" : "button"}>`).join("")}</div></section>
   <section class="j-card wide reveal"><h2>Years</h2>${years.length ? ink(`${m.life.filter((s) => s.first.startsWith(String(years[0]))).length} new species in ${years[0]} so far`) : ""}${yearCards}</section>
-  <section class="j-card wide reveal tl-card"><h2>Tree of life</h2><p>${GP.treeOfLife ? "Every species on the life list, by class, order and family. The tree grows in the order they were first photographed; hover a leaf to trace it back to the root." : "Every species in the archive, by class, order and family."}</p>${GP.treeOfLife ? GP.treeOfLife.html(m, helpers) + `<details class="tl-list"><summary class="chip">Every species as a list, including captive and unidentified</summary><div class="tree">${tree}</div></details>` : `<div class="tree">${tree}</div>`}</section>
   <section class="j-card reveal"><h2>Field kit</h2><p>Lenses used, by photograph.</p>${topLens && topLens[1] / ph.length > 0.6 ? ink(`the ${topLens[0].replace(/ f\/.*$/, "")} does nearly everything`) : ""}${hbars([...lens].sort((a, b) => b[1] - a[1]), "Photographs by lens")}</section>
-  <section class="j-card reveal"><h2>Reach</h2><p>Focal length in millimetres. Most of the archive lives at the long end.</p>${topFl && topFl.v ? ink(`most at ${topFl.tip}`) : ""}${svgBars(flRows, { w: Math.max(320, Math.min(820, innerWidth > 900 ? (A.root.clientWidth - 76) / 2 : innerWidth - 48)), h: 200, aria: "Photographs by focal length" })}${table(["Focal length", "Photographs"], flRows.map((r) => [r.tip, r.v]))}</section>
+  <section class="j-card reveal"><h2>Reach</h2><p>Focal length in millimetres. Most of the archive lives at the long end.</p>${topFl && topFl.v ? ink(`most at ${topFl.tip}`) : ""}${svgBars(flRows, { w: Math.max(320, Math.min(820, innerWidth > 900 ? (A.root.clientWidth - 76) / 2 : innerWidth - 48)), h: 200, aria: "Photographs by focal length" })}${table(["Focal length", "Photographs"], flRows.map((r) => [r.tip, r.v]))}</section>`;
+    const html = `<div class="wrap page notebook">${head}
+<div class="j-grid">
+  ${part === "numbers" ? numbersHtml : notebookHtml}
 </div></div>`;
     const after = (main, signal) => {
       if (GP.notebook) GP.notebook.mount(main, signal);
       // the years' prints develop as they arrive
       if (GP.fx) main.querySelectorAll(".year-card .mini-flow").forEach((mf) => GP.fx.developIn(mf, signal));
-      if (GP.treeOfLife) GP.treeOfLife.mount(main, signal, m, helpers);
-      // arriving from "Watch the life list grow": go straight to the tree
-      if (q && q.get("tree")) requestAnimationFrame(() => { const t = $(".tl-card", main); if (t) window.scrollTo(0, t.getBoundingClientRect().top + scrollY - (parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--head-h")) || 64) - 8); });
     };
-    return { html, after, title: "Journal" };
+    return { html, after, title: part === "numbers" ? "Outings in numbers" : "Field notebook" };
   }
 
   function viewMissing() {
@@ -1872,7 +1898,7 @@ ${filterPanel(q)}
     update();
   }
 
-  const helpers = { esc, tile, flow, cover, chip, spCard, chapterRow, pageHead, specimenTag, fmtDate, fmtShort, fmtTime, fmtN, plural, titleOf, exposure, src, ICON, regCtx, toast, hbars, table, svgBars, pageUrl, shareBtn, sharePage };
+  const helpers = { esc, tile, flow, cover, chip, spCard, chapterRow, pageHead, speciesTabs, outingsTabs, viewSwitch, specimenTag, fmtDate, fmtShort, fmtTime, fmtN, plural, titleOf, exposure, src, ICON, regCtx, toast, hbars, table, svgBars, pageUrl, shareBtn, sharePage };
   GP.app = {
     start, update, setSelecting, toast, helpers, holdView, toggleBursts, fillAll, get burstsExpanded() { return A.expand; }, reveal, isRevealed: (x) => !x || !x.explicit || A.revealed.has(x.id),
     get model() { return A.model; }, get site() { return A.site; }, get adapter() { return A.adapter; }, get workshop() { return A.workshop; },

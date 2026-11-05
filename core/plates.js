@@ -106,7 +106,7 @@
       };
       return { html, after, title: `Plate ${f.roman} · ${f.common}` };
     }
-    const html = `<div class="wrap page plates-page">${h.pageHead("Natural-history plates", "The plates", `${h.plural(fams.length, "plate")}, one for every family on the life list, in the style of an old field guide: each species numbered and named. Open one to print it.`)}
+    const html = `<div class="wrap page plates-page">${h.pageHead("Natural-history plates", "The plates", `${h.plural(fams.length, "plate")}, one for every family on the life list, in the style of an old field guide: each species numbered and named. Open one to print it.`, h.speciesTabs ? h.speciesTabs("plates") : "")}
 <div class="plates-grid">${fams.map((f) => `<a class="plate-card" href="#/plates/${encodeURIComponent(f.name)}"><span class="plate-mini"><span class="plate-mini-no">${f.roman}</span>${f.species.slice(0, 4).map((s) => `<span class="pm-v">${h.cover(s.best, 240, "", "")}</span>`).join("")}</span><span class="plate-card-t"><span class="sc">Plate ${f.roman}</span><b>${h.esc(f.common)}</b><i>${h.esc(f.name)} · ${h.plural(f.species.length, "species", "species")}</i></span></a>`).join("")}</div></div>`;
     return { html, title: "Plates" };
   }

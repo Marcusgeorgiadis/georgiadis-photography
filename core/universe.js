@@ -167,7 +167,7 @@
     const html = `<section class="uv" aria-label="The archive as a universe">
   <canvas class="uv-c" tabindex="0" role="img" aria-label="${h.fmtN(n)} photographs arranged as a picture. Use the arrangement buttons to change it, scroll or pinch to zoom, and select a photograph to open it."></canvas>
   <div class="uv-ui">
-    <header class="uv-head"><div class="kicker">The archive as a universe</div><h1 class="display">${h.fmtN(n)} photographs</h1><p class="uv-sub">${MODES.find((m) => m[0] === mode)[2]}</p></header>
+    <header class="uv-head">${h.viewSwitch ? h.viewSwitch("universe") : ""}<div class="kicker">The archive as a universe</div><h1 class="display">${h.fmtN(n)} photographs</h1><p class="uv-sub">${MODES.find((m) => m[0] === mode)[2]}</p></header>
     <div class="uv-modes" role="group" aria-label="Arrangement">${MODES.map(([id, label], i) => `<button class="chip" data-mode="${id}" aria-pressed="${id === mode}" title="${label} (${i + 1})">${label}</button>`).join("")}</div>
     <div class="uv-zoom" role="group" aria-label="Zoom"><button class="icon-btn" data-z="in" aria-label="Zoom in">+</button><button class="icon-btn" data-z="out" aria-label="Zoom out">−</button><button class="icon-btn" data-z="fit" aria-label="Fit everything">${h.ICON.expand}</button></div>
     <div class="uv-hint sc">Scroll or pinch to zoom · drag to move · select a photograph to open it</div>
@@ -620,5 +620,5 @@
     signal.addEventListener("abort", () => { S.alive = false; ro.disconnect(); mo.disconnect(); cancelAnimationFrame(S.raf); });
   }
 
-  (GP.views = GP.views || []).push({ id: "universe", label: "Universe", navAfter: "species", render });
+  (GP.views = GP.views || []).push({ id: "universe", label: "Universe", nav: false, render });
 })(window.GP = window.GP || {});

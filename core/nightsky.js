@@ -55,10 +55,10 @@
     const life = m.life.length;
     const html = `<div class="ns" data-hover="">
   <canvas class="ns-c" aria-hidden="true"></canvas>
-  <div class="ns-head wrap"><div class="kicker">The life list</div><h1 class="display">The night sky</h1>
+  <div class="ns-head wrap">${h.speciesTabs ? h.speciesTabs("sky") : ""}<div class="kicker">The life list</div><h1 class="display">The night sky</h1>
     <p>${h.plural(life, "species", "species")}, each a star: the brighter, the more it has been photographed. Each family is a constellation. Rest on a star to see its bird.</p></div>
   <div class="ns-card" hidden></div>
-  <div class="ns-foot wrap"><span class="sc">Hover a star · click to visit · <a href="#/journal?tree=1">the same list as a tree</a></span></div>
+  <div class="ns-foot wrap"><span class="sc">Hover a star · click to visit · <a href="#/species?view=life">the same list as a tree</a></span></div>
   <ul class="visually-hidden">${m.life.map((s) => `<li><a href="#/species/${h.esc(s.slug)}">${h.esc(s.name)}</a></li>`).join("")}</ul>
 </div>`;
     return { html, title: "The night sky", full: true, after: (main, signal) => mount(main, signal, m, h) };

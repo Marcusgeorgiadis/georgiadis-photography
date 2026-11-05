@@ -692,3 +692,25 @@ kbd { font-family: var(--f-data); font-size: 12px; border: 1px solid var(--line)
 .vw-peek { position: absolute; left: 0; top: 0; transform-origin: 0 0; visibility: hidden; pointer-events: none; user-select: none; -webkit-user-drag: none; max-width: none; will-change: transform; box-shadow: 0 40px 120px -40px rgba(0, 0, 0, 0.8); }
 .vw-peek.veiled { filter: blur(40px) brightness(0.65); }
 .vw.sliding .vw-fxbox, .vw.dragging .vw-fxbox { visibility: hidden; }
+
+/* ---------- the Gallery's two views: the grid, or every photograph on one canvas ---------- */
+.vswitch { display: inline-flex; flex: none; padding: 3px; gap: 2px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); }
+.vswitch a { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 999px; color: var(--ink-2); text-decoration: none; font-size: 13.5px; font-weight: 600; transition: background var(--t-fast), color var(--t-fast); }
+.vswitch a:hover { color: var(--ink); }
+.vswitch a[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.vswitch svg { width: 16px; height: 16px; }
+.tb-row .vswitch { min-height: 46px; align-items: stretch; }
+@media (max-width: 860px) { .tb-row .vswitch a span { display: none; } .tb-row .vswitch a { padding: 7px 10px; } }
+.uv-head .vswitch { pointer-events: auto; margin-bottom: 14px; }
+/* species pages that aren't the guide itself still carry its tabs */
+.sp-tabs .chip { text-decoration: none; }
+.ns-head .sp-tabs { pointer-events: auto; margin-bottom: 10px; }
+.ns-head .sp-tabs .chip { color: rgba(238, 240, 255, 0.85); border-color: rgba(238, 240, 255, 0.28); background: rgba(8, 12, 30, 0.45); }
+.ns-head .sp-tabs .chip:hover { color: #fff; border-color: rgba(238, 240, 255, 0.6); }
+.ns-head .sp-tabs .chip[aria-pressed="true"] { background: #eef0ff; color: #0b1020; border-color: #eef0ff; }
+.dm-back { display: inline-flex; align-items: center; gap: 6px; width: max-content; margin-bottom: 6px; color: inherit; opacity: 0.8; text-decoration: none; font-size: 14px; font-weight: 600; }
+.dm-back:hover { opacity: 1; }
+.dm-back svg { width: 16px; height: 16px; }
+.sp-tree { margin-top: 18px; }
+@media (max-width: 480px) { .tb-filters > span { display: none; } .tb-filters { padding: 8px 12px; } .tb-row { gap: 8px; } }
+@media (max-width: 600px) { .uv-sub { display: none; } }
