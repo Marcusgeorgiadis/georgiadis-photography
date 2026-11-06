@@ -1144,14 +1144,25 @@ ${filterPanel(q)}
     const list = o.photos.filter((x) => x.isHero).sort((a, b) => a.t.localeCompare(b.t));
     const who = o.companions.length > 1 ? ` · with ${o.companions.slice(1).join(", ")}` : "";
     const chorus = o.species.map((e) => m.speciesByKey.get(e.key)).filter((sp) => sp && sp.call).map((sp) => sp.slug);
+    const timed = list.filter((x) => x.hasTime), span = timed.length > 1 ? [fmtTime(timed[0]), fmtTime(timed[timed.length - 1])] : null;
     const html = `<section class="chapter-hero">${o.cover ? `<img src="${esc(src(o.cover, Math.max(1400, window.innerWidth) * dpr()))}" alt="" style="object-position:${(o.cover.fp[0] * 100).toFixed(1)}% ${(o.cover.fp[1] * 100).toFixed(1)}%" data-open="${esc(o.cover.id)}">` : ""}<div class="wrap">${crumbs([["Outings", "#/outings"]], `Chapter ${o.no} of ${m.outings.length} · ${o.type}${who}`)}<h1>${esc(fmtDate(o.date))}</h1><div class="sc">${esc(weekday(o.date))} · ${plural(o.photos.length, "frame")} · ${plural(o.species.length, "species", "species")}</div></div></section>
 <div class="wrap page">
-  <div class="sp-head" style="align-items:start;margin-top:8px"><div>${o.note ? `<p class="lede">${esc(o.note)}</p>` : `<p class="lede">${esc(o.title)}</p>`}
+  <div class="out-intro">${o.note ? `<p class="lede">${esc(o.note)}</p>` : `<p class="lede">${esc(o.title)}</p>`}
     <div class="sp-acts">${A.views.some((v) => v.id === "story") && list.some((x) => x.hasTime) ? `<a class="btn primary" href="#/story/${esc(o.id)}">Read it as a story ${ICON.arrow}</a>` : ""}<button class="btn" data-out="play">${ICON.play} Play this outing</button>${chorus.length ? `<button class="btn" data-out="chorus" aria-pressed="false">${ICON.play} Hear the day <span class="sc">${plural(chorus.length, "call")}</span></button>` : ""}${shareBtn(pageUrl("outing", o.id), `${fmtDate(o.date)} · ${A.site.title || "Georgiadis Photography"}`)}</div></div>
-  <div><div class="sc" style="margin-bottom:10px">Species seen</div><div class="chips">${o.species.map((s) => { const sp = m.speciesByKey.get(s.key); return sp ? `<a class="chip" href="#/species/${esc(sp.slug)}">${esc(sp.name)} <span class="n">${s.n}</span></a>` : ""; }).join("")}</div></div></div>
+  <div class="sp-body${list.length <= 4 ? " few" : ""}">
+    <section class="sp-photos" aria-label="Photographs">
+      <div class="sec-h"><h2>Photographs</h2><span class="meta">${plural(list.length, "photograph")} · in the order they were made</span></div>
+      ${flow(list)}
+    </section>
+    <aside class="sp-notes" aria-label="Field notes"><h2 class="sp-notes-h">Field notes</h2><div class="sp-notes-row">
+      <div class="j-card sp-facts"><h2>The outing</h2><dl>
+        <div><dt>Frames</dt><dd>${fmtN(o.photos.length)}</dd></div><div><dt>Species</dt><dd>${fmtN(o.species.length)}</dd></div>
+        ${span ? `<div><dt>From</dt><dd class="d">${esc(span[0])}</dd></div><div><dt>To</dt><dd class="d">${esc(span[1])}</dd></div>` : ""}</dl>${o.companions.length > 1 ? `<p>With ${esc(o.companions.slice(1).join(", "))}</p>` : ""}</div>
+      ${o.species.length ? `<div class="j-card"><h2>Species seen</h2><div class="chips">${o.species.map((s) => { const sp = m.speciesByKey.get(s.key); return sp ? `<a class="chip" href="#/species/${esc(sp.slug)}">${esc(sp.name)} <span class="n">${s.n}</span></a>` : ""; }).join("")}</div></div>` : ""}
+    ${GP.notebook && list.length >= 8 ? `<div class="j-card ob"><h2>The day in colour</h2><p>Every frame's colours, in the order they were made</p>${GP.notebook.barcode(o.photos.filter((x) => x.pal && x.pal.length).slice().sort((a, b) => a.t.localeCompare(b.t)), { small: true, byHour: true, label: "The colours of this outing's frames in order" })}</div>` : ""}
+    </div></aside>
+  </div>
   ${dayLine(list)}
-  ${GP.notebook && list.length >= 8 ? `<section class="sec ob"><div class="sec-h"><h2>The day in colour</h2><span class="meta">Every frame's colours, in the order they were made</span></div>${GP.notebook.barcode(o.photos.filter((x) => x.pal && x.pal.length).slice().sort((a, b) => a.t.localeCompare(b.t)), { small: true, byHour: true, label: "The colours of this outing's frames in order" })}</section>` : ""}
-  ${flow(list)}
   ${pageFoot({ label: "Other chapters", prev: outCard(prev, "Previous chapter"), next: outCard(next, "Next chapter"), up: ["All outings", "#/outings"] })}
 </div>`;
     const after = (main, signal) => {
@@ -1343,21 +1354,22 @@ ${filterPanel(q)}
     ${GP.calls ? GP.calls.player(s) : ""}
     <div class="sp-acts"><button class="btn" data-sp="play">${ICON.play} Play as an exhibition</button>${plate ? `<a class="btn ghost" href="#/plates/${encodeURIComponent(plate.name)}">Plate ${plate.roman}</a>` : ""}${shareBtn(pageUrl("species", s.slug), `${s.name} · ${A.site.title || "Georgiadis Photography"}`)}</div>
   </div><button class="sp-hero" data-open="${esc(s.best.id)}"${s.call ? ` data-ripple="${esc(s.slug)}"` : ""} style="--fx:${(s.best.fp[0] * 100).toFixed(1)}%;--fy:${(s.best.fp[1] * 100).toFixed(1)}%" aria-label="Open the best photograph">${cover(s.best, 1400, "", s.name)}</button></div>
-  <div class="stats-band" style="margin-bottom:36px">
-    <div><b>${fmtN(s.photos.length)}</b><span>Photographs</span></div>
-    <div><b>${fmtN(s.outingN)}</b><span>Outings</span></div>
-    <div><b style="font-size:clamp(22px,2.4vw,32px)">${esc(fmtShort(s.first))}</b><span>First seen</span></div>
-    <div><b style="font-size:clamp(22px,2.4vw,32px)">${esc(fmtShort(s.last))}</b><span>Last seen</span></div>
+  <div class="sp-body${s.heroes.length <= 4 ? " few" : ""}">
+    <section class="sp-photos" aria-label="Photographs">
+      <div class="sec-h"><h2>Photographs</h2><span class="meta">${plural(s.heroes.length, "photograph")} · best first · bursts stacked</span></div>
+      ${flow(s.heroes)}
+    </section>
+    <aside class="sp-notes" aria-label="Field notes"><h2 class="sp-notes-h">Field notes</h2><div class="sp-notes-row">
+      <div class="j-card sp-facts"><h2>In the archive</h2><dl>
+        <div><dt>Photographs</dt><dd>${fmtN(s.photos.length)}</dd></div><div><dt>Outings</dt><dd>${fmtN(s.outingN)}</dd></div>
+        <div><dt>First seen</dt><dd class="d">${esc(fmtShort(s.first))}</dd></div><div><dt>Last seen</dt><dd class="d">${esc(fmtShort(s.last))}</dd></div></dl></div>
+      <div class="j-card"><h2>When</h2><div class="calendar" role="img" aria-label="Photographs by month">${MON.map((mm) => `<span class="m">${mm[0]}</span>`).join("").replace(/^/, "<span></span>")}<span>Photos</span>${months.map((v, i) => `<span class="c${v ? " on" : ""}" data-tip="${MONTHS[i]}" data-tip-v="${plural(v, "photograph")}" tabindex="0" style="${v ? `opacity:${(0.45 + 0.55 * v / mx).toFixed(2)}` : ""}">${v || ""}</span>`).join("")}</div></div>
+      <div class="j-card"><h2>Doing</h2>${s.behaviourList.length ? `<div class="chips">${s.behaviourList.slice(0, 8).map(([b, n]) => `<a class="chip" href="${hashFor(["gallery"], new URLSearchParams({ q: s.name + " " + b.toLowerCase() }))}">${esc(b)} <span class="n">${n}</span></a>`).join("")}</div>` : `<p>No behaviour noted yet.</p>`}
+      <div class="sc" style="margin-top:8px">Seen on</div><div class="chips">${outs.slice(-8).reverse().map((o) => `<a class="chip" href="#/outings/${esc(o.id)}">${esc(fmtShort(o.date))}</a>`).join("")}${outs.length > 8 ? `<span class="chip ghost">+${outs.length - 8} more</span>` : ""}</div></div>
+      ${lightRows.length > 1 ? `<div class="j-card"><h2>Light</h2><p>When in the day it was photographed.</p>${hbars(lightRows, "Photographs by light")}</div>${withRows.length ? `<div class="j-card"><h2>Seen with</h2><p>Species photographed on the same outings.</p><div class="sp-with">${withRows.map(({ sp, n }) => `<a href="#/species/${esc(sp.slug)}">${cover(sp.best, 160)}<span><b>${esc(sp.name)}</b><i>${plural(n, "outing")} together</i></span></a>`).join("")}</div></div>` : ""}` : withRows.length ? `<div class="j-card"><h2>Seen with</h2><p>Species photographed on the same outings.</p><div class="sp-with">${withRows.map(({ sp, n }) => `<a href="#/species/${esc(sp.slug)}">${cover(sp.best, 160)}<span><b>${esc(sp.name)}</b><i>${plural(n, "outing")} together</i></span></a>`).join("")}</div></div>` : ""}
+    </div></aside>
   </div>
-  <div class="j-grid">
-    <div class="j-card"><h2>When</h2><div class="calendar" role="img" aria-label="Photographs by month">${MON.map((mm) => `<span class="m">${mm[0]}</span>`).join("").replace(/^/, "<span></span>")}<span>Photos</span>${months.map((v, i) => `<span class="c${v ? " on" : ""}" data-tip="${MONTHS[i]}" data-tip-v="${plural(v, "photograph")}" tabindex="0" style="${v ? `opacity:${(0.45 + 0.55 * v / mx).toFixed(2)}` : ""}">${v || ""}</span>`).join("")}</div></div>
-    <div class="j-card"><h2>Doing</h2>${s.behaviourList.length ? `<div class="chips">${s.behaviourList.slice(0, 8).map(([b, n]) => `<a class="chip" href="${hashFor(["gallery"], new URLSearchParams({ q: s.name + " " + b.toLowerCase() }))}">${esc(b)} <span class="n">${n}</span></a>`).join("")}</div>` : `<p>No behaviour noted yet.</p>`}
-      <div class="sc" style="margin-top:8px">Seen on</div><div class="chips">${outs.map((o) => `<a class="chip" href="#/outings/${esc(o.id)}">${esc(fmtShort(o.date))}</a>`).join("")}</div></div>
-  </div>
-  ${lightRows.length > 1 ? `<div class="j-grid" style="margin-top:28px"><div class="j-card"><h2>Light</h2><p>When in the day it was photographed.</p>${hbars(lightRows, "Photographs by light")}</div>${withRows.length ? `<div class="j-card"><h2>Seen with</h2><p>Species photographed on the same outings.</p><div class="sp-with">${withRows.map(({ sp, n }) => `<a href="#/species/${esc(sp.slug)}">${cover(sp.best, 160)}<span><b>${esc(sp.name)}</b><i>${plural(n, "outing")} together</i></span></a>`).join("")}</div></div>` : ""}</div>` : ""}
   ${everyLight(s)}
-  <div class="sec-h" style="margin-top:48px"><h2>Photographs</h2><span class="meta">Best first · bursts stacked</span></div>
-  ${flow(s.heroes)}
   ${related.length ? `<div class="family-h" style="margin-top:64px"><h2>More ${esc(s.famName || "relatives")}</h2></div><div class="sp-grid">${related.map(spCard).join("")}</div>` : ""}
   ${pageFoot({ label: "Neighbouring species", prev: spCardFoot(prevS, "Previous"), next: spCardFoot(nextS, "Next"), up: ["All species", "#/species"] })}
 </div>`;

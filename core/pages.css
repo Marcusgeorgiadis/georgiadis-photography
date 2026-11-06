@@ -630,3 +630,37 @@ a.way-calls:hover .calls-art i { opacity: 0.85; }
   .hm-now { bottom: 12px; }
   .hm-down { display: none; }
 }
+
+/* ---------- species and outing pages: the photographs first, the field notes beside them ---------- */
+.out-intro { display: grid; gap: 4px; max-width: 760px; margin: 8px 0 34px; }
+.out-intro .lede { margin: 0; }
+.sp-body { display: grid; grid-template-columns: minmax(0, 1fr) clamp(280px, 25vw, 360px); gap: 28px 48px; align-items: start; }
+.sp-photos > .sec-h:first-child { margin-top: 0; }
+.sp-notes { min-width: 0; }
+.sp-notes-h { margin: 0 0 6px; font-family: var(--f-data); font-weight: 500; font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); }
+.sp-notes-row { display: grid; gap: 26px; }
+.sp-notes .j-card { grid-column: auto; padding-top: 16px; gap: 12px; }
+.sp-notes .j-card h2 { font-size: 21px; }
+.sp-notes .j-card > p { font-size: 14px; }
+.sp-facts dl { margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 14px 18px; }
+.sp-facts dt { font-family: var(--f-data); font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+.sp-facts dd { margin: 3px 0 0; font: 500 26px/1.05 var(--f-display); font-variant-numeric: lining-nums tabular-nums; }
+.sp-facts dd.d { font-size: 20px; }
+/* a few photographs only: the notes go under them, side by side */
+.sp-body.few { grid-template-columns: minmax(0, 1fr); }
+.sp-body.few .sp-notes { margin-top: 28px; }
+.sp-body.few .sp-notes-row { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 22px 28px; }
+@media (max-width: 1000px) {
+  .sp-body { grid-template-columns: minmax(0, 1fr); }
+  .sp-notes { margin-top: 36px; }
+  .sp-notes-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 28px; }
+}
+/* a phone: after the photographs, the notes are a row of cards to swipe through */
+@media (max-width: 640px) {
+  .sp-notes-row, .sp-body.few .sp-notes-row { grid-auto-flow: column; grid-template-columns: none; grid-auto-columns: 84%; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding-inline: var(--gutter); margin: 0 calc(-1 * max(20px, env(safe-area-inset-right, 0px))) 0 calc(-1 * var(--gutter)); padding: 0 max(20px, env(safe-area-inset-right, 0px)) 6px var(--gutter); scrollbar-width: none; align-items: start; }
+  .sp-notes-row::-webkit-scrollbar { display: none; }
+  .sp-notes .j-card { scroll-snap-align: start; border: 1px solid var(--hair); border-radius: 12px; padding: 14px 14px 16px; background: color-mix(in srgb, var(--surface) 82%, transparent); }
+  .out-intro { margin-bottom: 26px; }
+  /* the species' best photograph opens the grid just below, so it isn't shown twice in a row */
+  .sp-head .sp-hero { display: none; }
+}
