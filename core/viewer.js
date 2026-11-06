@@ -39,6 +39,7 @@
     <button class="vw-nav vw-next" data-v="next" aria-label="Next photograph">${I.right}</button>
     <div class="vw-bottom"><span class="vw-badge mono" aria-live="polite"></span><div class="vw-frames" hidden><button class="vw-fstep" data-v="fprev" title="Previous frame (↑)" aria-label="Previous frame">${I.left}</button><div class="vw-strip" role="listbox" aria-label="Frames in this burst"></div><button class="vw-fstep" data-v="fnext" title="Next frame (↓)" aria-label="Next frame">${I.right}</button></div></div>
     <div class="vw-mini" hidden><img alt=""><i></i></div>
+    <div class="vw-film" role="listbox" aria-label="The photographs here"></div>
   </div>
 </div>
 <aside class="vw-info" aria-label="Details"><div class="in"></div></aside>`;
@@ -52,6 +53,8 @@
     V.info = $(".vw-info .in", el);
     V.mini = $(".vw-mini", el);
     V.fxbox = $(".vw-fxbox", el);
+    V.film = $(".vw-film", el);
+    V.film.addEventListener("scroll", () => { if (!V.filmRaf) V.filmRaf = requestAnimationFrame(() => { V.filmRaf = 0; filmGrow(); }); }, { passive: true });
     el.addEventListener("click", onClick);
     V.stage.addEventListener("pointerdown", onDown);
     V.stage.addEventListener("pointermove", onMove);
@@ -60,11 +63,14 @@
     V.stage.addEventListener("wheel", onWheel, { passive: false });
     V.stage.addEventListener("dblclick", (e) => { if (e.target === V.img || e.target === V.stage) toggleZoom(e.clientX, e.clientY); });
     el.addEventListener("pointermove", wake, { passive: true });
+    // on a touch screen, using a control (the filmstrip, a button) keeps the controls showing; a tap
+    // on the photograph still hides or shows them
+    el.addEventListener("pointerdown", (e) => { if (e.pointerType !== "mouse" && e.target.closest(".vw-ui > *:not(.vw-mini)")) clearTimeout(V.idleT); }, { passive: true });
     el.addEventListener("keydown", trapTab);
     V.info.addEventListener("focusout", () => setTimeout(() => {
       if (V.infoStale && V.open && !V.info.contains(document.activeElement)) { V.infoStale = false; renderInfo(cur()); }
     }, 0));
-    window.addEventListener("resize", () => { if (V.open) { layout(); fit(false); } });
+    window.addEventListener("resize", () => { if (V.open) { layout(); fit(false); film({ instant: true }); } });
     document.addEventListener("keydown", onKey);
     document.addEventListener("fullscreenchange", () => { const b = $('[data-v="fs"]', el); if (b) b.setAttribute("aria-pressed", String(!!document.fullscreenElement)); });
   }
@@ -88,6 +94,7 @@
     V.el.classList.remove("sliding");
     V.img.style.visibility = "";
     $(".vw-ui", V.el).style.opacity = "";
+    $(".vw-bg", V.el).style.opacity = "";
     const opener = document.activeElement;
     V.opener = opener;
     V.list = list.filter(Boolean);
@@ -100,6 +107,7 @@
     if (frame && !V.loose && framesOf(V.list[V.i]).includes(frame)) V.frame = frame;
     const wasOpen = V.open;
     V.open = true;
+    V.el.classList.toggle("has-film", V.list.length > 1);
     V.el.hidden = false;
     document.documentElement.style.overflow = "hidden";
     if (!wasOpen) {
@@ -134,6 +142,8 @@
       if (V.anim) { clearTimeout(V.slideT); V.anim = null; }
       hidePeek();
       V.img.removeAttribute("src");
+      $(".vw-bg", V.el).style.opacity = "";
+      $(".vw-bg", V.el).style.transition = "";
       document.documentElement.style.overflow = "";
       if (V.opener && V.opener.focus && document.contains(V.opener)) V.opener.focus({ preventScroll: true });
     };
@@ -291,6 +301,7 @@
     $(".vw-next", V.el).hidden = !steps;
     strip(x);
     badge();
+    film();
     renderInfo(x);
     preload();
     sync();
@@ -344,10 +355,67 @@
   function badge(extra) {
     const x = cur(), fr = framesOf(x);
     const parts = [];
-    if (V.list.length > 1) parts.push(`${V.i + 1} / ${V.list.length}`);
+    if (V.list.length > 1) parts.push(`${H().fmtN(V.i + 1)} of ${H().fmtN(V.list.length)}`);
     if (fr.length > 1) parts.push(`frame ${fr.indexOf(x) + 1} of ${fr.length}`);
     parts.push(extra || (V.full ? `full resolution · ${x.W} × ${x.H}` : V.k > 1.02 ? `${Math.round(V.k * 100)}%` : ""));
     $(".vw-badge", V.el).textContent = parts.filter(Boolean).join(" · ");
+  }
+  /* ---------- the filmstrip: every photograph here, the current one lit ---------- */
+  // A long set (the whole gallery) draws a window of thumbnails around the current photograph,
+  // and the window grows as the strip is scrolled towards either end. A tap goes straight there.
+  const FILM_SPAN = 50;
+  function filmThumb(y, i) {
+    const h = H(), veiled = y.explicit && !GP.app.isRevealed(y);
+    return `<button role="option" data-fi="${i}" aria-selected="false" aria-label="${h.esc(h.titleOf(y))}, ${i + 1} of ${V.list.length}"${veiled ? ' class="veiled"' : ""} style="background:${h.esc((y.pal && y.pal[0]) || "#222")}"><img src="${h.esc(h.src(y, 160))}" alt="" loading="lazy" decoding="async"></button>`;
+  }
+  function film(o = {}) {
+    const f = V.film, n = V.list.length;
+    if (!f) return;
+    if (n < 2) { f.innerHTML = ""; f._list = null; return; }
+    let instant = !!o.instant;
+    if (f._list !== V.list || V.i < f._a || V.i >= f._b) {
+      f._list = V.list;
+      f._a = Math.max(0, V.i - FILM_SPAN);
+      f._b = Math.min(n, V.i + FILM_SPAN + 1);
+      f.innerHTML = V.list.slice(f._a, f._b).map((y, k) => filmThumb(y, f._a + k)).join("");
+      instant = true;
+    }
+    for (const b of f.querySelectorAll(".on")) { b.classList.remove("on"); b.setAttribute("aria-selected", "false"); }
+    const on = f.querySelector(`[data-fi="${V.i}"]`);
+    if (!on) return;
+    on.classList.add("on");
+    on.setAttribute("aria-selected", "true");
+    requestAnimationFrame(() => {
+      if (!f.isConnected) return;
+      const left = on.offsetLeft - (f.clientWidth - on.offsetWidth) / 2;
+      if (instant || reduced() || Math.abs(left - f.scrollLeft) > f.clientWidth * 3) f.scrollLeft = left;
+      else f.scrollTo({ left, behavior: "smooth" });
+    });
+  }
+  function filmGrow() {
+    const f = V.film, n = V.list.length;
+    if (!f || n < 2 || f._list !== V.list) return;
+    if (f.scrollLeft < 400 && f._a > 0) {
+      const a = Math.max(0, f._a - FILM_SPAN), w0 = f.scrollWidth;
+      f.insertAdjacentHTML("afterbegin", V.list.slice(a, f._a).map((y, k) => filmThumb(y, a + k)).join(""));
+      f._a = a;
+      f.scrollLeft += f.scrollWidth - w0;
+    }
+    if (f.scrollLeft + f.clientWidth > f.scrollWidth - 400 && f._b < n) {
+      const b = Math.min(n, f._b + FILM_SPAN);
+      f.insertAdjacentHTML("beforeend", V.list.slice(f._b, b).map((y, k) => filmThumb(y, f._b + k)).join(""));
+      f._b = b;
+    }
+  }
+  // Straight to a photograph in this set (from the filmstrip, Home or End).
+  function jump(i) {
+    i = Math.max(0, Math.min(V.list.length - 1, i));
+    if (i === V.i && !V.frame) return;
+    if (V.anim) V.anim.finish();
+    if (V.liveStop) { V.liveStop(); V.liveStop = null; }
+    const d = i >= V.i ? 1 : -1;
+    V.i = i; V.frame = null;
+    show({ dir: d });
   }
   function bigW() { return Math.min(2560, Math.max(V.sw, V.sh) * Math.min(2, devicePixelRatio || 1)); }
   /* ---------- loading: preview first, then the photograph at the screen's size ---------- */
@@ -447,6 +515,7 @@ ${ws && ws.infoExtra ? ws.infoExtra(x) : ""}`;
     const x = cur();
     const r = V.stage.getBoundingClientRect();
     V.sw = r.width || innerWidth; V.sh = r.height || innerHeight;
+    if (V.film && V.el.classList.contains("has-film")) { const fr = V.film.getBoundingClientRect(); if (fr.height && fr.top > r.top) V.sh = Math.max(160, Math.round(fr.top - r.top - 6)); }
     const pad = V.sw < 700 ? 0 : 0.035;
     const fk = Math.min((V.sw * (1 - pad * 2)) / x.ar, V.sh * (1 - pad * 2.4));
     V.bh = Math.round(fk); V.bw = Math.round(fk * x.ar);
@@ -700,7 +769,9 @@ ${ws && ws.infoExtra ? ws.infoExtra(x) : ""}`;
         const s = 1 - Math.min(0.25, dy / 1600);
         V.img.style.transition = "none";
         V.img.style.transform = `translate3d(${V.tx + dx * 0.4 + (V.bw * (1 - s)) / 2}px,${V.ty + dy}px,0) scale(${s})`;
-        $(".vw-bg", V.el).style.opacity = String(Math.max(0.15, 1 - dy / 500));
+        const bg = $(".vw-bg", V.el);
+        bg.style.transition = "none";
+        bg.style.opacity = String(Math.max(0.15, 1 - dy / 500));
       }
     }
   }
@@ -720,7 +791,8 @@ ${ws && ws.infoExtra ? ws.infoExtra(x) : ""}`;
     V.img.classList.remove("grabbing");
     V.el.classList.remove("dragging");
     sync();
-    $(".vw-bg", V.el).style.opacity = "";
+    const bg = $(".vw-bg", V.el);
+    bg.style.transition = "";
     const dx = e.clientX - g.x0, dy = e.clientY - g.y0;
     if (!g.moved) { tap(e, g); return; }
     const v = velocity(g.samples);
@@ -732,7 +804,8 @@ ${ws && ws.infoExtra ? ws.infoExtra(x) : ""}`;
       slideBack(g.pd ? g.pk : null);
       return;
     }
-    if (g.axis === "y" && (dy > 110 || v.y > 0.7)) { close(); return; }
+    if (g.axis === "y" && (dy > 110 || v.y > 0.7)) { bg.style.opacity = "0"; close(); return; }
+    bg.style.opacity = "";
     apply(260);
   }
   function tap(e, g) {
@@ -799,6 +872,8 @@ ${ws && ws.infoExtra ? ws.infoExtra(x) : ""}`;
 
   /* ---------- controls ---------- */
   function onClick(e) {
+    const fi = e.target.closest("[data-fi]");
+    if (fi) { jump(+fi.dataset.fi); return; }
     const f = e.target.closest("[data-frame]");
     if (f) { V.frame = framesOf(cur())[+f.dataset.frame]; show({}); return; }
     const rate = e.target.closest("[data-rate]");
@@ -854,7 +929,7 @@ ${ws && ws.infoExtra ? ws.infoExtra(x) : ""}`;
     $('[data-v="info"]', V.el).setAttribute("aria-pressed", String(on));
     store("gp-info", on ? "1" : "0");
     if (on && GP.shot) GP.shot.mount(V.info);
-    setTimeout(() => { layout(); fit(false); }, 400);
+    setTimeout(() => { layout(); fit(false); film({ instant: true }); }, 400);
     if (on) V.el.classList.remove("idle");
   }
   function store(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* ignore */ } }
@@ -939,6 +1014,8 @@ ${ws && ws.infoExtra ? ws.infoExtra(x) : ""}`;
     else if (k === "ArrowLeft") step(-1);
     else if (k === "ArrowDown") frame(1);
     else if (k === "ArrowUp") frame(-1);
+    else if (k === "Home") jump(0);
+    else if (k === "End") jump(V.list.length - 1);
     else if (k === "i" || k === "I") toggleInfo();
     else if (k === "z" || k === "Z") toggleZoom();
     else if (k === "0") fit(true);
@@ -986,6 +1063,8 @@ ${ws && ws.infoExtra ? ws.infoExtra(x) : ""}`;
     if (ae && V.info.contains(ae) && ae.matches("input, textarea, select")) V.infoStale = true;
     else renderInfo(x);
     strip(x); badge(); paintVeil(x);
+    V.el.classList.toggle("has-film", V.list.length > 1);
+    film({ instant: true });
     $(".vw-top .t b", V.el).textContent = H().titleOf(x);
   }
 
