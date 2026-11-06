@@ -55,9 +55,9 @@
     const life = m.life.length;
     const html = `<div class="ns" data-hover="">
   <canvas class="ns-c" aria-hidden="true"></canvas>
-  <div class="ns-head wrap">${(h.pageHeader || ((o) => `<div class="kicker">${o.kicker}</div><h1>${o.title}</h1><p>${o.intro}</p>`))({ kicker: "Field guide", title: "Species", intro: `${h.plural(life, "species", "species")} as a night sky, each a star: the brighter, the more it has been photographed. Each family is a constellation. Rest on a star to see its bird.`, tabs: h.speciesTabs ? h.speciesTabs("sky") : "", cls: "dark", reveal: false })}</div>
+  <div class="ns-head wrap">${(h.pageHeader || ((o) => `<div class="kicker">${o.kicker}</div><h1>${o.title}</h1><p>${o.intro}</p>`))({ kicker: "Field guide", title: "Species", intro: `${h.plural(life, "species", "species")} as a night sky, each a star: the brighter, the more it has been photographed. Each family is a constellation. Rest on a star to see its bird.`, tabs: h.speciesTabs ? h.speciesTabs("sky") : "", actions: h.speciesViews ? h.speciesViews("sky") : "", cls: "dark", reveal: false })}</div>
   <div class="ns-card" hidden></div>
-  <div class="ns-foot wrap"><span class="sc">Hover a star · click to visit · <a href="#/species?view=life">the same list as a tree</a></span></div>
+  <div class="ns-foot wrap"><span class="sc">Hover a star · click to visit · <a href="#/species?view=tree">the same list as a tree</a></span></div>
   <ul class="visually-hidden">${m.life.map((s) => `<li><a href="#/species/${h.esc(s.slug)}">${h.esc(s.name)}</a></li>`).join("")}</ul>
 </div>`;
     return { html, title: "The night sky", full: true, after: (main, signal) => mount(main, signal, m, h) };

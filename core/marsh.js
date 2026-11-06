@@ -72,7 +72,7 @@
     const html = `<div class="dm" data-state="ready">
   <div class="dm-sky" aria-hidden="true"><i></i><i class="dm-stars"></i><i class="dm-sun"></i></div>
   <div class="wrap dm-wrap">
-    ${h.pageHeader({ crumbs: [["Species", "#/species"], ["Calls", "#/species?view=calls"]], title: "A day in the marsh", h1: ' class="display"', intro: `${h.plural(list.length, "species", "species")} with a recorded call, each placed at the hour it is most often photographed. A whole day takes a minute: press play, turn your sound up, and listen to the marsh wake, rest and settle.`, introCls: "lede", cls: "dm-head", reveal: false })}
+    ${h.pageHeader({ kicker: "Field guide", title: "Species", tabs: h.speciesTabs ? h.speciesTabs("day") : "", actions: h.speciesViews ? h.speciesViews("day") : "", intro: `A day in the marsh: ` + `${h.plural(list.length, "species", "species")} with a recorded call, each placed at the hour it is most often photographed. A whole day takes a minute: press play, turn your sound up, and listen to the marsh wake, rest and settle.`, introCls: "lede", cls: "dm-head", reveal: false })}
     <div class="dm-stage">
       <div class="dm-ring">
         <svg class="dm-svg" viewBox="-400 -400 800 800" aria-hidden="true">

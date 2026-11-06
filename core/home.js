@@ -388,7 +388,7 @@
     ${hasCalls ? door("way-day", "day-art", "#/day", `<span class="day-ring"><i class="day-hand"></i>${m.life.filter((sp2) => sp2.call && sp2.best).slice(0, 8).map((sp2, k) => `<span class="day-dot" style="--k:${k}">${h.cover(sp2.best, 80)}</span>`).join("")}</span>`, "Listen", "A day in the marsh") : ""}
     ${door("way-sky", "sky-art", "#/sky", Array.from({ length: 30 }, (_, k) => `<i style="--x:${((k * 37) % 97) + 1.5}%;--y:${((k * 53) % 89) + 4}%;--s:${(1 + (k % 5) * 0.6).toFixed(1)}px;--d:${(k % 7) * 0.4}s"></i>`).join(""), "The life list", "The night sky")}
     ${door("way-plates", "plates-art", "#/plates", famBig.slice(0, 1).map(({ sp: fs }) => fs.slice(0, 4).map((sp2) => `<span>${h.cover(sp2.best, 140)}</span>`).join("")).join(""), "For the wall", "Natural-history plates")}
-    ${door("way-tree", "tree-art", "#/species?view=life", GP.treeOfLife && GP.treeOfLife.mini ? GP.treeOfLife.mini(m) : "", "The tree of life", "Watch the list grow")}
+    ${door("way-tree", "tree-art", "#/species?view=tree", GP.treeOfLife && GP.treeOfLife.mini ? GP.treeOfLife.mini(m) : "", "The tree of life", "Watch the list grow")}
     ${hasCalls ? door("way-calls", "calls-art", "#/species?view=calls", Array.from({ length: 22 }, (_, k) => `<i style="--h:${(18 + ((k * 29) % 70))}%"></i>`).join(""), "Listen", "Every bird's call") : ""}
   </div>
 </section>`;

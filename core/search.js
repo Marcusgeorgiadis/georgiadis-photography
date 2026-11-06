@@ -28,7 +28,7 @@
       ["Species", "#/species", "The field guide, by family", "guide birds animals families"],
       GP.cabinet && ["The cabinet", "#/species?view=cabinet", "A drawer for every family", "specimens drawers"],
       ["The life list", "#/species?view=life", "Every species in the order first photographed", "tree of life lifers"],
-      ["The tree of life", "#/species?view=life", "The life list as a tree", "taxonomy classes orders"],
+      ["The tree of life", "#/species?view=tree", "The life list as a tree", "taxonomy classes orders"],
       ["Species A–Z", "#/species?view=az", "Every species by name", "alphabetical"],
       calls && ["Bird calls", "#/species?view=calls", "Every species with a recorded call", "sounds songs audio"],
       calls && has("day") && ["A day in the marsh", "#/day", "Twenty-four hours of calls in a minute", "dawn chorus sounds"],

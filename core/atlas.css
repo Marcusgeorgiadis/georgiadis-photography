@@ -208,7 +208,11 @@ body, .gp-head, .foot { transition: background-color 1200ms ease, color 800ms ea
 }
 .dm-head { max-width: 720px; display: grid; gap: 8px; }
 .page-head.dm-head { margin: 0; row-gap: 8px; grid-template-columns: minmax(0, 1fr); }
-.page-head.dm-head h1 { margin: 0; font-size: clamp(40px, 5.6vw, 84px); line-height: 0.95; }
+.page-head.dm-head .pg-tabs { grid-row: 4; grid-column: 1; justify-self: start; margin-top: 8px; }
+.page-head.dm-head .pg-acts { grid-row: 5; }
+/* the marsh turns from night to day as its clock plays: its tabs take the page's own colour */
+.dm .ptabs { --pt-bg: color-mix(in srgb, currentColor 8%, transparent); --pt-line: color-mix(in srgb, currentColor 30%, transparent); --pt-ink: currentColor; --pt-hover: currentColor; --pt-on: #14191a; --pt-on-ink: #f3f0e6; }
+.dm.dm-dark .ptabs { --pt-on: #f3f0e6; --pt-on-ink: #0d1424; }
 .dm-head .kicker, .dm-head .lede { color: inherit; opacity: 0.86; }
 .dm-stage { display: grid; place-items: center; }
 .dm-ring { position: relative; width: min(84vw, 74vh, 760px); aspect-ratio: 1; }
@@ -290,7 +294,7 @@ body, .gp-head, .foot { transition: background-color 1200ms ease, color 800ms ea
 .ns { position: relative; height: calc(100svh - var(--head-h, 64px) - var(--tabs-h, 0px)); min-height: 520px; overflow: hidden; background: #03050d; color: #eef0ff; }
 .ns-c { position: absolute; inset: 0; display: block; }
 .ns-head { position: absolute; left: 0; right: 0; top: clamp(4px, 2vh, 26px); pointer-events: none; }
-.ns-head .pg-tabs { pointer-events: auto; }
+.ns-head .pg-tabs, .ns-head .pg-acts { pointer-events: auto; }
 .ns-head .kicker { color: #b9c2ff; }
 .ns-head .pg-p { max-width: 50ch; font-size: 15px; line-height: 1.55; }
 .ns-foot { position: absolute; left: 0; right: 0; bottom: 16px; pointer-events: none; }

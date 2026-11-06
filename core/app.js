@@ -196,12 +196,28 @@
   function outingsTabs(active) {
     return tabs("Outings", [["", "List", "#/outings"], ["notebook", "Field notebook", "#/outings?view=notebook"], ["numbers", "In numbers", "#/outings?view=numbers"]], active);
   }
-  // Species: every way to see the life list, the night sky and the plates among them.
-  function speciesTabs(active) {
+  // Species: four tabs, each with its own ways to look (a small switch under the intro): the guide
+  // by family or A–Z; the life list as a list, a tree or a night sky; the calls, or a day in the
+  // marsh; the cabinet and the plates.
+  function speciesGroups() {
     const m = A.model, has = (id) => A.views.some((v) => v.id === id);
-    const callN = GP.calls ? m.species.filter((x) => x.call).length : 0;
-    const items = [["family", "By family", "#/species"]].concat(GP.cabinet ? [["cabinet", "Cabinet", "#/species?view=cabinet"]] : [], [["life", "Life list", "#/species?view=life"], ["az", "A–Z", "#/species?view=az"]], callN ? [["calls", "Calls", "#/species?view=calls"]] : [], has("sky") ? [["sky", "Night sky", "#/sky"]] : [], has("plates") ? [["plates", "Plates", "#/plates"]] : []);
-    return tabs("Species", items, active);
+    const calls = GP.calls && m.species.some((x) => x.call);
+    return [
+      ["guide", "Guide", [["family", "By family", "#/species"], ["az", "A–Z", "#/species?view=az"]]],
+      ["life", "Life list", [["life", "List", "#/species?view=life"], GP.treeOfLife && ["tree", "Tree", "#/species?view=tree"], has("sky") && ["sky", "Night sky", "#/sky"]].filter(Boolean)],
+      calls && ["calls", "Calls", [["calls", "Every call", "#/species?view=calls"], has("day") && ["day", "A day in the marsh", "#/day"]].filter(Boolean)],
+      (GP.cabinet || has("plates")) && ["shelves", GP.cabinet && has("plates") ? 'Cabinet<span class="t-long"> &amp; plates</span>' : GP.cabinet ? "Cabinet" : "Plates", [GP.cabinet && ["cabinet", "Cabinet", "#/species?view=cabinet"], has("plates") && ["plates", "Plates", "#/plates"]].filter(Boolean)],
+    ].filter(Boolean);
+  }
+  const groupOf = (view) => speciesGroups().find((g) => g[2].some((v) => v[0] === view)) || speciesGroups()[0];
+  function speciesTabs(view) {
+    const g = groupOf(view);
+    return tabs("Species", speciesGroups().map(([id, l, views]) => [id, l, views[0][2]]), g[0]);
+  }
+  // the switch between one tab's views (none when it has only one)
+  function speciesViews(view) {
+    const g = groupOf(view);
+    return g[2].length > 1 ? tabs(`${g[1].replace(/<[^>]+>/g, "").replace(/&amp;/g, "&")}: how to look`, g[2], view, "sub") : "";
   }
   // The Gallery: the grid, or every photograph on one canvas.
   function viewSwitch(active) {
@@ -355,22 +371,14 @@ ${footer(nav)}
     const tabbed = new Set(TABS.map((t) => t[0]));
     const pages = (A.nav || []).filter(([id]) => !tabbed.has(id)); // a phone's tab bar has no room for these
     const calls = GP.calls && GP.calls.available();
-    const explore = [
-      has("universe") && ["universe", "The Universe"],
-      ["outings?view=notebook", "Field notebook"],
-      ["outings?view=numbers", "Outings in numbers"],
-      GP.treeOfLife && ["species?view=life", "The tree of life"],
-      has("sky") && ["sky", "The night sky"],
-      has("plates") && ["plates", "Natural-history plates"],
-      calls && has("day") && ["day", "A day in the marsh"],
-      calls && ["species?view=calls", "Bird calls"],
-      GP.visitor && ["rooms/favourites", "Your favourites"],
-    ].filter(Boolean);
+    // Every page is in a section's tabs (and found by the search), so the menu keeps only what is
+    // yours, how the site looks and sounds, and a few things to do. A phone's tab bar has no room
+    // for the Workshop's own pages, so they stay listed here.
     const sw = (btn, t, sub) => (btn ? `<div class="mn-row" data-mn-row>${btn}<span class="mn-l"><b>${t}</b><small>${sub}</small></span><span class="mn-sw" aria-hidden="true"></span></div>` : "");
     const act = (a, ic, t, tip) => `<button class="mn-act" data-act="${a}" data-mn-close title="${tip}">${ic}<span>${t}</span></button>`;
     const v = themeChoice();
     return `<div class="gp-menu" id="gp-menu" role="dialog" aria-label="Settings and more" tabindex="-1">
-  ${pages.length || explore.length ? `<section class="mn-sec"><h3 class="sc">Explore</h3><div class="mn-links">${pages.map(([id, l]) => `<a class="mn-page" href="#/${id}">${esc(l)}</a>`).join("")}${explore.map(([href, l]) => `<a href="#/${href}">${esc(l)}</a>`).join("")}</div></section>` : ""}
+  ${pages.length ? `<section class="mn-sec"><h3 class="sc">Pages</h3><div class="mn-links">${pages.map(([id, l]) => `<a class="mn-page" href="#/${id}">${esc(l)}</a>`).join("")}</div></section>` : ""}
   <section class="mn-sec"><h3 class="sc">Display</h3>
     <div class="mn-row mn-theme"><span class="mn-ic" aria-hidden="true">${ICON.moon}</span><span class="mn-l"><b>Light or dark</b></span><span class="mn-seg" role="group" aria-label="Light or dark">${[["auto", "Auto"], ["light", "Light"], ["dark", "Dark"]].map(([k, l]) => `<button type="button" data-act="theme-set" data-v="${k}" aria-pressed="${v === k}">${l}</button>`).join("")}</span></div>
     ${sw(burstButton(), "Open bursts", "A tile for every frame of every burst")}
@@ -381,6 +389,7 @@ ${footer(nav)}
     ${GP.scape ? sw(GP.scape.button(), "Soundscape", "The place each photograph was made") : ""}
   </section>` : ""}
   <section class="mn-sec mn-acts">
+    ${GP.visitor && !A.workshop ? `<a class="mn-act" href="#/rooms/favourites" data-mn-close title="Photographs you have saved (L in the viewer)">${ICON.heart}<span>Your favourites</span></a>` : ""}
     ${act("exhibit", ICON.play, "Play an exhibition", "Play an exhibition (E)")}
     ${act("surprise", ICON.shuffle, "Surprise me", "A random photograph (R)")}
     ${GP.newsletter && GP.newsletter.button() ? act("newsletter", ICON.mail, "Email dispatches", "A short email when a new outing goes up") : ""}
@@ -501,7 +510,7 @@ ${footer(nav)}
       else if (v === "outings") ({ html, after, title } = viewOutings());
       else if (v === "species" && a) ({ html, after, title } = viewSpecies(a));
       else if (v === "species") ({ html, after, title } = viewSpeciesIndex(r.q));
-      else if (v === "journal") { location.replace(r.q.get("tree") ? hashFor(["species"], new URLSearchParams({ view: "life" })) : hashFor(["outings"], new URLSearchParams({ view: r.q.get("view") === "numbers" ? "numbers" : "notebook" }))); return; }
+      else if (v === "journal") { location.replace(r.q.get("tree") ? hashFor(["species"], new URLSearchParams({ view: "tree" })) : hashFor(["outings"], new URLSearchParams({ view: r.q.get("view") === "numbers" ? "numbers" : "notebook" }))); return; }
       else if (v === "photo" && a) { location.replace(hashFor(["gallery"], new URLSearchParams({ p: a }))); return; }
       else ({ html, after, title } = viewMissing());
     } catch (e) {
@@ -1246,17 +1255,19 @@ ${filterPanel(q)}
     const intros = {
       family: `${plural(m.life.length, "species", "species")} on the life list across ${plural(m.stats.families, "family", "families")}, plus ${fmtN(m.species.length - m.life.length)} more photographed as captive animals or not identified to species.`,
       cabinet: "The collection as a cabinet of drawers: one for every family, the captive, domestic and unidentified kept apart. Open a drawer to see its specimens.",
-      life: `${plural(m.life.length, "species", "species")}, numbered in the order they were first photographed, and the tree of life they grow into.`,
+      life: `${plural(m.life.length, "species", "species")}, numbered in the order they were first photographed, with the milestones along the way.`,
+      tree: `The life list as a tree of life: ${plural(m.life.length, "species", "species")} on their branches of class, order and family, growing in the order they were first photographed. Rest on a leaf to trace it to the root.`,
       az: `Every species from A to Z: the ${fmtN(m.life.length)} on the life list, then those photographed as captive animals or not identified to species.`,
       calls: `${plural(callList.length, "species", "species")} with a recorded call. Each is a short, cleaned-up clip from a recording shared on iNaturalist, credited beside it.`,
     };
-    const head = pageHeader({ kicker: "Field guide", title: "Species", intro: intros[mode === "calls" && !callN ? "family" : mode] || intros.family, tabs: speciesTabs(mode) });
+    const view = intros[mode] && !(mode === "calls" && !callN) && !(mode === "tree" && !GP.treeOfLife) && !(mode === "cabinet" && !cab) ? mode : "family";
+    const head = pageHeader({ kicker: "Field guide", title: "Species", intro: intros[view], tabs: speciesTabs(view), actions: speciesViews(view) });
     let body = "", after = null;
     const wild = m.species.filter((s) => s.lifeNo);
     const rest = m.species.filter((s) => !s.lifeNo);
     if (mode === "calls" && callN) {
       const list = callList;
-      body = `<div class="board-head"><span class="board-acts"><button class="btn primary" data-board="all" aria-pressed="false">${ICON.play} Play them all</button>${A.views.some((v) => v.id === "day") ? `<a class="btn" href="#/day">A day in the marsh ${ICON.arrow}</a>` : ""}</span></div>
+      body = `<div class="board-head"><span class="board-acts"><button class="btn primary" data-board="all" aria-pressed="false">${ICON.play} Play them all</button></span></div>
 <div class="board">${list.map((x) => `<article class="board-card"><a class="board-pic" href="#/species/${esc(x.slug)}">${cover(x.best, 420, "", x.name)}</a><div class="board-t"><h3><a href="#/species/${esc(x.slug)}">${esc(x.name)}</a></h3><i class="binomial">${esc(x.bin || "")}</i>${GP.calls.player(x, true)}</div></article>`).join("")}</div>`;
       after = (main, signal) => {
         main.addEventListener("click", (e) => { const b = e.target.closest('[data-board="all"]'); if (b) GP.calls.chorus(list.map((x) => x.slug), b); }, { signal });
@@ -1265,12 +1276,13 @@ ${filterPanel(q)}
     } else if (mode === "cabinet" && cab) {
       body = GP.cabinet.html(m, helpers);
       after = (main, signal) => GP.cabinet.mount(main, signal, m, helpers);
+    } else if (mode === "tree" && GP.treeOfLife) {
+      body = `<section class="sp-tree tl-card">${GP.treeOfLife.html(m, helpers)}</section>`;
+      after = (main, signal) => GP.treeOfLife.mount(main, signal, m, helpers);
     } else if (mode === "life") {
       const n = m.life.length;
-      const tree = GP.treeOfLife ? `<section class="sp-tree tl-card"><div class="family-h" style="margin-top:8px"><h2>The tree of life</h2><span class="n">Grows in the order they were first photographed · hover a leaf to trace it to the root</span></div>${GP.treeOfLife.html(m, helpers)}</section>` : "";
-      after = (main, signal) => { if (GP.treeOfLife) GP.treeOfLife.mount(main, signal, m, helpers); };
       const ms = MILESTONES.filter((v, i) => v <= n || MILESTONES[i - 1] < n || i === 0).slice(0, 8);
-      body = tree + `<div class="family-h" style="margin-top:56px"><h2>In order</h2><span class="n">${plural(n, "species", "species")}, numbered as they were first photographed</span></div><div class="milestones" style="margin-bottom:30px">${ms.map((v) => { const s = m.life[v - 1]; return `<div class="milestone${s ? " got" : ""}"><b>${v}</b>${s ? `${esc(s.name)} · ${esc(fmtShort(s.first))}` : `${v - n} to go`}</div>`; }).join("")}</div>
+      body = `<div class="family-h" style="margin-top:8px"><h2>In order</h2><span class="n">${plural(n, "species", "species")}, numbered as they were first photographed</span></div><div class="milestones" style="margin-bottom:30px">${ms.map((v) => { const s = m.life[v - 1]; return `<div class="milestone${s ? " got" : ""}"><b>${v}</b>${s ? `${esc(s.name)} · ${esc(fmtShort(s.first))}` : `${v - n} to go`}</div>`; }).join("")}</div>
 <ol class="life">${m.life.map((s) => `<li><a href="#/species/${esc(s.slug)}"><span class="no mono">${String(s.lifeNo).padStart(3, "0")}</span>${cover(s.best, 160)}<span class="nm"><b>${esc(s.name)}</b><i>${esc(s.bin)}</i></span><span class="fam">${esc(s.famName)}</span><span class="when mono">${esc(fmtShort(s.first))}</span></a></li>`).join("")}</ol><details class="tl-list" style="margin-top:40px"><summary class="chip">Every species by class, order and family, including captive and unidentified</summary><div class="tree">${taxonomy(m)}</div></details>`;
     } else if (mode === "az") {
       body = `<section class="sp-fam" data-fam=""><div class="sp-grid">${wild.slice().sort((a, b) => a.name.localeCompare(b.name)).map(spCard).join("")}</div></section>`;
@@ -1285,15 +1297,15 @@ ${filterPanel(q)}
         body += `</section>`;
       }
     }
-    if (mode !== "life" && mode !== "cabinet" && mode !== "calls" && rest.length) body += `<section class="sp-fam" data-fam=""><div class="family-h" style="margin-top:72px"><h2>Also photographed</h2><span class="n">Captive, domestic, or not identified to species</span></div><div class="sp-grid">${rest.sort((a, b) => b.photos.length - a.photos.length).map(spCard).join("")}</div></section>`;
+    if ((view === "family" || view === "az") && rest.length) body += `<section class="sp-fam" data-fam=""><div class="family-h" style="margin-top:72px"><h2>Also photographed</h2><span class="n">Captive, domestic, or not identified to species</span></div><div class="sp-grid">${rest.sort((a, b) => b.photos.length - a.photos.length).map(spCard).join("")}</div></section>`;
     // The grids can be narrowed to a species by its name, its scientific name or its family.
     // A family (from a species page's breadcrumb) narrows the guide to it; finding a species by
     // name is the one search's job (the header's, or /).
     const find = q.get("find");
-    if ((mode === "family" || mode === "az") && find) {
+    if ((view === "family" || view === "az") && find) {
       const fam = m.species.find((x) => x.family === find);
       const label = fam ? fam.famName || find : find;
-      body = `<div class="toolbar sp-bar"><div class="tb-row"><span class="sc">Showing</span><a class="chip sp-clear" href="#/species${mode === "az" ? "?view=az" : ""}" aria-pressed="true" title="Show every species">${esc(label)} <span aria-hidden="true">×</span></a><span class="sp-n sc" aria-live="polite"></span></div></div><p class="sp-none" hidden></p>` + body;
+      body = `<div class="toolbar sp-bar"><div class="tb-row"><span class="sc">Showing</span><a class="chip sp-clear" href="#/species${view === "az" ? "?view=az" : ""}" aria-pressed="true" title="Show every species">${esc(label)} <span aria-hidden="true">×</span></a><span class="sp-n sc" aria-live="polite"></span></div></div><p class="sp-none" hidden></p>` + body;
       after = (main) => {
         const none = main.querySelector(".sp-none"), count = main.querySelector(".sp-n");
         const norm = (t) => t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -2036,7 +2048,7 @@ ${filterPanel(q)}
     update();
   }
 
-  const helpers = { esc, tile, flow, cover, chip, spCard, chapterRow, pageHead, pageHeader, crumbs, tabs, pageFoot, speciesTabs, outingsTabs, viewSwitch, specimenTag, fmtDate, fmtShort, fmtTime, fmtN, plural, titleOf, exposure, src, ICON, regCtx, toast, hbars, table, svgBars, pageUrl, shareBtn, sharePage };
+  const helpers = { esc, tile, flow, cover, chip, spCard, chapterRow, pageHead, pageHeader, crumbs, tabs, pageFoot, speciesTabs, speciesViews, outingsTabs, viewSwitch, specimenTag, fmtDate, fmtShort, fmtTime, fmtN, plural, titleOf, exposure, src, ICON, regCtx, toast, hbars, table, svgBars, pageUrl, shareBtn, sharePage };
   GP.app = {
     start, update, setSelecting, toast, helpers, holdView, toggleBursts, fillAll, get burstsExpanded() { return A.expand; }, reveal, isRevealed: (x) => !x || !x.explicit || A.revealed.has(x.id),
     get model() { return A.model; }, get views() { return A.views; }, get site() { return A.site; }, get adapter() { return A.adapter; }, get workshop() { return A.workshop; },

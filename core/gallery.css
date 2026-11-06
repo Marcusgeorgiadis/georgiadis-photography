@@ -712,7 +712,8 @@ kbd { font-family: var(--f-data); font-size: 12px; border: 1px solid var(--line)
 .page-head.compact .pg-p { font-size: 15px; }
 @media (max-width: 1000px) {
   .page-head:not(.compact) { grid-template-columns: minmax(0, 1fr); }
-  .page-head:not(.compact) .pg-tabs { grid-row: 5; grid-column: 1; justify-self: start; margin-top: 8px; }
+  .page-head:not(.compact) .pg-tabs { grid-row: 4; grid-column: 1; justify-self: start; margin-top: 8px; }
+  .page-head:not(.compact) .pg-acts { grid-row: 5; }
 }
 .page-head.dark h1 { color: #f4f2ff; text-shadow: 0 2px 30px rgba(0, 0, 0, 0.6); }
 .page-head.dark .pg-p { color: rgba(238, 240, 255, 0.78); }
@@ -725,6 +726,11 @@ kbd { font-family: var(--f-data); font-size: 12px; border: 1px solid var(--line)
 .ptabs a[aria-current] { background: var(--pt-on); color: var(--pt-on-ink); }
 .ptabs a:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .ptabs svg { width: 16px; height: 16px; flex: none; }
+/* A tab's own views (By family or A–Z; a list, a tree or a night sky): a smaller switch under the intro */
+.pg-acts:has(> .ptabs.sub) { margin-top: 4px; }
+.ptabs.sub { padding: 2px; gap: 1px; border-radius: 18px; }
+.ptabs.sub a { padding: 5px 12px; font-size: 12.5px; }
+@media (pointer: coarse) { .ptabs.sub a { padding: 8px 13px; } }
 .page-head.dark .ptabs { --pt-bg: rgba(8, 12, 30, 0.5); --pt-line: rgba(238, 240, 255, 0.26); --pt-ink: rgba(238, 240, 255, 0.82); --pt-hover: #fff; --pt-on: #eef0ff; --pt-on-ink: #0b1020; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
 /* The way back up, in the kicker */
 .crumbs { position: relative; z-index: 1; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
@@ -758,6 +764,12 @@ kbd { font-family: var(--f-data); font-size: 12px; border: 1px solid var(--line)
   .page-head:not(.compact) .pg-tabs { justify-self: stretch; margin-top: 6px; overflow-x: auto; scrollbar-width: none; margin: 0 calc(-1 * max(20px, env(safe-area-inset-right, 0px))) 0 calc(-1 * var(--gutter)); padding: 1px max(20px, env(safe-area-inset-right, 0px)) 1px var(--gutter); }
   .pg-tabs::-webkit-scrollbar { display: none; }
   .pg-tabs .ptabs { flex-wrap: nowrap; }
+  /* a section's tabs share the row evenly (they fit side by side on a phone; the smallest screens scroll) */
+  .page-head:not(.compact) .pg-tabs .ptabs:not(.sub) { display: flex; min-width: 100%; }
+  .page-head:not(.compact) .pg-tabs .ptabs:not(.sub) a { flex: 1 0 auto; justify-content: center; padding-inline: 9px; }
+}
+@media (max-width: 380px) {
+  .ptabs .t-long { display: none; }
   .page-head.compact .ptabs a { padding: 6px 10px; }
   .page-head.compact { margin: 10px 0 12px; row-gap: 4px; column-gap: 12px; }
   .page-head.compact h1 { font-size: 28px; }
