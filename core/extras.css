@@ -203,6 +203,8 @@ html.gp-louping-touch { overflow: hidden; overscroll-behavior: none; }
 .tl-hint { margin: 0; }
 .tl-list { margin-top: 18px; }
 .tl-list > summary { list-style: none; width: fit-content; max-width: 100%; white-space: normal; }
+/* a long label that wraps on a phone reads as a button, not a pill pinched in the middle */
+@media (max-width: 640px) { .tl-list > summary { border-radius: 14px; padding: 8px 14px; line-height: 1.35; } }
 .tl-list > summary::-webkit-details-marker { display: none; }
 .tl-list[open] > summary { margin-bottom: 12px; background: var(--ink); color: var(--bg); border-color: var(--ink); }
 @media (max-width: 900px) {

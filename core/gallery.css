@@ -775,3 +775,24 @@ kbd { font-family: var(--f-data); font-size: 12px; border: 1px solid var(--line)
 @media (pointer: coarse) {
   .gp-head, .toolbar, .gp-tabs { -webkit-backdrop-filter: none; backdrop-filter: none; background: color-mix(in srgb, var(--bg) 96%, transparent); }
 }
+
+/* ---------- lining up ---------- */
+/* A row of buttons that wraps on a phone fills each line edge to edge, so the buttons' edges line
+   up instead of stepping down the screen at whatever width each label happens to be. */
+@media (max-width: 640px) {
+  :is(.sp-acts, .cta, .board-acts, .ri-a, .pg-acts) > .btn { flex: 1 1 auto; }
+  .board-head .board-acts { flex: 1 1 100%; }
+}
+/* The way back up on a phone: the trail on one line, the details on the next (never a line that
+   starts with a stray dot). */
+@media (max-width: 480px) {
+  .crumbs .rest { flex-basis: 100%; }
+  .crumbs .rest::before { content: none; }
+}
+/* Touch screens: tabs and chips tall enough for a fingertip. */
+@media (pointer: coarse) {
+  .ptabs a { padding: 10px 14px; }
+  .page-head.compact .ptabs a { padding: 9px 12px; }
+  .chip { min-height: 34px; padding: 6px 12px; }
+  .gp-table > summary { display: inline-flex; align-items: center; min-height: 36px; padding-inline: 2px; }
+}

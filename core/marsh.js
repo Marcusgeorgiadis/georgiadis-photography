@@ -84,7 +84,7 @@
         <svg class="dm-svg dm-handsvg" viewBox="-400 -400 800 800" aria-hidden="true"><g class="dm-hand"><line x1="0" y1="-190" x2="0" y2="-344"/><circle cy="-344" r="16" class="dm-glow"/><circle cy="-344" r="6"/></g></svg>
         ${bubbles}
         <div class="dm-core"><b class="dm-time display">4:00 am</b><span class="dm-light sc">Night</span><span class="dm-now"></span>
-          <button class="btn primary dm-play" data-dm="play">${h.ICON.play} Play the day</button></div>
+          <button class="btn primary dm-play" data-dm="play">${h.ICON.play} <span class="dm-play-l">Play the day</span></button></div>
       </div>
     </div>
     <ol class="dm-list">${list.map((b, i) => `<li><button data-i="${i}" class="dm-li">${h.cover(b.s.best, 120, "", "")}<span><b>${h.esc(b.s.name)}</b><span class="mono">${h.esc(GP.sky ? GP.sky.clock(b.at) : "")}</span></span></button></li>`).join("")}</ol>
@@ -161,14 +161,14 @@
       t0 = performance.now() - ((at - START) / 1440) * DUR;
       playing = true;
       el.dataset.state = "playing";
-      btn.innerHTML = `${h.ICON.pause} Pause`;
+      btn.innerHTML = `${h.ICON.pause} <span class="dm-play-l">Pause</span>`;
       raf = requestAnimationFrame(frame);
     };
     const stop = (ended) => {
       playing = false;
       cancelAnimationFrame(raf); raf = 0;
       el.dataset.state = ended ? "ended" : "paused";
-      btn.innerHTML = ended ? `${h.ICON.play} Play it again` : `${h.ICON.play} Carry on`;
+      btn.innerHTML = `${h.ICON.play} <span class="dm-play-l">${ended ? "Play it again" : "Carry on"}</span>`;
       if (ended) { at = START + 1440; played = new Set(); nowEl.textContent = "and the marsh settles for the night"; }
       voices.forEach((v) => v.stop && v.stop(1.2)); voices = [];
       if (GP.scape) GP.scape.borrow(false);

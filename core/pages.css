@@ -218,7 +218,7 @@ a.way-tree:hover .tm-d circle { animation: tm-pop 600ms var(--ease-spring) both;
 .hm-out-d { display: grid; justify-items: center; padding-right: 14px; border-right: 1px solid var(--hair); }
 .hm-out-d b { font: 500 40px/1 var(--f-display); font-variant-numeric: lining-nums; }
 .hm-out-d .sc { font-size: 9.5px; white-space: nowrap; }
-.hm-out-t { display: grid; gap: 4px; align-content: center; min-width: 0; }
+.hm-out-t { display: grid; gap: 4px; align-content: start; min-width: 0; }
 .hm-out-t b { font: 500 20px/1.2 var(--f-display); }
 @media (max-width: 900px) { .hm-outs { grid-template-columns: 1fr; } .hm-out { grid-template-columns: 96px 1fr; } .hm-out-cv { grid-column: 1 / -1; } }
 [data-view="home"] #gp-main { padding-bottom: 96px; }
@@ -529,9 +529,10 @@ a.way-tree:hover .tm-d circle { animation: tm-pop 600ms var(--ease-spring) both;
 /* ---------- home: right now (this hour, this week of the year, today's species) ---------- */
 .rn-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; align-items: stretch; }
 .rn-card { display: flex; flex-direction: column; gap: 10px; min-width: 0; padding: 14px 14px 16px; border: 1px solid var(--hair); border-radius: 12px; background: color-mix(in srgb, var(--surface) 82%, transparent); }
-.rn-k { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.rn-k { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 2px 10px; }
+.rn-k .sc:first-child { white-space: nowrap; }
 .rn-k .sc:first-child { color: var(--accent); font-weight: 600; }
-.rn-k .sc:last-child { color: var(--muted); text-align: right; }
+.rn-k .sc:last-child { color: var(--muted); text-align: right; margin-left: auto; }
 .rn-pic { position: relative; display: block; width: 100%; aspect-ratio: 4 / 3; padding: 0; border: 0; border-radius: 6px; overflow: hidden; background: var(--bg-2); cursor: zoom-in; box-shadow: none; }
 .rn-pic img { width: 100%; height: 100%; object-fit: cover; transition: transform 1600ms var(--ease-out); }
 .rn-pic:hover img { transform: scale(1.03); }
@@ -568,7 +569,7 @@ a.way-tree:hover .tm-d circle { animation: tm-pop 600ms var(--ease-spring) both;
 }
 
 /* ---------- home: ways in, as a row of small doors ---------- */
-.hm-ways-sec .hm-ways { grid-template-columns: repeat(auto-fill, minmax(158px, 1fr)); gap: 12px; }
+.hm-ways-sec .hm-ways { grid-template-columns: repeat(auto-fit, minmax(158px, 1fr)); gap: 12px; }
 .hm-ways-sec .way, .hm-ways-sec .way-uv, .hm-ways-sec .way-tree { grid-column: auto; border-radius: 10px; }
 .hm-ways-sec .way-art { height: 104px; }
 .hm-ways-sec .way-t { padding: 10px 12px 12px; gap: 2px; }
@@ -598,5 +599,34 @@ a.way-calls:hover .calls-art i { opacity: 0.85; }
 .hm-otd-pic:hover img { transform: scale(1.04); }
 .hm-outs > * { min-width: 0; }
 .hm-out-t { min-width: 0; overflow-wrap: anywhere; }
-@media (max-width: 760px) { .hm-earlier .hm-out { grid-template-columns: 1fr; gap: 8px; } .hm-earlier .hm-out-d { display: flex; gap: 6px; align-items: baseline; } .hm-earlier .hm-out-t b { font-size: 16px; } }
-@media (max-width: 760px) { .rn-row { align-items: start; } .rn-more { margin-top: 4px; } .rn-k .sc:last-child { display: none; } .rn-go { margin-top: 4px; } }
+.hm-out { align-items: start; }
+.hm-out-d { align-content: start; }
+@media (max-width: 1100px) { .hm-earlier .hm-out { grid-template-columns: 1fr; gap: 8px; align-content: start; } .hm-earlier .hm-out-d { display: flex; gap: 6px; align-items: baseline; justify-items: start; padding-right: 0; border-right: 0; } .hm-earlier .hm-out-d b { font-size: 34px; } }
+@media (max-width: 760px) { .hm-earlier .hm-out-t b { font-size: 16px; } }
+@media (max-width: 760px) { .rn-k .sc:last-child { display: none; } }
+
+/* ---------- lining up ---------- */
+/* The cabinet's own page sets it a little below its tabs; as a door's picture it sits flush. */
+.cab-mini { margin-top: 0; }
+/* A section's heading and its button: side by side where there's room, the button always under
+   the heading on a phone (not beside it for one section and under it for the next). */
+@media (max-width: 640px) { .hm-sec-h { flex-direction: column; align-items: flex-start; gap: 12px; } }
+/* The hero's slide bars are thin lines; on a touch screen each answers a fingertip-sized area
+   around it, edge to edge with its neighbours, so a tap lands on the bar it's meant for. */
+.hm-bars button { position: relative; }
+@media (pointer: coarse) {
+  .hm-bars { gap: 6px; }
+  .hm-bars button { width: 32px; }
+  .hm-bars button::before { content: ""; position: absolute; inset: -11px -3px; }
+}
+/* A phone on its side: the hero fits between the header and the tab bar, title and buttons on
+   screen without scrolling. */
+@media (orientation: landscape) and (max-height: 540px) {
+  .hm-hero { min-height: 250px; height: calc(100svh - var(--head-h, 56px) - var(--tabs-h, 0px)); }
+  .hm-copy { padding-bottom: 54px; gap: 8px; }
+  .hm-copy h1 { font-size: clamp(30px, 8vh, 40px); max-width: none; white-space: nowrap; }
+  .hm-copy p { font-size: 13.5px; line-height: 1.45; max-width: 60ch; }
+  .hm-copy .cta .btn { min-height: 38px; padding: 6px 14px; font-size: 13.5px; }
+  .hm-now { bottom: 12px; }
+  .hm-down { display: none; }
+}
