@@ -1727,9 +1727,10 @@ ${filterPanel(q)}
     t.querySelectorAll(".scrub i").forEach((el, k) => el.classList.toggle("on", k === i));
     t._frame = f.id;
   }
-  // Touch screens: a sideways swipe across a burst's tile flicks through its frames, as hovering
-  // does with a mouse. Up and down still scrolls the page; once a swipe is under way the finger
-  // owns it, and a tap afterwards opens the frame the tile is showing.
+  // Touch screens: a swipe across a burst's tile moves it on one frame, left for the next and right
+  // for the one before (round and round), as a phone's photo stack does. The frame follows the
+  // finger a little while it moves; a drag too short to be a swipe springs back. Up and down still
+  // scrolls the page, and a tap afterwards opens the frame the tile is showing.
   function onBurstDown(e) {
     if (e.pointerType === "mouse" || A.selecting || !e.isPrimary) return;
     const t = e.target.closest && e.target.closest(".flow .tile.burst");
@@ -1737,10 +1738,10 @@ ${filterPanel(q)}
     const x = A.model.byId.get(t.dataset.id);
     const fr = (t.dataset.frames || "").split(",").map((id) => A.model.byId.get(id)).filter(Boolean);
     if (!x || fr.length < 2) return;
-    const i0 = t._i != null ? t._i : Math.max(0, fr.indexOf(x));
-    // a whole swipe across the tile passes every frame, a frame at least every 16px
-    const step = Math.max(16, Math.min(44, t.getBoundingClientRect().width / fr.length));
-    const g = { id: e.pointerId, x0: e.clientX, y0: e.clientY, on: false };
+    const n = fr.length, i0 = t._i != null ? t._i : Math.max(0, fr.indexOf(x));
+    const W = t.getBoundingClientRect().width, tw = rowH() * x.ar * dpr() * 1.1;
+    const pullOf = (dx) => Math.max(-W * 0.3, Math.min(W * 0.3, dx * 0.45));
+    const g = { id: e.pointerId, x0: e.clientX, y0: e.clientY, on: false, lx: e.clientX, lt: performance.now(), vx: 0 };
     const move = (ev) => {
       if (ev.pointerId !== g.id) return;
       const dx = ev.clientX - g.x0, dy = ev.clientY - g.y0;
@@ -1750,11 +1751,12 @@ ${filterPanel(q)}
         g.on = true;
         t.classList.add("scrubbing");
         clearTimeout(t._sT);
-        // the frames at the tile's size, fetched as the swipe begins, so each is there in time
-        const w = rowH() * x.ar * dpr() * 1.1;
-        for (const f of fr) { const im = new Image(); im.decoding = "async"; im.src = src(f, w); }
+        // the frames either side, fetched as the swipe begins, so the next is there when it lands
+        for (const k of [1, -1]) { const im = new Image(); im.decoding = "async"; im.src = src(fr[(i0 + k + n) % n], tw); }
       }
-      showFrame(t, x, fr, i0 + Math.round(-dx / step));
+      const now = performance.now();
+      g.vx = (ev.clientX - g.lx) / Math.max(1, now - g.lt); g.lx = ev.clientX; g.lt = now;
+      if (!reduced()) t.querySelector("img").style.transform = `translateX(${pullOf(dx)}px)`;
     };
     const end = (ev) => {
       if (ev && ev.pointerId !== g.id) return;
@@ -1764,6 +1766,23 @@ ${filterPanel(q)}
       if (!g.on) return;
       A.eatClick = performance.now() + 450; // the lifted finger isn't a tap
       t._sT = setTimeout(() => t.classList.remove("scrubbing"), 1400);
+      const img = t.querySelector("img"), dx = (ev && ev.type !== "pointercancel" ? ev.clientX : g.lx) - g.x0, from = pullOf(dx);
+      // a swipe: far enough, or quick enough; anything less springs back
+      const d = Math.abs(dx) > Math.min(44, W * 0.16) || (Math.abs(dx) > 14 && Math.abs(g.vx) > 0.3) ? (dx < 0 ? 1 : -1) : 0;
+      img.style.transform = "";
+      if (reduced()) { if (d) showFrame(t, x, fr, (i0 + d + n) % n); return; }
+      if (!d) { img.animate([{ transform: `translateX(${from}px)` }, { transform: "none" }], { duration: 220, easing: "cubic-bezier(.22,.72,.2,1)" }); return; }
+      const i = (i0 + d + n) % n;
+      // this frame carries on out the way it was going while the next is made ready, then the next
+      // comes in from the other side
+      const out = img.animate([{ transform: `translateX(${from}px)`, opacity: 1 }, { transform: `translateX(${-d * W * 0.32}px)`, opacity: 0.25 }], { duration: 130, easing: "ease-in", fill: "forwards" });
+      const next = new Image(); next.decoding = "async"; next.src = src(fr[i], tw);
+      const ready = next.decode ? Promise.race([next.decode().catch(() => {}), new Promise((r) => setTimeout(r, 400))]) : Promise.resolve();
+      Promise.all([out.finished.catch(() => {}), ready]).then(() => {
+        showFrame(t, x, fr, i);
+        out.cancel();
+        img.animate([{ transform: `translateX(${d * W * 0.32}px)`, opacity: 0.25 }, { transform: "none", opacity: 1 }], { duration: 240, easing: "cubic-bezier(.22,.72,.2,1)" });
+      });
     };
     document.addEventListener("pointermove", move, { passive: true });
     document.addEventListener("pointerup", end, { passive: true });
