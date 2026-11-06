@@ -227,6 +227,7 @@ main { min-height: 70vh; }
 .tile img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; }
 .tile img.in { opacity: 1; animation: tile-in 760ms var(--ease-out); }
 @keyframes tile-in { from { opacity: 0; transform: scale(1.025); } }
+.tile img.in.now { animation: none; }
 /* sensitive photographs: blurred, with a notice, until clicked once */
 .tile.veiled img, .tile.veiled .scrub-bg { filter: blur(22px) brightness(0.75) saturate(0.8) !important; transform: scale(1.12) !important; animation: none; }
 .tile .veil { position: absolute; inset: 0; z-index: 2; display: grid; place-content: center; justify-items: center; gap: 6px; padding: 12px; text-align: center; color: #fff; pointer-events: none; text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5); }
@@ -767,3 +768,10 @@ kbd { font-family: var(--f-data); font-size: 12px; border: 1px solid var(--line)
 @media (max-width: 380px) { .page-head.compact .ptabs.with-icons a span { display: none; } }
 @media (max-width: 480px) { .tb-filters > span { display: none; } .tb-filters { padding: 8px 12px; } .tb-row { gap: 8px; } }
 @media (max-width: 600px) { .uv-sub { display: none; } }
+
+/* On touch screens the bars that float over the photographs are near-solid rather than frosted:
+   re-blurring whatever scrolls beneath three bars on every frame is heavy work for a phone's
+   graphics chip, and at this opacity the difference is hard to see. */
+@media (pointer: coarse) {
+  .gp-head, .toolbar, .gp-tabs { -webkit-backdrop-filter: none; backdrop-filter: none; background: color-mix(in srgb, var(--bg) 96%, transparent); }
+}

@@ -981,17 +981,36 @@ ${filterPanel(q)}
     if (!el) return;
     const secs = [...root.querySelectorAll(".sec.mon")], n = secs.length;
     const thumb = el.querySelector(".ds-thumb"), tip = el.querySelector(".ds-tip");
-    const tb = $(".toolbar");
+    const tb = $(".toolbar"), head = $(".gp-head");
     let drag = false, over = false, hideT = 0, cur = -1, raf = 0;
-    const line = () => (tb ? tb.getBoundingClientRect().bottom : 120) + 6;
+    // Where each month starts and how tall it is, in page coordinates, read once and again only
+    // when something changes size: reading them on every frame would make the browser lay the
+    // page out in the middle of a scroll whenever new photographs had just been drawn in.
+    let tops = [], hs = [], tbH = 0, headH = 0, th = 0, H = 0, dirty = true;
+    const measure = () => {
+      const sy = window.scrollY;
+      tops = secs.map((s) => s.getBoundingClientRect().top + sy);
+      hs = secs.map((s) => s.offsetHeight);
+      tbH = tb ? tb.offsetHeight : 64; headH = head ? head.offsetHeight : 64;
+      th = thumb.offsetHeight; H = el.clientHeight;
+      dirty = false;
+    };
+    const line = () => (head && head.classList.contains("tucked") ? 0 : headH) + tbH + 6;
     const pos = () => {
-      const y = line();
-      for (let i = n - 1; i >= 0; i--) { const r = secs[i].getBoundingClientRect(); if (r.top <= y) return i + Math.min(0.999, (y - r.top) / Math.max(1, r.height)); }
+      if (dirty) measure();
+      const y = window.scrollY + line();
+      for (let i = n - 1; i >= 0; i--) if (tops[i] <= y) return i + Math.min(0.999, (y - tops[i]) / Math.max(1, hs[i]));
       return 0;
     };
+    if ("ResizeObserver" in window) {
+      const ro = new ResizeObserver(() => { dirty = true; if (!raf) raf = requestAnimationFrame(paint); });
+      secs.forEach((s) => ro.observe(s)); ro.observe(el); if (tb) ro.observe(tb);
+      signal.addEventListener("abort", () => ro.disconnect());
+    }
     const paint = () => {
       raf = 0;
-      const p = pos(), i = Math.min(n - 1, Math.floor(p)), th = thumb.offsetHeight, H = el.clientHeight;
+      if (!("ResizeObserver" in window)) dirty = true;
+      const p = pos(), i = Math.min(n - 1, Math.floor(p));
       thumb.style.transform = `translateY(${Math.round((p / n) * Math.max(0, H - th))}px)`;
       if (i !== cur) { cur = i; tip.textContent = secs[i].dataset.label; thumb.setAttribute("aria-valuenow", i); thumb.setAttribute("aria-valuetext", secs[i].dataset.label); }
     };
@@ -1015,7 +1034,7 @@ ${filterPanel(q)}
       if (!raf) raf = requestAnimationFrame(paint);
       if (window.scrollY > 360) { show(); later(); } else if (!drag) el.classList.remove("on");
     }, { passive: true, signal });
-    addEventListener("resize", () => { if (!raf) raf = requestAnimationFrame(paint); }, { passive: true, signal });
+    addEventListener("resize", () => { dirty = true; if (!raf) raf = requestAnimationFrame(paint); }, { passive: true, signal });
     document.addEventListener("pointermove", (e) => { if (e.pointerType === "mouse" && e.clientX > innerWidth - 64 && window.scrollY > 360) { show(); later(); } }, { passive: true, signal });
     el.addEventListener("pointerenter", () => { over = true; show(); });
     el.addEventListener("pointerleave", () => { over = false; later(); });
@@ -1840,6 +1859,9 @@ ${filterPanel(q)}
       document.addEventListener("load", (e) => {
         const img = e.target;
         if (img.tagName !== "IMG") return;
+        // While the page is moving a fade-in can't be seen (most arrive off screen, ahead of you),
+        // and each one would briefly make its photograph a layer of its own: they just appear.
+        if (A.scrolling) img.classList.add("now");
         img.classList.add("in");
         // photographs come into focus from their subject outward
         if (GP.fx && img.dataset.lq && !img.closest(".no-arrive")) GP.fx.arrive(img);

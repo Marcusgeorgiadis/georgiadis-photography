@@ -54,6 +54,7 @@
 .loupe-tag { position: absolute; left: 50%; bottom: -12px; transform: translateX(-50%); padding: 3px 9px; border-radius: 999px; background: rgba(12, 13, 12, 0.82); color: #f4f3ea;
   font: 500 10.5px/1.5 var(--f-data); letter-spacing: 0.08em; white-space: nowrap; }
 .gp-louping, .gp-louping * { cursor: none !important; }
+html.gp-louping-touch { overflow: hidden; overscroll-behavior: none; }
 .tile img, .sp-hero img, .wall-item img, .mini-flow img { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 
 /* ---------- cabinet of specimens ---------- */

@@ -248,3 +248,4 @@ img.fx-develop { animation: fx-develop 2600ms cubic-bezier(0.2, 0.6, 0.2, 1) bot
   animation: song-ring 1900ms cubic-bezier(0.15, 0.6, 0.3, 1) forwards; }
 @keyframes song-ring { from { transform: scale(0.3); opacity: 1; } to { transform: scale(calc(3.2 * var(--k, 1))); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .song-ring { display: none; } [data-sing].singing { font-weight: inherit; text-shadow: none; } .day-hand, .sky-art i, .ya-hand { animation: none; } }
+@media (pointer: coarse) { .tile.living::after { -webkit-backdrop-filter: none; backdrop-filter: none; background: rgba(0, 0, 0, 0.62); } }

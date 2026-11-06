@@ -128,6 +128,12 @@
     L.el.classList.toggle("touch", touch);
     L.el.classList.add("on");
     document.documentElement.classList.add("gp-louping");
+    // Only while the loupe is up may a finger or wheel steer it instead of moving the page: a
+    // listener that can stop scrolling, left on the whole page, would make every scroll on a phone
+    // wait for this script first. A long-press began before the listener existed, so the page
+    // itself is held still too.
+    document.documentElement.classList.toggle("gp-louping-touch", !!touch);
+    document.addEventListener(touch ? "touchmove" : "wheel", touch ? onLoupeTouch : onLoupeWheel, { passive: false });
     vfHide();
     lMove(px, py);
     lSharpen();
@@ -137,7 +143,9 @@
     if (!L.on) return;
     L.on = false; L.target = null; L.x = null;
     L.el.classList.remove("on");
-    document.documentElement.classList.remove("gp-louping");
+    document.documentElement.classList.remove("gp-louping", "gp-louping-touch");
+    document.removeEventListener("touchmove", onLoupeTouch, { passive: false });
+    document.removeEventListener("wheel", onLoupeWheel, { passive: false });
   }
   function lNeed() {
     const img = imgOf(L.target);
@@ -236,12 +244,12 @@
   });
   document.addEventListener("keyup", (e) => { if (e.key === "Shift" && L.on && !L.touch) { lClose(); if (VF.target === null) { const el = targetAt(document.elementFromPoint(last.x, last.y), VF_SEL); if (el && finePointer()) vfShow(el); } } });
   addEventListener("blur", lClose);
-  document.addEventListener("wheel", (e) => {
+  function onLoupeWheel(e) {
     if (!L.on) return;
     e.preventDefault();
     const d = e.deltaY || e.deltaX; // Shift turns vertical wheels sideways in some browsers
     lZoom(Math.exp(-d * 0.0022));
-  }, { passive: false });
+  }
 
   // long-press on touch screens
   document.addEventListener("pointerdown", (e) => {
@@ -266,13 +274,13 @@
   };
   document.addEventListener("pointerup", endTouch, { passive: true });
   document.addEventListener("pointercancel", (e) => { if (L.on && L.touch) return; endTouch(e); }, { passive: true });
-  // While the loupe is up the finger steers it instead of scrolling the page.
-  document.addEventListener("touchmove", (e) => {
+  // While the loupe is up the finger steers it instead of scrolling the page (added in lOpen).
+  function onLoupeTouch(e) {
     if (!(L.on && L.touch)) return;
-    e.preventDefault();
+    if (e.cancelable) e.preventDefault();
     const t = e.touches[0];
     if (t) lMove(t.clientX, t.clientY);
-  }, { passive: false });
+  }
   document.addEventListener("touchend", (e) => { if (L.on && L.touch && !e.touches.length) { lClose(); setTimeout(() => { L.swallow = false; }, 400); } });
   document.addEventListener("click", (e) => { if (L.swallow) { L.swallow = false; e.preventDefault(); e.stopImmediatePropagation(); } }, true);
   document.addEventListener("contextmenu", (e) => { if ((L.on && L.touch) || (L.lp && targetAt(e.target, LOUPE_SEL))) e.preventDefault(); });
