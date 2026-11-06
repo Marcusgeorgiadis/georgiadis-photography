@@ -98,6 +98,8 @@
   const adapter = {
     src: (x) => (x.a ? "/_blob/" + x.a : ""),
     full: (x) => fullRes(x),
+    // the viewer shows the Workshop's preview at once and swaps in the original when it arrives
+    autoFull: true,
     download: (x) => `https://drive.google.com/file/d/${encodeURIComponent(x.id)}/view`,
     // public links: the small preview pages the site build writes for each photograph, species and outing
     shareUrl: (x) => (W.site.url ? siteBase() + "p/" + encodeURIComponent(x.id) : null),

@@ -70,11 +70,11 @@
   }
 
   /* ---------- open / close ---------- */
-  function open(list, i, fromImg) {
+  function open(list, i, fromImg, frame) {
     build();
     // A close that is still going back through history would land after this open and undo it.
     if (V.backPending) {
-      const go = () => { window.removeEventListener("popstate", go); clearTimeout(t); V.backPending = false; open(list, i, fromImg); };
+      const go = () => { window.removeEventListener("popstate", go); clearTimeout(t); V.backPending = false; open(list, i, fromImg, frame); };
       const t = setTimeout(go, 350);
       window.addEventListener("popstate", go);
       return;
@@ -96,6 +96,8 @@
     V.ff = GP.app.frameFilter;
     // a list from opened bursts already holds every frame: step them as single photographs
     V.loose = !!GP.app.burstsExpanded;
+    // a burst opens on the frame its tile was showing (flicked to by hover or swipe)
+    if (frame && !V.loose && framesOf(V.list[V.i]).includes(frame)) V.frame = frame;
     const wasOpen = V.open;
     V.open = true;
     V.el.hidden = false;
@@ -112,6 +114,7 @@
     wake();
   }
   function close(o = {}) {
+    clearTimeout(V.bigT); clearTimeout(V.fullT);
     if (!V.open) return;
     V.open = false;
     V.tinted = false;
@@ -252,21 +255,17 @@
     // the page takes the photograph's colours as the viewer opens; stepping on doesn't restyle it
     if (GP.tint) { if (V.tinted && GP.tint.context) GP.tint.context(x); else GP.tint.set(x); V.tinted = true; }
     const h = H();
-    // Start from whatever is already decoded (the tile), then step up to a large rendition.
-    const small = o.src || (o.fly && o.fly.currentSrc ? o.fly.currentSrc : h.src(x, 720));
-    const large = h.src(x, Math.min(2560, Math.max(V.sw, V.sh) * Math.min(2, devicePixelRatio || 1)));
+    // Whatever copy is already here shows at once (never a blank); the preview and then a copy
+    // sized to the screen replace it as each finishes arriving (see upgrade()).
+    const small = o.src || (o.fly && o.fly.currentSrc ? o.fly.currentSrc : readySrc(x));
+    const large = h.src(x, bigW());
     V.large = large || small;
     V.img.src = small;
     V.img.alt = h.titleOf(x);
     V.img.style.width = V.bw + "px";
     V.img.style.height = V.bh + "px";
     fit(false);
-    if (large && large !== small) {
-      const im = new Image();
-      im.decoding = "async";
-      im.onload = () => { if (tok === V.token && !V.full) V.img.src = large; };
-      im.src = large;
-    }
+    upgrade(x, tok, small, large);
     if (o.fly && !reduced()) {
       const r = o.fly.getBoundingClientRect(), ir = V.img.getBoundingClientRect();
       if (r.width && ir.width) {
@@ -351,14 +350,66 @@
     $(".vw-badge", V.el).textContent = parts.filter(Boolean).join(" · ");
   }
   function bigW() { return Math.min(2560, Math.max(V.sw, V.sh) * Math.min(2, devicePixelRatio || 1)); }
-  function preload() {
-    const h = H(), w = bigW();
-    for (const d of [1, -1]) {
-      const t = target(d);
-      if (!t) continue;
-      for (const u of [h.src(t.x, 720), h.src(t.x, w)]) if (u && !V.pre.has(u)) { const im = new Image(); im.decoding = "async"; im.src = u; V.pre.set(u, im); }
-    }
+  /* ---------- loading: preview first, then the photograph at the screen's size ---------- */
+  // The preview is quick to fetch (in the Workshop it is the preview the Workshop made; on the site,
+  // Google's small copy of the public photograph). The copy sized to the screen replaces it only
+  // once it has fully arrived and been decoded, so the swap is instant and never a blank.
+  const PREVIEW = 720, SIZES = [360, 540, 720, 960, 1280, 1600, 2048, 2560];
+  const loaded = (u) => { const im = u && V.pre.get(u); return !!(im && im.complete && im.naturalWidth); };
+  function warm(u) {
+    if (!u || V.pre.has(u)) return V.pre.get(u);
+    const im = new Image();
+    im.decoding = "async";
+    im.src = u;
+    V.pre.set(u, im);
     if (V.pre.size > 48) V.pre = new Map([...V.pre].slice(-24));
+    return im;
+  }
+  // how sharp a copy is: its width, as far as it can be told (the blurred placeholder counts as 0)
+  function widthOf(y, u, large) {
+    if (!u || u.startsWith("data:")) return 0;
+    if (u === large) return 1e5;
+    const h = H();
+    for (const w of SIZES) if (h.src(y, w) === u) return w;
+    return 1;
+  }
+  function upgrade(x, tok, first, large) {
+    const h = H(), pre = h.src(x, PREVIEW);
+    V.sharp = widthOf(x, first, large);
+    // the big copy of the photograph before, if it is still on its way, gives way to this one's
+    for (const im of V.loads || []) if (!im.complete) { V.pre.delete(im.src); im.src = ""; }
+    V.loads = [];
+    const step = (u, w, big) => {
+      if (!u || V.sharp >= w) return;
+      const im = warm(u);
+      if (big) V.loads.push(im);
+      const ready = im.decode ? im.decode() : new Promise((res, rej) => { im.onload = res; im.onerror = rej; });
+      ready.then(() => {
+        if (tok !== V.token || V.full || V.sharp >= w) return;
+        V.img.src = u;
+        V.sharp = w;
+        if (big) preloadNext();
+      }, () => {});
+    };
+    step(pre, PREVIEW, false);
+    // the big copy once the photograph has been looked at for a moment, not for each one flicked past
+    clearTimeout(V.bigT);
+    V.bigT = setTimeout(() => { if (tok === V.token) step(large, 1e5, true); }, loaded(large) ? 0 : 160);
+    // where originals can be had (the Workshop), the original follows on its own
+    clearTimeout(V.fullT);
+    if (GP.app.adapter.autoFull) V.fullT = setTimeout(() => { if (tok === V.token && V.open) loadFull(); }, 900);
+  }
+  // the neighbours' previews at once (cheap), so a swipe or arrow always lands on one
+  function preload() {
+    const h = H();
+    for (const d of [1, -1]) { const t = target(d); if (t) warm(h.src(t.x, PREVIEW)); }
+  }
+  // once this photograph is sharp, the neighbours' big copies too, where the connection allows
+  function preloadNext() {
+    const c = navigator.connection;
+    if (c && (c.saveData || /(^|-)2g|3g/.test(c.effectiveType || ""))) return;
+    const h = H(), w = bigW();
+    for (const d of [1, -1]) { const t = target(d); if (t) warm(h.src(t.x, w)); }
   }
   function moreLike(x) {
     const h = H(), list = similar(x);
@@ -521,11 +572,20 @@ ${ws && ws.infoExtra ? ws.infoExtra(x) : ""}`;
     if (bw > V.sw) { bw = Math.round(V.sw); bh = Math.round(V.sw / y.ar); }
     return { w: bw, h: bh, x: (V.sw - bw) / 2, y: (V.sh - bh) / 2 };
   }
-  // the sharpest copy already loaded, so the incoming photograph is there the moment it shows
+  // The sharpest copy already here, so the incoming photograph shows the moment it is needed: its
+  // big copy or preview if loaded, else its picture on the page behind (a tile, a print, a card),
+  // else its blurred placeholder, which is always to hand.
   function readySrc(y) {
-    const h = H();
-    for (const u of [h.src(y, bigW()), h.src(y, 720)]) { const im = V.pre.get(u); if (im && im.complete && im.naturalWidth) return u; }
-    return h.src(y, 720);
+    const h = H(), big = h.src(y, bigW()), pre = h.src(y, PREVIEW);
+    if (loaded(big)) return big;
+    if (loaded(pre)) return pre;
+    const id = CSS.escape(y.id);
+    for (const el of document.querySelectorAll(`#gp-main [data-id="${id}"], #gp-main [data-open="${id}"]`)) {
+      if (el._frame && el._frame !== y.id) continue; // a burst's tile flicked to another frame
+      const im = el.tagName === "IMG" ? el : el.querySelector("img");
+      if (im && im.complete && im.naturalWidth && im.currentSrc) return im.currentSrc;
+    }
+    return y.lq || pre;
   }
   function peekFor(t, d) {
     const y = t.x, b = boxFor(y), src = readySrc(y);

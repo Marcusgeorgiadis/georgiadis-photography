@@ -266,7 +266,13 @@ img.veiled-img { filter: blur(22px) brightness(0.8) !important; }
 .tile .scrub { position: absolute; left: 10px; right: 10px; bottom: 8px; height: 3px; display: flex; gap: 2px; opacity: 0; transition: opacity 200ms; pointer-events: none; }
 .tile .scrub i { flex: 1; background: rgba(255, 255, 255, 0.35); border-radius: 2px; }
 .tile .scrub i.on { background: #fff; }
-.tile.burst:hover .scrub { opacity: 1; }
+.tile.burst:hover .scrub, .tile.burst.scrubbing .scrub { opacity: 1; }
+/* touch screens: a burst's tile takes sideways swipes (it flicks through the frames); the page
+   still scrolls and zooms under the finger, and the frame bars show faintly as a hint */
+@media (hover: none) {
+  .flow .tile.burst { touch-action: pan-y pinch-zoom; }
+  .tile.burst .scrub { opacity: 0.7; }
+}
 .tile .badge { position: absolute; top: 10px; left: 10px; font: 600 10px/1 var(--f-data); letter-spacing: 0.08em; text-transform: uppercase; padding: 5px 7px; border-radius: 2px; background: var(--surface); color: var(--ink-2); border: 1px solid var(--hair); }
 .tile.sel { outline: 3px solid var(--accent); outline-offset: -3px; }
 .tile .tick { position: absolute; top: 10px; right: 10px; width: 24px; height: 24px; border-radius: 50%; border: 2px solid #fff; background: rgba(0, 0, 0, 0.3); display: grid; place-items: center; color: transparent; font-size: 13px; font-weight: 700; }

@@ -1519,7 +1519,7 @@ ${filterPanel(q)}
   }
 
   /* ---------- opening photos ---------- */
-  function openList(list, i, fromEl) { if (GP.viewer) GP.viewer.open(list, i, fromEl); }
+  function openList(list, i, fromEl, frame) { if (GP.viewer) GP.viewer.open(list, i, fromEl, frame); }
   function openById(id) {
     const x = A.model.byId.get(id);
     if (!x) return;
@@ -1700,8 +1700,8 @@ ${filterPanel(q)}
     }
     const box = t.closest("[data-ctx]");
     const list = (box && A.ctx.get(box.dataset.ctx)) || [A.model.byId.get(id)];
-    const x = A.model.byId.get(id);
-    openList(list, Math.max(0, list.indexOf(x)), t.querySelector("img"));
+    const x = A.model.byId.get(id), f = t._frame && A.model.byId.get(t._frame);
+    openList(list, Math.max(0, list.indexOf(x)), t.querySelector("img"), f && f !== x ? f : null);
   }
   // Burst scrubbing: drag the pointer across a stacked tile to flick through its frames.
   function onScrub(e) {
@@ -1713,7 +1713,11 @@ ${filterPanel(q)}
     // The frame under the pointer is the one whose bar it is above: the bars along the foot of
     // the tile split its width between the frames (the first is the one the tile shows).
     const bars = t.querySelector(".scrub"), r = (bars || t).getBoundingClientRect();
-    const i = Math.max(0, Math.min(fr.length - 1, Math.floor(((e.clientX - r.left) / r.width) * fr.length)));
+    showFrame(t, x, fr, Math.floor(((e.clientX - r.left) / r.width) * fr.length));
+  }
+  // Show frame i of a burst in its tile; the tile then opens on that frame.
+  function showFrame(t, x, fr, i) {
+    i = Math.max(0, Math.min(fr.length - 1, i));
     if (t._i === i) return;
     t._i = i;
     const img = t.querySelector("img"), f = fr[i];
@@ -1722,6 +1726,48 @@ ${filterPanel(q)}
     fitFrame(t, img, f, x, url);
     t.querySelectorAll(".scrub i").forEach((el, k) => el.classList.toggle("on", k === i));
     t._frame = f.id;
+  }
+  // Touch screens: a sideways swipe across a burst's tile flicks through its frames, as hovering
+  // does with a mouse. Up and down still scrolls the page; once a swipe is under way the finger
+  // owns it, and a tap afterwards opens the frame the tile is showing.
+  function onBurstDown(e) {
+    if (e.pointerType === "mouse" || A.selecting || !e.isPrimary) return;
+    const t = e.target.closest && e.target.closest(".flow .tile.burst");
+    if (!t || t.classList.contains("living") || t.classList.contains("veiled")) return;
+    const x = A.model.byId.get(t.dataset.id);
+    const fr = (t.dataset.frames || "").split(",").map((id) => A.model.byId.get(id)).filter(Boolean);
+    if (!x || fr.length < 2) return;
+    const i0 = t._i != null ? t._i : Math.max(0, fr.indexOf(x));
+    // a whole swipe across the tile passes every frame, a frame at least every 16px
+    const step = Math.max(16, Math.min(44, t.getBoundingClientRect().width / fr.length));
+    const g = { id: e.pointerId, x0: e.clientX, y0: e.clientY, on: false };
+    const move = (ev) => {
+      if (ev.pointerId !== g.id) return;
+      const dx = ev.clientX - g.x0, dy = ev.clientY - g.y0;
+      if (!g.on) {
+        if (Math.abs(dy) > 10 && Math.abs(dy) >= Math.abs(dx)) { end(ev); return; } // a scroll
+        if (Math.abs(dx) < 10 || Math.abs(dx) < Math.abs(dy) * 1.2) return;
+        g.on = true;
+        t.classList.add("scrubbing");
+        clearTimeout(t._sT);
+        // the frames at the tile's size, fetched as the swipe begins, so each is there in time
+        const w = rowH() * x.ar * dpr() * 1.1;
+        for (const f of fr) { const im = new Image(); im.decoding = "async"; im.src = src(f, w); }
+      }
+      showFrame(t, x, fr, i0 + Math.round(-dx / step));
+    };
+    const end = (ev) => {
+      if (ev && ev.pointerId !== g.id) return;
+      document.removeEventListener("pointermove", move);
+      document.removeEventListener("pointerup", end);
+      document.removeEventListener("pointercancel", end);
+      if (!g.on) return;
+      A.eatClick = performance.now() + 450; // the lifted finger isn't a tap
+      t._sT = setTimeout(() => t.classList.remove("scrubbing"), 1400);
+    };
+    document.addEventListener("pointermove", move, { passive: true });
+    document.addEventListener("pointerup", end, { passive: true });
+    document.addEventListener("pointercancel", end, { passive: true });
   }
   // The tile keeps the shape of the photograph it shows. A frame of another shape (cropped
   // differently) sits whole inside it over a soft copy of itself, instead of being cropped and
@@ -1736,6 +1782,8 @@ ${filterPanel(q)}
     } else if (bg) bg.remove();
   }
   function onScrubEnd(e) {
+    // a lifted finger leaves the tile on the frame it was swiped to (only a mouse moving off resets it)
+    if (e.pointerType && e.pointerType !== "mouse") return;
     const t = e.target.closest && e.target.closest(".tile.burst");
     if (!t || t._i == null) return;
     const x = A.model.byId.get(t.dataset.id);
@@ -1855,6 +1903,7 @@ ${filterPanel(q)}
       document.addEventListener("pointerdown", (e) => { if ($("#gp-menu") && !(e.target.closest && e.target.closest("#gp-menu, .gp-menu-btn"))) { closeMenu(false); A.eatClick = performance.now() + 500; } }, true);
       document.addEventListener("click", (e) => { if (A.eatClick && performance.now() < A.eatClick) { e.preventDefault(); e.stopPropagation(); } A.eatClick = 0; }, true);
       document.addEventListener("pointermove", onScrub, { passive: true });
+      document.addEventListener("pointerdown", onBurstDown, { passive: true });
       document.addEventListener("pointerout", (e) => { if (e.target.closest && e.target.closest(".tile.burst") && !e.target.closest(".tile.burst").contains(e.relatedTarget)) onScrubEnd(e); }, { passive: true });
       document.addEventListener("load", (e) => {
         const img = e.target;
