@@ -51,9 +51,10 @@
     const ticks = list.map((x, n) => `<i style="top:${(((x.mins - t0) / span) * 100).toFixed(2)}%" data-i="${n}"></i>`).join("");
     const mark = (mm, l) => (mm > t0 - 20 && mm < t1 + 20 ? `<span class="st-mark" style="top:${(Math.max(0, Math.min(1, (mm - t0) / span)) * 100).toFixed(2)}%">${l} ${h.esc(clock(mm))}</span>` : "");
     const spCount = new Set(o.photos.map((x) => x.spKey).filter(Boolean)).size;
+    const storyCard = (x, k) => x && { href: `#/story/${x.id}`, cover: x.cover ? h.cover(x.cover, 320, "", "") : "", kicker: k, title: h.fmtDate(x.date), sub: x.title };
     const html = `<div class="story" data-ctx="${k}">
   <div class="st-sky" aria-hidden="true"><i class="st-sky-a"></i><i class="st-stars"></i><i class="st-sun"></i></div>
-  <header class="st-open wrap"><div class="kicker">The field diary · chapter ${o.no}</div>
+  <header class="st-open wrap">${h.crumbs([["Outings", "#/outings"], [`Chapter ${o.no}`, `#/outings/${o.id}`]], "The story")}
     <h1 class="display">${h.esc(GP.app.helpers.fmtDate(o.date))}</h1>
     <p class="st-sub">${h.esc(o.type || "An outing")}${h.esc(who)}. ${h.plural(o.photos.length, "frame")}, ${h.plural(spCount, "species", "species")}, from ${h.esc(clock(t0))} to ${h.esc(clock(t1))}.</p>
     <p class="st-sun-l mono">Sunrise ${h.esc(clock(sun.rise))} · sunset ${h.esc(clock(sun.set))}</p>
@@ -63,7 +64,7 @@
   <div class="st-beats">${beatHtml}</div>
   <footer class="st-end wrap"><div class="kicker">By ${h.esc(clock(t1))}</div><h2 class="display">${h.plural(o.photos.length, "frame")}, ${h.plural(spCount, "species", "species")}</h2>
     <div class="chips">${o.species.map((e) => { const s = m.speciesByKey.get(e.key); return s ? `<a class="chip" href="#/species/${h.esc(s.slug)}">${h.esc(s.name)} <span class="n">${e.n}</span></a>` : ""; }).join("")}</div>
-    <nav class="st-nav">${prev ? `<a class="btn" href="#/story/${h.esc(prev.id)}">${h.ICON.left} ${h.esc(h.fmtShort(prev.date))}</a>` : "<span></span>"}<a class="btn ghost" href="#/outings/${h.esc(o.id)}">Every frame of the day</a>${next ? `<a class="btn" href="#/story/${h.esc(next.id)}">${h.esc(h.fmtShort(next.date))} ${h.ICON.right}</a>` : "<span></span>"}</nav></footer>
+    ${h.pageFoot({ label: "Other stories", prev: storyCard(prev, "Previous story"), next: storyCard(next, "Next story"), up: ["Every frame of the day", `#/outings/${o.id}`] })}</footer>
 </div>`;
     return { html, title: `${h.fmtDate(o.date)}: the story`, after: (main, signal) => mount(main, signal, m, h, o, list) };
   }

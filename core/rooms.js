@@ -40,7 +40,7 @@
     const card = (r) => `<article class="ri-card"><a class="ri-cv" href="#/rooms/${h.esc(r.id)}">${h.cover(r.cover, 1000, "", r.title)}</a>
   <div class="ri-t"><div class="sc">${h.plural(r.photos.length, "photograph")}${r.curated ? " · curated" : ""}</div><h2><a href="#/rooms/${h.esc(r.id)}">${h.esc(r.title)}</a></h2><p>${h.esc(r.sub || "")}</p>${strip(r)}
   <div class="ri-a"><a class="btn" href="#/rooms/${h.esc(r.id)}">Walk through ${h.ICON.arrow}</a><button class="btn ghost" data-rm-play="${h.esc(r.id)}">${h.ICON.play} Play</button></div></div></article>`;
-    const html = `<div class="wrap page">${h.pageHead("Exhibitions", "Rooms of the archive", `${h.plural(rooms.length, "room")} drawn from ${h.fmtN(m.stats.photos)} photographs. Walk through one, or let it play full screen with its labels and, if you like, the birds' calls.`)}
+    const html = `<div class="wrap page">${h.pageHead("Rooms of the archive", "Exhibitions", `${h.plural(rooms.length, "room")} drawn from ${h.fmtN(m.stats.photos)} photographs. Walk through one, or let it play full screen with its labels and, if you like, the birds' calls.`)}
 ${lead ? `<article class="ri-lead"><a class="ri-cv" href="#/rooms/${h.esc(lead.id)}">${h.cover(lead.cover, 1800, "", lead.title)}</a><div class="ri-t"><div class="kicker">Start here</div><h2 class="display"><a href="#/rooms/${h.esc(lead.id)}">${h.esc(lead.title)}</a></h2><p class="lede">${h.esc(lead.sub || "")}</p>${strip(lead)}<div class="ri-a"><a class="btn primary" href="#/rooms/${h.esc(lead.id)}">Walk through ${h.ICON.arrow}</a><button class="btn" data-rm-play="${h.esc(lead.id)}">${h.ICON.play} Play full screen</button></div></div></article>` : ""}
 <div class="ri-grid">${rest.map(card).join("")}
 ${GP.visitor && !GP.app.workshop ? (fav.photos.length ? card(fav) : `<article class="ri-card ri-empty"><div class="ri-cv ri-cv-empty">${h.ICON.heart}</div><div class="ri-t"><div class="sc">Your own room</div><h2>Your favourites</h2><p>Press the heart on any photograph (or L) and it's hung here, on this device.</p></div></article>`) : ""}</div></div>`;
@@ -133,7 +133,7 @@ ${GP.visitor && !GP.app.workshop ? (fav.photos.length ? card(fav) : `<article cl
     const prev = idx > 0 ? rooms[idx - 1] : r.own ? rooms[rooms.length - 1] : null;
     const next = idx >= 0 && idx < rooms.length - 1 ? rooms[idx + 1] : r.own ? rooms[0] : null;
     if (!r.photos.length) {
-      return { html: `<div class="wrap page">${h.pageHead("Exhibition", h.esc(r.title), "Nothing here yet.")}<div class="empty"><h2>Your room is waiting</h2><p>Open any photograph and press the heart (or L) to hang it here. Favourites are kept on this device.</p><a class="btn primary" href="#/gallery">Browse the gallery ${h.ICON.arrow}</a></div></div>`, title: r.title };
+      return { html: `<div class="wrap page">${h.pageHeader({ crumbs: [["Exhibitions", "#/rooms"]], rest: "Your room", title: h.esc(r.title), intro: "Nothing here yet." })}<div class="empty"><h2>Your room is waiting</h2><p>Open any photograph and press the heart (or L) to hang it here. Favourites are kept on this device.</p><a class="btn primary" href="#/gallery">Browse the gallery ${h.ICON.arrow}</a></div></div>`, title: r.title };
     }
     const { wall, rest } = wallOf(diversify(r.photos), r.cover);
     const order = wall.concat(rest);
@@ -147,9 +147,9 @@ ${GP.visitor && !GP.app.workshop ? (fav.photos.length ? card(fav) : `<article cl
       return `<div class="hang-row solo ${row.side ? "r" : "l"}">${print(row.items[0], h, 2000)}${label(row.items[0], h, m, ++n)}</div>`;
     }).join("");
     const cover = r.cover || r.photos[0];
-    const roomNav = (x, dir) => x ? `<a class="rm-nav ${dir}" href="#/rooms/${h.esc(x.id)}"><span class="rm-nav-cv">${h.cover(x.cover, 700, "", x.title)}</span><span class="rm-nav-t"><span class="sc">${dir === "prev" ? "Previous room" : "Next room"}</span><b>${h.esc(x.title)}</b><span>${h.plural(x.photos.length, "photograph")}</span></span></a>` : "<span></span>";
+    const roomCard = (x, k) => x && { href: `#/rooms/${x.id}`, cover: h.cover(x.cover, 480, "", x.title), kicker: k, title: x.title, sub: h.plural(x.photos.length, "photograph") };
     const html = `<section class="rm-hero">${h.cover(cover, Math.max(1600, innerWidth) * Math.min(2, devicePixelRatio || 1), "", "")}<div class="wrap">
-  <div class="kicker">${r.own ? "Your room" : "Exhibition"} · ${h.plural(r.photos.length, "photograph")}${sps.length ? " · " + h.plural(sps.length, "species", "species") : ""}${dates.length ? " · " + h.esc(h.fmtShort(dates[0])) + " – " + h.esc(h.fmtShort(dates[dates.length - 1])) : ""}</div>
+  ${h.crumbs([["Exhibitions", "#/rooms"]], [r.own ? "Your room" : "", h.plural(r.photos.length, "photograph"), sps.length ? h.plural(sps.length, "species", "species") : "", dates.length ? h.fmtShort(dates[0]) + " – " + h.fmtShort(dates[dates.length - 1]) : ""].filter(Boolean).join(" · "))}
   <h1 class="display">${h.esc(r.title)}</h1>${r.sub ? `<p>${h.esc(r.sub)}</p>` : ""}
   <div class="cta"><button class="btn primary" data-rm="play">${h.ICON.play} Play this exhibition</button><a class="btn" href="#rm-wall" data-rm="walk">Walk through</a><button class="btn rm-lights" data-rm="lights" aria-pressed="false" title="Lights down (B)"><i class="rm-lamp" aria-hidden="true"></i><span>Lights down</span></button>${r.own ? "" : h.shareBtn(h.pageUrl("room", r.id) || "", `${r.title} · ${GP.app.site.title || "Georgiadis Photography"}`)}</div>
 </div></section>
@@ -157,8 +157,7 @@ ${GP.visitor && !GP.app.workshop ? (fav.photos.length ? card(fav) : `<article cl
   ${sps.length > 1 ? `<div class="rm-sp"><span class="sc">In this room</span><div class="chips">${sps.slice(0, 12).map(({ s, n: c }) => `<a class="chip" href="#/species/${h.esc(s.slug)}">${h.esc(s.name)} <span class="n">${c}</span></a>`).join("")}${sps.length > 12 ? `<span class="chip ghost">+${sps.length - 12} more</span>` : ""}</div></div>` : ""}
   <div class="hang" id="rm-wall" data-ctx="${k}">${rows}</div>
   ${rest.length ? `<section class="sec rm-rest"><div class="sec-h"><h2>The rest of the room</h2><span class="meta">${h.plural(rest.length, "photograph")}</span></div><div class="flow" data-ctx="${k}">${rest.map((x) => h.tile(x)).join("")}</div></section>` : ""}
-  <nav class="rm-navs" aria-label="Other rooms">${roomNav(prev, "prev")}${roomNav(next, "next")}</nav>
-  <div class="rm-all"><a class="btn ghost" href="#/rooms">All exhibitions ${h.ICON.arrow}</a></div>
+  ${h.pageFoot({ label: "Other rooms", prev: roomCard(prev, "Previous room"), next: roomCard(next, "Next room"), up: ["All exhibitions", "#/rooms"] })}
 </div>`;
     const after = (main, signal) => {
       if (GP.tint) GP.tint.page(cover);

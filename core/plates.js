@@ -91,10 +91,11 @@
       const f = fams.find((x) => x.name === decodeURIComponent(parts[1]));
       if (!f) return { html: `<div class="wrap page"><div class="empty"><h2>No such plate</h2><p><a href="#/plates">All the plates</a></p></div></div>`, title: "Plates" };
       const i = fams.indexOf(f), prev = fams[i - 1], next = fams[i + 1];
+      const plateCard = (x, k) => x && { href: `#/plates/${encodeURIComponent(x.name)}`, cover: x.species[0] && x.species[0].best ? h.cover(x.species[0].best, 320, "", "") : "", kicker: `${k} · ${x.roman}`, title: x.common, sub: x.name, italic: true };
       const html = `<div class="wrap page plates-page">
-  <div class="plate-bar"><a class="btn ghost" href="#/plates">${h.ICON.left} All plates</a><span class="sc">Plate ${f.roman} of ${ROMAN(fams.length)}</span><button class="btn" data-plate="print">Print this plate</button></div>
+  <div class="plate-bar">${h.crumbs([["Species", "#/species"], ["Plates", "#/plates"]], `Plate ${f.roman} of ${ROMAN(fams.length)}`)}<button class="btn" data-plate="print">Print this plate</button></div>
   ${plateHtml(f, h, site, years)}
-  <nav class="plate-nav">${prev ? `<a class="btn" href="#/plates/${encodeURIComponent(prev.name)}">${h.ICON.left} Plate ${prev.roman} · ${h.esc(prev.common)}</a>` : "<span></span>"}${next ? `<a class="btn" href="#/plates/${encodeURIComponent(next.name)}">Plate ${next.roman} · ${h.esc(next.common)} ${h.ICON.right}</a>` : ""}</nav>
+  ${h.pageFoot({ label: "Other plates", prev: plateCard(prev, "Previous plate"), next: plateCard(next, "Next plate"), up: ["All plates", "#/plates"] })}
 </div>`;
       const after = (main, signal) => {
         main.addEventListener("click", (e) => { if (e.target.closest('[data-plate="print"]')) window.print(); }, { signal });
@@ -106,7 +107,7 @@
       };
       return { html, after, title: `Plate ${f.roman} · ${f.common}` };
     }
-    const html = `<div class="wrap page plates-page">${h.pageHead("Natural-history plates", "The plates", `${h.plural(fams.length, "plate")}, one for every family on the life list, in the style of an old field guide: each species numbered and named. Open one to print it.`, h.speciesTabs ? h.speciesTabs("plates") : "")}
+    const html = `<div class="wrap page plates-page">${h.pageHead("Field guide", "Species", `${h.plural(fams.length, "plate")}, one for every family on the life list, in the style of an old field guide: each species numbered and named. Open one to print it.`, h.speciesTabs ? h.speciesTabs("plates") : "")}
 <div class="plates-grid">${fams.map((f) => `<a class="plate-card" href="#/plates/${encodeURIComponent(f.name)}"><span class="plate-mini"><span class="plate-mini-no">${f.roman}</span>${f.species.slice(0, 4).map((s) => `<span class="pm-v">${h.cover(s.best, 240, "", "")}</span>`).join("")}</span><span class="plate-card-t"><span class="sc">Plate ${f.roman}</span><b>${h.esc(f.common)}</b><i>${h.esc(f.name)} · ${h.plural(f.species.length, "species", "species")}</i></span></a>`).join("")}</div></div>`;
     return { html, title: "Plates" };
   }

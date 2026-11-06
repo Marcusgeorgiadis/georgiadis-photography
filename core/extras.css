@@ -12,9 +12,9 @@
 .uv-c.grabbing { cursor: grabbing; }
 .uv-c:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); }
 .uv-ui { position: absolute; inset: 0; pointer-events: none; }
-.uv-head { position: absolute; left: var(--gutter); top: 24px; max-width: min(540px, 56vw); }
-.uv-head h1 { margin: 8px 0 6px; font-size: clamp(30px, 3.8vw, 54px); line-height: 1; }
-.uv-sub { margin: 0; color: var(--muted); font-size: 15px; max-width: 46ch; text-wrap: pretty; }
+.uv-head { position: absolute; left: var(--gutter); right: max(20px, env(safe-area-inset-right, 0px)); top: 0; }
+.uv-head .pg-tabs { pointer-events: auto; }
+.uv-sub { margin: 0; color: var(--muted); font-size: 15px; text-wrap: pretty; }
 .uv-sub.swap { animation: uv-swap 520ms var(--ease-out); }
 @keyframes uv-swap { from { opacity: 0; transform: translateY(6px); } }
 .uv-modes, .uv-zoom { pointer-events: auto; position: absolute; display: flex; gap: 2px; padding: 4px; border-radius: 999px; background: var(--glass);
@@ -31,8 +31,6 @@
 .uv-tip span { font: 500 10.5px/1.3 var(--f-data); letter-spacing: 0.06em; opacity: 0.75; }
 .uv-tip[hidden] { display: none; }
 @media (max-width: 760px) {
-  .uv-head { top: 14px; max-width: calc(100vw - 40px); }
-  .uv-head h1 { font-size: 28px; margin: 4px 0; }
   .uv-sub { font-size: 13px; }
   .uv-hint, .uv-zoom { display: none; }
   .uv-modes { left: 12px; right: 12px; transform: none; justify-content: space-between; }
@@ -103,7 +101,7 @@
 .cab-holder::before { left: 4px; } .cab-holder::after { right: 4px; }
 .cab-card { display: grid; gap: 1px; padding: 7px 10px 8px; text-align: center; background: var(--paper); color: var(--paper-ink);
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.14), inset 0 0 14px rgba(140, 100, 40, 0.18); }
-.cab-card b { font: italic 500 17px/1.15 var(--f-display); }
+.cab-card b { font: italic 500 17px/1.15 var(--f-display); overflow-wrap: anywhere; }
 .cab-card i { font: 400 12.5px/1.3 var(--f-body); color: #5a4c37; }
 .cab-card span { margin-top: 2px; font: 500 9.5px/1.4 var(--f-data); letter-spacing: 0.16em; text-transform: uppercase; color: #7a6a52; }
 .cab-pull { position: absolute; left: 50%; bottom: 7px; width: 48px; height: 11px; transform: translateX(-50%); border-radius: 0 0 26px 26px / 0 0 11px 11px;
@@ -149,6 +147,7 @@
   .cab-window { width: 52px; height: 52px; }
   .cab-holder { padding: 3px 10px; width: 100%; }
   .cab-card b { font-size: 14px; } .cab-card i { font-size: 11px; }
+  .cab-holder { max-width: 100%; padding-inline: 9px; } .cab-card { padding-inline: 6px; }
   .cab-tray-wood { margin: 0 2px 4px; padding: 10px 8px 12px; }
   .cab-board { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 14px; padding: 20px 12px 22px; }
 }
@@ -246,9 +245,10 @@
 .call.compact { margin: 2px 0 4px; gap: 12px; }
 .call.compact .call-play { width: 40px; height: 40px; box-shadow: none; }
 .call.compact .call-play svg { width: 16px; height: 16px; }
-.call-wave { display: flex; align-items: center; gap: 2px; height: 30px; cursor: pointer; outline: none; border-radius: 2px; }
+.call-wave { display: flex; align-items: center; gap: 2px; height: 30px; overflow: hidden; cursor: pointer; outline: none; border-radius: 2px; }
 .call-wave:focus-visible { box-shadow: 0 0 0 2px var(--accent); }
 .call-wave i { flex: 1; height: var(--v); min-height: 2px; border-radius: 2px; background: currentColor; opacity: 0.32; transition: opacity 120ms, background-color 120ms; }
 .call-wave i.on { opacity: 1; background: var(--accent); }
+@media (max-width: 380px) { .board .call-wave { gap: 1px; } }
 .call.compact .call-credit { font-size: 11px; }
 .share-page { margin-top: 18px; }

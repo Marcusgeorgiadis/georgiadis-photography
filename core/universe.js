@@ -167,7 +167,7 @@
     const html = `<section class="uv" aria-label="The archive as a universe">
   <canvas class="uv-c" tabindex="0" role="img" aria-label="${h.fmtN(n)} photographs arranged as a picture. Use the arrangement buttons to change it, scroll or pinch to zoom, and select a photograph to open it."></canvas>
   <div class="uv-ui">
-    <header class="uv-head">${h.viewSwitch ? h.viewSwitch("universe") : ""}<div class="kicker">The archive as a universe</div><h1 class="display">${h.fmtN(n)} photographs</h1><p class="uv-sub">${MODES.find((m) => m[0] === mode)[2]}</p></header>
+    <div class="uv-head">${h.pageHeader({ kicker: "The archive", title: "Gallery", intro: `${h.fmtN(n)} photographs on one canvas. ${MODES.find((m) => m[0] === mode)[2]}`, introCls: "uv-sub", tabs: h.viewSwitch ? h.viewSwitch("universe") : "", cls: "compact", reveal: false })}</div>
     <div class="uv-modes" role="group" aria-label="Arrangement">${MODES.map(([id, label], i) => `<button class="chip" data-mode="${id}" aria-pressed="${id === mode}" title="${label} (${i + 1})">${label}</button>`).join("")}</div>
     <div class="uv-zoom" role="group" aria-label="Zoom"><button class="icon-btn" data-z="in" aria-label="Zoom in">+</button><button class="icon-btn" data-z="out" aria-label="Zoom out">−</button><button class="icon-btn" data-z="fit" aria-label="Fit everything">${h.ICON.expand}</button></div>
     <div class="uv-hint sc">Scroll or pinch to zoom · drag to move · select a photograph to open it</div>
@@ -183,6 +183,13 @@
   function mount(main, model, h, mode, signal, q0) {
     const sec = main.querySelector(".uv"), cv = sec.querySelector(".uv-c"), ctx = cv.getContext("2d");
     const tip = sec.querySelector(".uv-tip"), sub = sec.querySelector(".uv-sub");
+    // The find box sits under the header's tabs, however tall the header grows.
+    const ph = sec.querySelector(".uv-head .page-head"), finder = sec.querySelector(".uv-find");
+    if (ph && finder) {
+      const place = () => { finder.style.top = innerWidth > 760 ? `${Math.round(ph.getBoundingClientRect().bottom - sec.getBoundingClientRect().top + 12)}px` : ""; };
+      place();
+      if ("ResizeObserver" in window) { const ro = new ResizeObserver(place); ro.observe(ph); signal.addEventListener("abort", () => ro.disconnect()); }
+    }
     const items = model.photos.map((x, i) => ({ x, i, v: vivid(x), lq: null, th: null, thW: 0, req: false, px: 0, py: 0, fx: 0, fy: 0, tx: 0, ty: 0, delay: 0 }));
     const S = { mode, scale: 10, cx: 0, cy: 0, W: 0, H: 0, dpr: 1, anim: null, cam: null, hover: -1, layout: null, dirty: true, raf: 0, colors: {}, alive: true, queue: [], loading: 0, ptrs: new Map(), drag: null, vx: 0, vy: 0, dived: 0, match: null };
     cv.__uv = S; // for tests
@@ -602,7 +609,7 @@
     function switchMode(m) {
       if (m === S.mode && !S.anim) return;
       sec.querySelectorAll("[data-mode]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.mode === m)));
-      sub.textContent = MODES.find((x) => x[0] === m)[2];
+      sub.textContent = `${GP.app.helpers.fmtN(model.photos.length)} photographs on one canvas. ${MODES.find((x) => x[0] === m)[2]}`;
       sub.classList.remove("swap"); void sub.offsetWidth; sub.classList.add("swap");
       GP.app.setQuery((qq) => (m === "colour" ? qq.delete("mode") : qq.set("mode", m)));
       S.hover = -1; tip.hidden = true;

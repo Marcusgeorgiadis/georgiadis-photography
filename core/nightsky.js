@@ -55,8 +55,7 @@
     const life = m.life.length;
     const html = `<div class="ns" data-hover="">
   <canvas class="ns-c" aria-hidden="true"></canvas>
-  <div class="ns-head wrap">${h.speciesTabs ? h.speciesTabs("sky") : ""}<div class="kicker">The life list</div><h1 class="display">The night sky</h1>
-    <p>${h.plural(life, "species", "species")}, each a star: the brighter, the more it has been photographed. Each family is a constellation. Rest on a star to see its bird.</p></div>
+  <div class="ns-head wrap">${(h.pageHeader || ((o) => `<div class="kicker">${o.kicker}</div><h1>${o.title}</h1><p>${o.intro}</p>`))({ kicker: "Field guide", title: "Species", intro: `${h.plural(life, "species", "species")} as a night sky, each a star: the brighter, the more it has been photographed. Each family is a constellation. Rest on a star to see its bird.`, tabs: h.speciesTabs ? h.speciesTabs("sky") : "", cls: "dark", reveal: false })}</div>
   <div class="ns-card" hidden></div>
   <div class="ns-foot wrap"><span class="sc">Hover a star · click to visit · <a href="#/species?view=life">the same list as a tree</a></span></div>
   <ul class="visually-hidden">${m.life.map((s) => `<li><a href="#/species/${h.esc(s.slug)}">${h.esc(s.name)}</a></li>`).join("")}</ul>
@@ -120,8 +119,10 @@
     // Constellation names: biggest families first, below their stars or else above, never over
     // another name or the page's heading; a name with no room waits until its stars are hovered.
     function place() {
-      const taken = [], hr = el.querySelector(".ns-head").getBoundingClientRect(), er = el.getBoundingClientRect();
-      const head = { x0: hr.left - er.left, y0: 0, x1: hr.right - er.left, y1: hr.bottom - er.top - 8 };
+      const er = el.getBoundingClientRect();
+      const box = (e) => { const r = e.getBoundingClientRect(); return { x0: r.left - er.left - 8, y0: 0, x1: r.right - er.left + 8, y1: r.bottom - er.top + 4 }; };
+      const taken = [...el.querySelectorAll(".ns-head .pg-t > *, .ns-head .pg-tabs")].map(box);
+      const head = taken.length ? taken.shift() : box(el.querySelector(".ns-head"));
       const hit = (a) => a.x0 < 4 || a.x1 > W - 4 || a.y0 < 0 || a.y1 > H - 40 || [head, ...taken].some((b) => a.x0 < b.x1 && a.x1 > b.x0 && a.y0 < b.y1 && a.y1 > b.y0);
       ctx.font = `500 ${Math.round(10.5 * dpr)}px "IBM Plex Mono", monospace`;
       for (const g of [...groups].sort((a, b) => b.members.length - a.members.length)) {

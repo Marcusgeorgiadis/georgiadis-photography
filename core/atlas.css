@@ -156,11 +156,11 @@ canvas.paper-wash { object-fit: cover; }
 .plate-cap b { font: 500 15px/1.2 var(--f-display); letter-spacing: 0.04em; font-variant: small-caps; }
 .plate-cap i { font: italic 400 13.5px var(--f-display); opacity: 0.85; }
 .plate-foot { display: flex; justify-content: space-between; gap: 18px; flex-wrap: wrap; border-top: 1px solid rgba(61, 47, 23, 0.35); padding-top: 10px; font: italic 400 12.5px var(--f-display); }
-.plate-nav { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 26px; }
+
 @media (max-width: 640px) { .plate-fig { flex-basis: calc(50% - 10px); } .plate-foot span:last-child { display: none; } }
 @media print {
   .printing-plate body { background: #fff; }
-  .printing-plate .gp-head, .printing-plate .foot, .printing-plate .to-top, .printing-plate .plate-bar, .printing-plate .plate-nav, .printing-plate .gp-tint, .printing-plate .vf, .printing-plate .vf-ret, .printing-plate .toast { display: none !important; }
+  .printing-plate .gp-head, .printing-plate .foot, .printing-plate .to-top, .printing-plate .plate-bar, .printing-plate .pfoot, .printing-plate .gp-tint, .printing-plate .vf, .printing-plate .vf-ret, .printing-plate .toast { display: none !important; }
   .printing-plate .plates-page { padding: 0 !important; max-width: none; }
   .printing-plate .plate { box-shadow: none; max-width: none; margin: 0; break-inside: avoid; }
   .printing-plate .plate-fig { opacity: 1 !important; transform: none !important; }
@@ -207,7 +207,8 @@ body, .gp-head, .foot { transition: background-color 1200ms ease, color 800ms ea
   .dm-ring { width: min(56vw, calc(100svh - var(--head-h, 64px) - var(--tabs-h, 0px) - 70px), 820px); }
 }
 .dm-head { max-width: 720px; display: grid; gap: 8px; }
-.dm-head h1 { margin: 0; font-size: clamp(40px, 5.6vw, 84px); line-height: 0.95; }
+.page-head.dm-head { margin: 0; row-gap: 8px; grid-template-columns: minmax(0, 1fr); }
+.page-head.dm-head h1 { margin: 0; font-size: clamp(40px, 5.6vw, 84px); line-height: 0.95; }
 .dm-head .kicker, .dm-head .lede { color: inherit; opacity: 0.86; }
 .dm-stage { display: grid; place-items: center; }
 .dm-ring { position: relative; width: min(84vw, 74vh, 760px); aspect-ratio: 1; }
@@ -271,10 +272,10 @@ body, .gp-head, .foot { transition: background-color 1200ms ease, color 800ms ea
 /* ---------- the night sky ---------- */
 .ns { position: relative; height: calc(100svh - var(--head-h, 64px) - var(--tabs-h, 0px)); min-height: 520px; overflow: hidden; background: #03050d; color: #eef0ff; }
 .ns-c { position: absolute; inset: 0; display: block; }
-.ns-head { position: absolute; left: 0; right: 0; top: clamp(18px, 4vh, 44px); pointer-events: none; display: grid; gap: 6px; }
+.ns-head { position: absolute; left: 0; right: 0; top: clamp(4px, 2vh, 26px); pointer-events: none; }
+.ns-head .pg-tabs { pointer-events: auto; }
 .ns-head .kicker { color: #b9c2ff; }
-.ns-head h1 { margin: 0; font-size: clamp(40px, 5vw, 76px); line-height: 0.95; color: #f4f2ff; text-shadow: 0 2px 30px rgba(0, 0, 0, 0.6); }
-.ns-head p { margin: 0; max-width: 46ch; color: rgba(238, 240, 255, 0.78); font-size: 15px; line-height: 1.55; }
+.ns-head .pg-p { max-width: 50ch; font-size: 15px; line-height: 1.55; }
 .ns-foot { position: absolute; left: 0; right: 0; bottom: 16px; pointer-events: none; }
 .ns-foot .sc { color: rgba(220, 225, 255, 0.6); pointer-events: auto; }
 .ns-foot a { color: #ffe2aa; }
@@ -404,7 +405,7 @@ body, .gp-head, .foot { transition: background-color 1200ms ease, color 800ms ea
 .st-end.in { opacity: 1; }
 .st-end h2 { margin: 0; font-size: clamp(36px, 4.6vw, 70px); line-height: 1; font-weight: 500; }
 .st-end .kicker { color: inherit; opacity: 0.8; }
-.st-nav { display: flex; gap: 10px; flex-wrap: wrap; justify-content: space-between; margin-top: 12px; }
+.st-end .pfoot { margin-top: 28px; justify-self: stretch; }
 .story .chip { background: rgba(255, 255, 255, 0.16); border-color: rgba(127, 127, 127, 0.4); color: inherit; }
 .story .btn:not(.primary) { background: rgba(255, 255, 255, 0.14); color: inherit; border-color: rgba(127, 127, 127, 0.45); }
 .html-story .foot { position: relative; z-index: 1; }
@@ -437,7 +438,7 @@ body, .gp-head, .foot { transition: background-color 1200ms ease, color 800ms ea
 .nl-form { position: relative; display: grid; }
 .nl-field { display: flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--bg); border-radius: 999px; padding: 4px 4px 4px 16px; min-height: 46px; transition: border-color 200ms, box-shadow 200ms; }
 .nl-field:focus-within { border-color: color-mix(in srgb, var(--ink) 55%, var(--line)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent); }
-.nl-field input { flex: 1; min-width: 0; border: 0; background: transparent; outline: none; font: inherit; font-size: 15.5px; color: var(--ink); padding: 8px 0; }
+.nl-field input { flex: 1; width: 0; min-width: 0; border: 0; background: transparent; outline: none; font: inherit; font-size: 15.5px; color: var(--ink); padding: 8px 0; }
 .nl-field input::placeholder { color: var(--muted); opacity: 0.8; }
 .nl-field .btn { min-height: 38px; padding: 6px 16px; flex: none; }
 .nl-form.busy .nl-field { opacity: 0.7; }

@@ -72,7 +72,7 @@
     const html = `<div class="dm" data-state="ready">
   <div class="dm-sky" aria-hidden="true"><i></i><i class="dm-stars"></i><i class="dm-sun"></i></div>
   <div class="wrap dm-wrap">
-    <header class="dm-head"><a class="dm-back" href="#/species?view=calls">${h.ICON.left} All the calls</a><div class="kicker">Listen</div><h1 class="display">A day in the marsh</h1><p class="lede">${h.plural(list.length, "species", "species")} with a recorded call, each placed at the hour it is most often photographed. A whole day takes a minute: press play, turn your sound up, and listen to the marsh wake, rest and settle.</p></header>
+    ${h.pageHeader({ crumbs: [["Species", "#/species"], ["Calls", "#/species?view=calls"]], title: "A day in the marsh", h1: ' class="display"', intro: `${h.plural(list.length, "species", "species")} with a recorded call, each placed at the hour it is most often photographed. A whole day takes a minute: press play, turn your sound up, and listen to the marsh wake, rest and settle.`, introCls: "lede", cls: "dm-head", reveal: false })}
     <div class="dm-stage">
       <div class="dm-ring">
         <svg class="dm-svg" viewBox="-400 -400 800 800" aria-hidden="true">
