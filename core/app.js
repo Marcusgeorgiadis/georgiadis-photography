@@ -283,7 +283,7 @@
   <nav class="gp-nav" aria-label="Sections">${nav.map(([id, l]) => `<a href="#/${id}" data-nav="${id}">${esc(l)}</a>`).join("")}</nav>
   <div class="gp-tools">
     ${GP.sky ? GP.sky.button() : ""}
-    <button class="gp-find" data-act="search" title="Search (/)" aria-label="Search the photographs">${ICON.search}<span>Search photographs</span><kbd>/</kbd></button>
+    <button class="gp-find" data-act="search" title="Search (/)" aria-label="Search the archive">${ICON.search}<span>Search</span><kbd>/</kbd></button>
     <button class="icon-btn gp-play" data-act="exhibit" title="Play an exhibition (E)" aria-label="Play an exhibition">${ICON.play}</button>
     <button class="icon-btn gp-menu-btn" data-act="menu" aria-haspopup="dialog" aria-expanded="false" title="Settings and more" aria-label="Settings and more">${ICON.menu}</button>
   </div>
@@ -1287,24 +1287,25 @@ ${filterPanel(q)}
     }
     if (mode !== "life" && mode !== "cabinet" && mode !== "calls" && rest.length) body += `<section class="sp-fam" data-fam=""><div class="family-h" style="margin-top:72px"><h2>Also photographed</h2><span class="n">Captive, domestic, or not identified to species</span></div><div class="sp-grid">${rest.sort((a, b) => b.photos.length - a.photos.length).map(spCard).join("")}</div></section>`;
     // The grids can be narrowed to a species by its name, its scientific name or its family.
-    if (mode === "family" || mode === "az") {
-      body = `<div class="toolbar sp-bar"><div class="tb-row"><label class="search sp-find">${ICON.search}<span class="visually-hidden">Find a species</span><input type="search" id="sp-q" autocomplete="off" spellcheck="false" placeholder="Find a species: heron, Ardea, owl, woodpecker…" value="${esc(q.get("find") || "")}"></label><span class="sp-n sc" aria-live="polite"></span></div></div><p class="sp-none" hidden></p>` + body;
-      after = (main, signal) => {
-        const q = main.querySelector("#sp-q"), none = main.querySelector(".sp-none"), count = main.querySelector(".sp-n");
+    // A family (from a species page's breadcrumb) narrows the guide to it; finding a species by
+    // name is the one search's job (the header's, or /).
+    const find = q.get("find");
+    if ((mode === "family" || mode === "az") && find) {
+      const fam = m.species.find((x) => x.family === find);
+      const label = fam ? fam.famName || find : find;
+      body = `<div class="toolbar sp-bar"><div class="tb-row"><span class="sc">Showing</span><a class="chip sp-clear" href="#/species${mode === "az" ? "?view=az" : ""}" aria-pressed="true" title="Show every species">${esc(label)} <span aria-hidden="true">×</span></a><span class="sp-n sc" aria-live="polite"></span></div></div><p class="sp-none" hidden></p>` + body;
+      after = (main) => {
+        const none = main.querySelector(".sp-none"), count = main.querySelector(".sp-n");
         const norm = (t) => t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const words = norm(find.trim()).split(/\s+/).filter(Boolean);
         const cards = [...main.querySelectorAll(".sp-fam .sp-card")].map((el) => ({ el, t: norm(`${el.querySelector("h3").textContent} ${(el.querySelector(".binomial") || {}).textContent || ""} ${el.closest(".sp-fam").dataset.fam}`) }));
-        const run = () => {
-          const words = norm(q.value.trim()).split(/\s+/).filter(Boolean);
-          let n = 0;
-          for (const c of cards) { const hit = words.every((w) => c.t.includes(w)); c.el.hidden = !hit; if (hit) n++; }
-          for (const f of main.querySelectorAll(".sp-fam")) f.hidden = !f.querySelector(".sp-card:not([hidden])");
-          for (const c of main.querySelectorAll(".sp-cls")) c.hidden = !c.querySelector(".sp-fam:not([hidden])");
-          none.hidden = n > 0;
-          none.textContent = n ? "" : `No species here match “${q.value.trim()}”.`;
-          count.textContent = words.length ? `${fmtN(n)} of ${plural(cards.length, "species", "species")}` : plural(cards.length, "species", "species");
-        };
-        q.addEventListener("input", run, { signal });
-        run();
+        let n = 0;
+        for (const c of cards) { const hit = words.every((w) => c.t.includes(w)); c.el.hidden = !hit; if (hit) n++; }
+        for (const f of main.querySelectorAll(".sp-fam")) f.hidden = !f.querySelector(".sp-card:not([hidden])");
+        for (const c of main.querySelectorAll(".sp-cls")) c.hidden = !c.querySelector(".sp-fam:not([hidden])");
+        none.hidden = n > 0;
+        none.textContent = n ? "" : `No species here match “${find}”.`;
+        count.textContent = `${fmtN(n)} of ${plural(cards.length, "species", "species")}`;
       };
     }
     return { html: `<div class="wrap page">${head}${body}</div>`, after, title: "Species" };
@@ -1826,6 +1827,7 @@ ${filterPanel(q)}
     t.querySelectorAll(".scrub i").forEach((el, k) => el.classList.toggle("on", k === hi));
   }
   function goSearch() {
+    if (GP.search) { closeMenu(false); GP.search.open(); return; }
     const away = !A.r || A.r.parts[0] !== "gallery";
     if (away) location.hash = "#/gallery";
     // the gallery may arrive a moment later (behind a view transition): wait for its search box
@@ -1873,6 +1875,7 @@ ${filterPanel(q)}
   }
   function onKey(e) {
     if (e.key === "Escape" && $("#gp-menu")) { e.preventDefault(); closeMenu(); return; }
+    if ((e.key === "k" || e.key === "K") && (e.metaKey || e.ctrlKey) && !e.altKey && GP.search && !(GP.viewer && GP.viewer.isOpen())) { e.preventDefault(); goSearch(); return; }
     if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return;
     if (GP.viewer && GP.viewer.isOpen()) return;
     if ($(".ex")) return;
@@ -2036,7 +2039,7 @@ ${filterPanel(q)}
   const helpers = { esc, tile, flow, cover, chip, spCard, chapterRow, pageHead, pageHeader, crumbs, tabs, pageFoot, speciesTabs, outingsTabs, viewSwitch, specimenTag, fmtDate, fmtShort, fmtTime, fmtN, plural, titleOf, exposure, src, ICON, regCtx, toast, hbars, table, svgBars, pageUrl, shareBtn, sharePage };
   GP.app = {
     start, update, setSelecting, toast, helpers, holdView, toggleBursts, fillAll, get burstsExpanded() { return A.expand; }, reveal, isRevealed: (x) => !x || !x.explicit || A.revealed.has(x.id),
-    get model() { return A.model; }, get site() { return A.site; }, get adapter() { return A.adapter; }, get workshop() { return A.workshop; },
+    get model() { return A.model; }, get views() { return A.views; }, get site() { return A.site; }, get adapter() { return A.adapter; }, get workshop() { return A.workshop; },
     get selection() { return [...A.sel]; }, get frameFilter() { return A.ff || null; }, clearSelection() { A.sel.clear(); $$(".tile.sel").forEach((t) => t.classList.remove("sel")); },
     setQuery, parseHash, hashFor, exhibit, toggleTheme, openById, openList, surprise, route: () => { A.lastKey = ""; route(); },
   };
