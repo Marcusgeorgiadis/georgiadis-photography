@@ -164,11 +164,63 @@
   }
   function spCard(s) {
     const flag = s.captive ? "Captive" : s.domestic ? "Domestic" : s.review ? "Rare here" : s.uncertain ? "Uncertain" : "";
-    return `<a class="sp-card" href="#/species/${esc(s.slug)}"><div class="cv">${cover(s.best, 520, "", s.name)}${flag ? `<span class="badge flag">${flag}</span>` : ""}</div><h3>${esc(s.name)}</h3>${s.bin ? `<div class="binomial">${esc(s.bin)}</div>` : ""}<div class="meta">${plural(s.photos.length, "photograph")} · ${plural(s.outingN, "outing")} · since ${esc(fmtShort(s.first))}</div></a>`;
+    return `<a class="sp-card" href="#/species/${esc(s.slug)}"><div class="cv">${cover(s.best, 520, "", s.name)}${flag ? `<span class="badge flag">${flag}</span>` : ""}</div><h3>${esc(s.name)}</h3>${s.bin ? `<div class="binomial">${esc(s.bin)}</div>` : ""}<div class="meta">${plural(s.photos.length, "photograph")}<span class="m-x"> · ${plural(s.outingN, "outing")} · since ${esc(fmtShort(s.first))}</span></div></a>`;
+  }
+  // An outing's slideshow: its cover, then its strongest frames, a different species each first.
+  function showPicks(o, n = 6) {
+    const calm = (x) => x && !x.explicit && !(x.burst && x.burst.frames.some((f) => f.explicit));
+    const pool = o.heroes.filter((x) => calm(x) && x !== o.cover).sort((a, b) => b.score - a.score);
+    const out = o.cover ? [o.cover] : [], seen = new Set(out.map((x) => x.spKey || x.id));
+    for (const x of pool) if (out.length < n && !seen.has(x.spKey || x.id)) { out.push(x); seen.add(x.spKey || x.id); }
+    for (const x of pool) if (out.length < n && !out.includes(x)) out.push(x);
+    return out;
   }
   function chapterRow(o) {
-    const d = ymd(o.date) || [0, 1, 1];
-    return `<a class="chapter-row reveal" href="#/outings/${esc(o.id)}"><div class="when"><b>${d[2]}</b><span>${MON[d[1] - 1]} ${d[0]} · ${esc(weekday(o.date).slice(0, 3))}</span></div><div class="txt"><div class="kicker">Chapter ${o.no} · ${esc(o.type)}</div><h3>${esc(o.title)}</h3>${o.note ? `<p>${esc(o.note)}</p>` : ""}<div class="sc">${plural(o.photos.length, "frame")} · ${plural(o.species.length, "species", "species")}</div></div><div class="cv">${cover(o.cover, 900, "", o.title)}</div></a>`;
+    const d = ymd(o.date) || [0, 1, 1], href = `#/outings/${esc(o.id)}`;
+    const picks = showPicks(o), k = regCtx(picks), multi = picks.length > 1;
+    const slides = picks.map((x, i) => `<button class="ch-s" data-open="${esc(x.id)}" aria-label="${esc(`${titleOf(x)}: photograph ${i + 1} of ${picks.length}, open it`)}"${i ? ' tabindex="-1"' : ""}>${cover(x, 900, "", i ? "" : o.title)}</button>`).join("");
+    // the last slide is the way into the whole day, over a few of the frames the slideshow left out
+    const left = o.heroes.filter((x) => !picks.includes(x) && !x.explicit).slice(0, 4);
+    const end = multi ? `<a class="ch-s ch-end" href="${href}" tabindex="-1" style="background:${esc((o.cover && o.cover.pal[0]) || "#222")}">${left.length === 4 ? `<span class="ch-mos" aria-hidden="true">${left.map((x) => cover(x, 300)).join("")}</span>` : ""}<span class="ch-end-t"><b>${plural(o.photos.length, "frame")}</b><span>The whole day ${ICON.arrow}</span></span></a>` : "";
+    const ctl = multi ? `<span class="ch-dots" aria-hidden="true">${picks.map((_, i) => `<i${i ? "" : ' class="on"'}></i>`).join("")}</span><button class="ch-arr prev" data-step="-1" aria-label="Previous photograph" hidden>${ICON.left}</button><button class="ch-arr next" data-step="1" aria-label="Next photograph">${ICON.right}</button>` : "";
+    return `<article class="chapter-row reveal"><a class="ch-link" href="${href}"><div class="when"><b>${d[2]}</b><span><em>${MON[d[1] - 1]} ${d[0]}</em><i> · </i><em>${esc(weekday(o.date).slice(0, 3))}</em></span></div><div class="txt"><div class="kicker">Chapter ${o.no} · ${esc(o.type)}</div><h3>${esc(o.title)}</h3>${o.note ? `<p>${esc(o.note)}</p>` : ""}<div class="sc">${plural(o.photos.length, "frame")} · ${plural(o.species.length, "species", "species")}</div></div></a><div class="cv ch-show${multi ? " multi" : ""}"><div class="ch-strip" data-ctx="${k}">${slides}${end}</div>${ctl}</div></article>`;
+  }
+  // The slideshows: a swipe (or an arrow, with a mouse) moves one photograph; the dots follow,
+  // the next two photographs load as the current one comes into view, and a tap opens it large.
+  function mountShows(root, signal) {
+    const sync = (strip) => {
+      const kids = strip.children, n = kids.length, i = Math.max(0, Math.min(n - 1, Math.round(strip.scrollLeft / (strip.clientWidth || 1))));
+      const show = strip.parentNode;
+      show.querySelectorAll(".ch-dots i").forEach((dot, j) => dot.classList.toggle("on", j === i));
+      show.classList.toggle("at-end", kids[i].classList.contains("ch-end"));
+      const prev = show.querySelector(".ch-arr.prev"), next = show.querySelector(".ch-arr.next");
+      if (prev) prev.hidden = i === 0;
+      if (next) next.hidden = i >= n - 1;
+      for (let j = 0; j < n; j++) {
+        kids[j].tabIndex = j === i ? 0 : -1;
+        if (j >= i && j <= i + 2) for (const im of kids[j].querySelectorAll('img[loading="lazy"]')) im.loading = "eager";
+      }
+    };
+    const dirty = new Set();
+    let raf = 0;
+    root.addEventListener("scroll", (e) => {
+      const s = e.target;
+      if (!s.classList || !s.classList.contains("ch-strip")) return;
+      dirty.add(s);
+      if (!raf) raf = requestAnimationFrame(() => { raf = 0; for (const x of dirty) sync(x); dirty.clear(); });
+    }, { capture: true, passive: true, signal });
+    root.addEventListener("click", (e) => {
+      const b = e.target.closest(".ch-arr");
+      if (!b) return;
+      e.preventDefault(); e.stopPropagation();
+      const s = b.parentNode.querySelector(".ch-strip");
+      sync(s);
+      s.scrollBy({ left: s.clientWidth * Number(b.dataset.step), behavior: reduced() ? "auto" : "smooth" });
+    }, { signal });
+    // the first touch (or the pointer arriving) warms the next photograph
+    const warm = (e) => { const s = e.target.closest && e.target.closest(".ch-show"); if (s && !s._warm) { s._warm = 1; sync(s.querySelector(".ch-strip")); } };
+    root.addEventListener("pointerover", warm, { passive: true, signal });
+    root.addEventListener("touchstart", warm, { passive: true, signal });
   }
   /* ---------- one template for every page ---------- */
   // Every page opens the same way: a kicker (on a page inside a section, the way back up to it),
@@ -1143,7 +1195,7 @@ ${filterPanel(q)}
       body += chapterRow(o);
     }
     const st = m.stats;
-    return { html: `<div class="wrap page">${pageHead("The field diary", "Outings", `${plural(st.outings, "outing")} between ${esc(fmtDate(st.first))} and ${esc(fmtDate(st.last))}. Each date is a chapter.`, outingsTabs(""))}<div class="chapter-list">${body}</div></div>`, title: "Outings" };
+    return { html: `<div class="wrap page">${pageHead("The field diary", "Outings", `${plural(st.outings, "outing")} between ${esc(fmtDate(st.first))} and ${esc(fmtDate(st.last))}. Each date is a chapter.`, outingsTabs(""))}<div class="chapter-list">${body}</div></div>`, title: "Outings", after: mountShows };
   }
   const outCard = (x, k) => x && { href: `#/outings/${x.id}`, cover: x.cover ? cover(x.cover, 320) : "", kicker: `${k} · No. ${x.no}`, title: fmtDate(x.date), sub: x.title };
   function viewOuting(id) {
@@ -1293,11 +1345,21 @@ ${filterPanel(q)}
         const shown = fams.map((f) => ({ f, sp: f.species.filter((s) => s.lifeNo) })).filter((x) => x.sp.length).sort((a, b) => b.sp.length - a.sp.length || a.f.common.localeCompare(b.f.common));
         if (!shown.length) continue;
         body += `<section class="sp-cls"><h2 class="display sp-cls-h">${esc(c.common)}</h2>`;
-        for (const { f, sp } of shown) body += `<section class="sp-fam" data-fam="${esc(f.common + " " + f.name)}"><div class="family-h"><h2>${esc(f.common)}</h2><span class="binomial">${esc(f.name)}</span><span class="n">${plural(sp.length, "species", "species")}</span></div><div class="sp-grid">${sp.sort((a, b) => b.photos.length - a.photos.length).map(spCard).join("")}</div></section>`;
+        const bySize = (sp) => sp.sort((a, b) => b.photos.length - a.photos.length).map(spCard).join("");
+        for (const { f, sp } of shown.filter((x) => x.sp.length > 2)) body += `<section class="sp-fam" data-fam="${esc(f.common + " " + f.name)}"><div class="family-h"><h2>${esc(f.common)}</h2><span class="binomial">${esc(f.name)}</span><span class="n">${plural(sp.length, "species", "species")}</span></div><div class="sp-grid">${bySize(sp)}</div></section>`;
+        const small = shown.filter((x) => x.sp.length <= 2);
+        if (small.length) body += `<div class="sp-runs">${small.map(({ f, sp }) => `<section class="sp-fam sp-small" data-fam="${esc(f.common + " " + f.name)}" style="--n:${sp.length}"><h2 class="sp-sh" title="${esc(f.common)}"><span>${esc(f.common)}</span><i class="binomial">${esc(f.name)}</i></h2><div class="sp-grid">${bySize(sp)}</div></section>`).join("")}</div>`;
         body += `</section>`;
       }
     }
-    if ((view === "family" || view === "az") && rest.length) body += `<section class="sp-fam" data-fam=""><div class="family-h" style="margin-top:72px"><h2>Also photographed</h2><span class="n">Captive, domestic, or not identified to species</span></div><div class="sp-grid">${rest.sort((a, b) => b.photos.length - a.photos.length).map(spCard).join("")}</div></section>`;
+    if ((view === "family" || view === "az") && rest.length) body += `<section class="sp-fam sp-also${rest.length <= 6 ? " open" : ""}" data-fam=""><div class="family-h" style="margin-top:72px"><h2>Also photographed</h2><span class="n">Captive, domestic, or not identified to species</span></div><div class="sp-grid">${rest.sort((a, b) => b.photos.length - a.photos.length).map(spCard).join("")}</div>${rest.length > 6 ? `<button class="btn sp-more" data-sp-more aria-expanded="false">Show the other ${fmtN(rest.length - 6)}</button>` : ""}</section>`;
+    if (view === "family" || view === "az") {
+      const prev = after;
+      after = (main, signal) => {
+        main.addEventListener("click", (e) => { const b = e.target.closest("[data-sp-more]"); if (!b) return; b.closest(".sp-also").classList.add("open"); b.setAttribute("aria-expanded", "true"); b.hidden = true; }, { signal });
+        if (prev) prev(main, signal);
+      };
+    }
     // The grids can be narrowed to a species by its name, its scientific name or its family.
     // A family (from a species page's breadcrumb) narrows the guide to it; finding a species by
     // name is the one search's job (the header's, or /).
@@ -1306,7 +1368,10 @@ ${filterPanel(q)}
       const fam = m.species.find((x) => x.family === find);
       const label = fam ? fam.famName || find : find;
       body = `<div class="toolbar sp-bar"><div class="tb-row"><span class="sc">Showing</span><a class="chip sp-clear" href="#/species${view === "az" ? "?view=az" : ""}" aria-pressed="true" title="Show every species">${esc(label)} <span aria-hidden="true">×</span></a><span class="sp-n sc" aria-live="polite"></span></div></div><p class="sp-none" hidden></p>` + body;
-      after = (main) => {
+      const more = after;
+      after = (main, signal) => {
+        if (more) more(main, signal);
+        for (const s of main.querySelectorAll(".sp-also")) s.classList.add("open");
         const none = main.querySelector(".sp-none"), count = main.querySelector(".sp-n");
         const norm = (t) => t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         const words = norm(find.trim()).split(/\s+/).filter(Boolean);

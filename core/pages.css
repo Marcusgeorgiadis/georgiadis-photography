@@ -243,6 +243,20 @@ a.way-tree:hover .tm-d circle { animation: tm-pop 600ms var(--ease-spring) both;
 .ri-cv-empty { display: grid; place-items: center; border: 1.5px dashed var(--line); background: transparent; color: var(--muted); }
 .ri-cv-empty svg { width: 48px; height: 48px; }
 @media (max-width: 900px) { .ri-lead { grid-template-columns: 1fr; gap: 20px; } }
+/* On a phone, after the lead room, two rooms to a row: the cover upright, the title and a line,
+   and Play as a small button on the cover (the cover and the title walk through). */
+@media (max-width: 640px) {
+  .ri-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 12px; }
+  .ri-card { position: relative; gap: 9px; }
+  .ri-card .ri-cv { aspect-ratio: 4 / 5; border-radius: 4px; }
+  .ri-card .ri-t { gap: 4px; }
+  .ri-card .ri-t h2 { font-size: 18px; line-height: 1.15; }
+  .ri-card .ri-t p { font-size: 13.5px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .ri-card .ri-strip { display: none; }
+  .ri-card .ri-a { position: absolute; left: 0; top: 0; width: 100%; aspect-ratio: 4 / 5; margin: 0; padding: 8px; display: flex; align-items: flex-end; justify-content: flex-end; pointer-events: none; }
+  .ri-card .ri-a > a.btn { display: none; }
+  .ri-card .ri-a > .btn { flex: 0 0 auto; min-height: 40px; padding: 0 14px; border-color: transparent; background: rgba(10, 12, 11, 0.62); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22); color: #fff; pointer-events: auto; }
+}
 
 /* ---------- exhibitions: a room ---------- */
 .rm-hero { position: relative; height: min(78vh, 860px); min-height: 460px; overflow: hidden; background: #0b0c0b; color: #f4f2eb; isolation: isolate; }
