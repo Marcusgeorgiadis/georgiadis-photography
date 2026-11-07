@@ -79,7 +79,7 @@
   };
 
   /* ---------- state ---------- */
-  const A = { expand: (() => { try { return sessionStorage.getItem("gp-bursts") === "open"; } catch (e) { return false; } })(), revealed: new Set(), model: null, adapter: null, site: {}, workshop: null, ctx: new Map(), ctxN: 0, sel: new Set(), selecting: false, lastKey: "", timers: [], views: [], scrollMem: new Map(), traverse: false, rendered: false };
+  const A = { expand: (() => { try { return sessionStorage.getItem("gp-bursts") === "open"; } catch (e) { return false; } })(), revealed: new Set(), model: null, adapter: null, site: {}, workshop: null, ctx: new Map(), ctxN: 0, sel: new Set(), selecting: false, lastKey: "", timers: [], views: [], scrollMem: new Map(), traverse: false, rendered: false, navN: 0 };
   const BUCKETS = [360, 540, 720, 960, 1280, 1600, 2048, 2560];
   const bucket = (px) => BUCKETS.find((b) => b >= px) || BUCKETS[BUCKETS.length - 1];
   const dpr = () => Math.min(2, window.devicePixelRatio || 1);
@@ -488,9 +488,19 @@ ${footer(nav)}
     return "#/" + parts.map(encodeURIComponent).join("/") + qs;
   }
   function keyOf(r) { const q = new URLSearchParams(r.q); q.delete("p"); return r.path + "?" + q.toString(); }
+  // Every history entry the site has drawn carries a mark, so Back and Forward (which return to a
+  // marked entry) can be told from a tapped link (a fresh entry, unmarked): browsers send the same
+  // popstate event for both, and only Back and Forward should return to the old scroll position.
+  const mark = () => ({ gpN: Date.now().toString(36) + "-" + (++A.navN) });
+  const known = (st) => !!(st && (st.gpN || st.gpViewer || st.gpSearch));
+  function markEntry() {
+    if (known(history.state)) return;
+    try { history.replaceState(Object.assign({}, history.state || {}, mark()), ""); } catch (e) { /* ignore */ }
+  }
   function route() {
     const r = parseHash();
     A.r = r;
+    markEntry();
     const key = keyOf(r);
     const p = r.q.get("p");
     if (key === A.lastKey) { // only the open photo changed (back/forward through the viewer)
@@ -522,7 +532,7 @@ ${footer(nav)}
     fn(r.q);
     const h = hashFor(r.parts, r.q);
     A.lastKey = keyOf({ path: r.parts.join("/"), q: r.q });
-    history[push ? "pushState" : "replaceState"](null, "", h);
+    history[push ? "pushState" : "replaceState"](push ? mark() : history.state, "", h);
     A.r = parseHash();
   }
   function clearTimers() { A.timers.forEach((t) => clearInterval(t)); A.timers = []; if (A.io) A.io.disconnect(); }
@@ -1450,7 +1460,7 @@ ${filterPanel(q)}
     ${s.note ? `<p class="lede" style="margin-top:20px">${esc(s.note)}</p>` : ""}
     ${flag ? `<p class="sc" style="margin-top:12px;color:var(--warn)">${esc(flag)}</p>` : ""}
     ${GP.calls ? GP.calls.player(s) : ""}
-    <div class="sp-acts"><button class="btn" data-sp="play">${ICON.play} Play as an exhibition</button>${plate ? `<a class="btn ghost" href="#/plates/${encodeURIComponent(plate.name)}">Plate ${plate.roman}</a>` : ""}${shareBtn(pageUrl("species", s.slug), `${s.name} · ${A.site.title || "Georgiadis Photography"}`)}</div>
+    <div class="sp-acts"><button class="btn" data-sp="play">${ICON.play} Play<span class="t-long"> as an exhibition</span></button>${plate ? `<a class="btn ghost" href="#/plates/${encodeURIComponent(plate.name)}">Plate ${plate.roman}</a>` : ""}${shareBtn(pageUrl("species", s.slug), `${s.name} · ${A.site.title || "Georgiadis Photography"}`)}</div>
   </div><button class="sp-hero" data-open="${esc(s.best.id)}"${s.call ? ` data-ripple="${esc(s.slug)}"` : ""} style="--fx:${(s.best.fp[0] * 100).toFixed(1)}%;--fy:${(s.best.fp[1] * 100).toFixed(1)}%" aria-label="Open the best photograph">${cover(s.best, 1400, "", s.name)}</button></div>
   <div class="sp-body${s.heroes.length <= 4 ? " few" : ""}">
     <section class="sp-photos" aria-label="Photographs">
@@ -1458,6 +1468,7 @@ ${filterPanel(q)}
       ${flow(s.heroes)}
     </section>
     <aside class="sp-notes" aria-label="Field notes"><h2 class="sp-notes-h">Field notes</h2><div class="sp-notes-row">
+      ${s.call && GP.calls ? `<div class="j-card sp-callcard"><h2>The call <span class="sc">${Math.round(s.call.dur || 0)} s</span></h2>${GP.calls.player(s, true)}</div>` : ""}
       <div class="j-card sp-facts"><h2>In the archive</h2><dl>
         <div><dt>Photographs</dt><dd>${fmtN(s.photos.length)}</dd></div><div><dt>Outings</dt><dd>${fmtN(s.outingN)}</dd></div>
         <div><dt>First seen</dt><dd class="d">${esc(fmtShort(s.first))}</dd></div><div><dt>Last seen</dt><dd class="d">${esc(fmtShort(s.last))}</dd></div></dl></div>
@@ -1603,7 +1614,7 @@ ${filterPanel(q)}
     const st = m.stats;
     const head = pageHead("The field diary", "Outings", part === "numbers" ? "When the photographs were made, in what light, of whom and with what: the archive in numbers." : "A page for every month: where we went, what we saw, the prints taped in, new species ticked off.", outingsTabs(part));
     const notebookHtml = `${NB && timeline.length > 20 ? `<section class="j-card wide reveal"><h2>The archive in colour</h2><p>Every photograph's colours, one sliver each, in the order they were made. Hover to see one; click to open it.</p>${NB.barcode(timeline, { label: "The colours of every photograph in time order" })}${seasonNote ? ink(seasonNote) : ""}</section>` : ""}
-  ${NB ? NB.notebook(m, helpers) : ""}`;
+  ${NB ? NB.notebook(m, helpers, q.get("all") === "1") : ""}`;
     const numbersHtml = `  <section class="j-card wide reveal"><h2>The year in the field</h2><p>Photographs per month. Hover a month for outings and new species.</p>${busiest && busiest.v ? ink(`busiest: ${MONTHS[busiest.mo - 1]} ${busiest.y}, ${fmtN(busiest.v)} frames`) : ""}<div class="scroll-x">${svgBars(monthRows, { w: Math.max(560, Math.min(1680, (A.root.clientWidth || innerWidth) - 48)), h: 240, aria: "Photographs per month" })}</div>${table(["Month", "Photographs", "Outings", "New species"], monthRows.map((r) => [`${MONTHS[r.mo - 1]} ${r.y}`, r.v, r.o, r.l]))}</section>
   <section class="j-card reveal"><h2>Hours of light</h2><p>Photographs by hour on the camera clock; the inner arc marks typical daylight.</p>${hours[peakH] ? ink(`most frames between ${peakH}:00 and ${peakH + 1}:00`) : ""}${dial(hours, avgSun)}${table(["Hour", "Photographs"], hours.map((v, i) => [`${String(i).padStart(2, "0")}:00`, v]))}</section>
   <section class="j-card reveal"><h2>Light</h2><p>Each frame placed against that day's sunrise and sunset.</p>${ph.length ? ink(`golden hour: ${Math.round((gold / ph.length) * 100)}% of every frame`) : ""}${hbars(lights, "Photographs by light")}<h2 style="margin-top:18px">Behaviour</h2>${hbars(beh, "Photographs by behaviour")}</section>
@@ -2052,7 +2063,7 @@ ${filterPanel(q)}
       document.addEventListener("focusin", (e) => { const el = e.target.closest && e.target.closest("[data-tip]"); tipFor(el, null); });
       document.addEventListener("focusout", () => tipFor(null));
       window.addEventListener("hashchange", route);
-      window.addEventListener("popstate", () => { A.traverse = true; });
+      window.addEventListener("popstate", (e) => { A.traverse = known(e.state); });
       if ("scrollRestoration" in history) history.scrollRestoration = "manual";
       window.addEventListener("scroll", onScroll, { passive: true });
       window.addEventListener("resize", () => { rowMemo = 0; }, { passive: true });

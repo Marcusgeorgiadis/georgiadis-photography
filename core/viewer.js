@@ -157,7 +157,7 @@
           setTimeout(() => { V.backPending = false; }, 1000);
           history.back();
         }
-        else { h.q.delete("p"); history.replaceState(null, "", GP.app.hashFor(h.parts, h.q)); }
+        else { h.q.delete("p"); history.replaceState(history.state, "", GP.app.hashFor(h.parts, h.q)); }
       }
     }
     V.pushed = false;

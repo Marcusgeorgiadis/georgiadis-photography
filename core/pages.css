@@ -677,4 +677,19 @@ a.way-calls:hover .calls-art i { opacity: 0.85; }
   .out-intro { margin-bottom: 26px; }
   /* the species' best photograph opens the grid just below, so it isn't shown twice in a row */
   .sp-head .sp-hero { display: none; }
+  /* The photographs come into the first screen: the call moves to the first field-notes card under
+     them, the actions sit on one row, and the grid's heading is a line. */
+  .sp-head { margin-bottom: 22px; }
+  .sp-head .call { display: none; }
+  .sp-notes .sp-callcard { display: block; }
+  .sp-callcard .call { margin: 0; }
+  .sp-callcard .call-top { display: none; }
+  .sp-callcard h2 .sc { margin-left: 6px; font-size: 11px; }
+  .sp-head .sp-acts { flex-wrap: nowrap; gap: 6px; margin-top: 16px; }
+  .sp-head .sp-acts > .btn { flex: 1 1 auto; min-width: 0; padding-inline: 10px; justify-content: center; white-space: nowrap; }
+  .sp-head .sp-acts .t-long { display: none; }
+  .sp-photos .sec-h { margin-bottom: 10px; }
+  .sp-photos .sec-h .meta { display: none; }
 }
+/* elsewhere the call is in the page's opening, so not in the notes */
+.sp-callcard { display: none; }

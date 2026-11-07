@@ -122,10 +122,11 @@
   <div class="nb-page nb-right" data-ctx="${k}">${tape}<span class="nb-pno">${2 * i + 2}</span></div>
 </article>`;
   }
-  function notebook(m, h) {
+  // open: every month at once (the visitor turned back further, then came back here)
+  function notebook(m, h, open) {
     const pages = monthPages(m);
     if (!pages.length) return "";
-    const first = 4;
+    const first = open ? pages.length : 4;
     return `<section class="j-card wide nb" aria-label="The field notebook"><h2 class="nb-h">The field notebook</h2><p class="ink">a page a month, newest first</p>
   <div class="nb-book">${pages.slice(0, first).map((p, i) => page(p, i, h)).join("")}</div>
   ${pages.length > first ? `<div class="nb-more-wrap"><button class="btn nb-more" data-nb="more">Turn back further: ${h.plural(pages.length - first, "more month")}</button></div><template class="nb-rest">${pages.slice(first).map((p, i) => page(p, i + first, h)).join("")}</template>` : ""}
@@ -162,6 +163,9 @@
       book.appendChild(frag);
       tpl.remove(); more.parentElement.remove();
       added.forEach((el) => io.observe(el));
+      // remembered in the address (without a new history entry), so Back from a species or an
+      // outing returns to every month, and to the place on the page
+      if (GP.app.setQuery) GP.app.setQuery((q) => q.set("all", "1"));
       if (GP.fx) { const ac = new AbortController(); signal.addEventListener("abort", () => ac.abort()); added.forEach((el) => GP.fx.developIn(el, ac.signal)); }
     }, { signal });
     signal.addEventListener("abort", () => io.disconnect());
