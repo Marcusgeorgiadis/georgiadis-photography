@@ -70,7 +70,7 @@
     V.info.addEventListener("focusout", () => setTimeout(() => {
       if (V.infoStale && V.open && !V.info.contains(document.activeElement)) { V.infoStale = false; renderInfo(cur()); }
     }, 0));
-    window.addEventListener("resize", () => { if (V.open) { layout(); fit(false); film({ instant: true }); } });
+    window.addEventListener("resize", () => { if (V.open) { layout(); fit(false); film({ instant: true }); clearTimeout(V.rsT); V.rsT = setTimeout(resharp, 400); } });
     document.addEventListener("keydown", onKey);
     document.addEventListener("fullscreenchange", () => { const b = $('[data-v="fs"]', el); if (b) b.setAttribute("aria-pressed", String(!!document.fullscreenElement)); });
   }
@@ -115,9 +115,10 @@
       const h = GP.app.parseHash();
       if (h.q.get("p") !== x.id) { h.q.set("p", x.id); history.pushState({ gpViewer: 1 }, "", GP.app.hashFor(h.parts, h.q)); V.pushed = true; }
     }
+    V.thumbsReady = false;
     if (!wasOpen) { let pref = null; try { pref = localStorage.getItem("gp-info"); } catch (e) { /* ignore */ } V.el.classList.toggle("info", pref === "1" && innerWidth > 860); $('[data-v="info"]', V.el).setAttribute("aria-pressed", String(V.el.classList.contains("info"))); }
     requestAnimationFrame(() => V.el.classList.add("open"));
-    show({ fly: !wasOpen ? fromImg : null });
+    show({ fly: !wasOpen ? fromImg : null, first: !wasOpen });
     $('[data-v="close"]', V.el).focus({ preventScroll: true });
     wake();
   }
@@ -266,16 +267,16 @@
     if (GP.tint) { if (V.tinted && GP.tint.context) GP.tint.context(x); else GP.tint.set(x); V.tinted = true; }
     const h = H();
     // Whatever copy is already here shows at once (never a blank); the preview and then a copy
-    // sized to the screen replace it as each finishes arriving (see upgrade()).
+    // sized to the photograph as it shows on this screen replace it as each arrives (upgrade()).
     const small = o.src || (o.fly && o.fly.currentSrc ? o.fly.currentSrc : readySrc(x));
-    const large = h.src(x, bigW());
+    const large = h.src(x, bigW(x));
     V.large = large || small;
     V.img.src = small;
     V.img.alt = h.titleOf(x);
     V.img.style.width = V.bw + "px";
     V.img.style.height = V.bh + "px";
     fit(false);
-    upgrade(x, tok, small, large);
+    upgrade(x, tok, small, large, !!o.first);
     if (o.fly && !reduced()) {
       const r = o.fly.getBoundingClientRect(), ir = V.img.getBoundingClientRect();
       if (r.width && ir.width) {
@@ -340,8 +341,9 @@
     const same = s.dataset.key === key;
     if (!same) {
       const h = H();
-      s.innerHTML = fr.map((f, i) => `<button role="option" data-frame="${i}" class="${f.explicit && !GP.app.isRevealed(f) ? "veiled" : ""}" aria-selected="false" aria-label="Frame ${i + 1} of ${fr.length}"><img src="${h.esc(h.src(f, 160))}" alt="" loading="lazy"></button>`).join("");
+      s.innerHTML = fr.map((f, i) => `<button role="option" data-frame="${i}" class="${f.explicit && !GP.app.isRevealed(f) ? "veiled" : ""}" aria-selected="false" aria-label="Frame ${i + 1} of ${fr.length}"><img data-src="${h.esc(h.src(f, 160))}" alt="" loading="lazy" fetchpriority="low"></button>`).join("");
       s.dataset.key = key;
+      if (V.thumbsReady) thumbsLoad();
     }
     const k = fr.indexOf(x);
     [...s.children].forEach((b, i) => { b.classList.toggle("on", i === k); b.setAttribute("aria-selected", String(i === k)); });
@@ -366,7 +368,8 @@
   const FILM_SPAN = 50;
   function filmThumb(y, i) {
     const h = H(), veiled = y.explicit && !GP.app.isRevealed(y);
-    return `<button role="option" data-fi="${i}" aria-selected="false" aria-label="${h.esc(h.titleOf(y))}, ${i + 1} of ${V.list.length}"${veiled ? ' class="veiled"' : ""} style="background:${h.esc((y.pal && y.pal[0]) || "#222")}"><img src="${h.esc(h.src(y, 160))}" alt="" loading="lazy" decoding="async"></button>`;
+    const bg = `background-color:${h.esc((y.pal && y.pal[0]) || "#222")}${y.lq && !veiled ? `;background-image:url(&quot;${h.esc(y.lq)}&quot;)` : ""}`;
+    return `<button role="option" data-fi="${i}" aria-selected="false" aria-label="${h.esc(h.titleOf(y))}, ${i + 1} of ${V.list.length}"${veiled ? ' class="veiled"' : ""} style="${bg}"><img data-src="${h.esc(h.src(y, 160))}" alt="" loading="lazy" decoding="async" fetchpriority="low"></button>`;
   }
   function film(o = {}) {
     const f = V.film, n = V.list.length;
@@ -379,6 +382,9 @@
       f._b = Math.min(n, V.i + FILM_SPAN + 1);
       f.innerHTML = V.list.slice(f._a, f._b).map((y, k) => filmThumb(y, f._a + k)).join("");
       instant = true;
+      // the thumbnails load once the photograph is sharp, so they never hold it up
+      clearTimeout(V.filmT);
+      if (V.thumbsReady) thumbsLoad(); else V.filmT = setTimeout(thumbsLoad, 1500);
     }
     for (const b of f.querySelectorAll(".on")) { b.classList.remove("on"); b.setAttribute("aria-selected", "false"); }
     const on = f.querySelector(`[data-fi="${V.i}"]`);
@@ -392,6 +398,17 @@
       else f.scrollTo({ left, behavior: "smooth" });
     });
   }
+  // The small pictures around the photograph (the filmstrip, a burst's frames) wait until the
+  // photograph itself is sharp, so they never hold it up; and the details panel's pictures wait
+  // until the panel is open.
+  function thumbsLoad() {
+    clearTimeout(V.filmT);
+    V.thumbsReady = true;
+    if (!V.el) return;
+    const sel = V.el.classList.contains("info") ? ".vw-ui img[data-src], .vw-info img[data-src]" : ".vw-ui img[data-src]";
+    for (const im of V.el.querySelectorAll(sel)) { im.src = im.dataset.src; im.removeAttribute("data-src"); }
+  }
+  const later = (html) => html.replace(/<img([^>]*?) src="/g, '<img$1 data-src="');
   function filmGrow() {
     const f = V.film, n = V.list.length;
     if (!f || n < 2 || f._list !== V.list) return;
@@ -400,11 +417,13 @@
       f.insertAdjacentHTML("afterbegin", V.list.slice(a, f._a).map((y, k) => filmThumb(y, a + k)).join(""));
       f._a = a;
       f.scrollLeft += f.scrollWidth - w0;
+      if (V.thumbsReady) thumbsLoad();
     }
     if (f.scrollLeft + f.clientWidth > f.scrollWidth - 400 && f._b < n) {
       const b = Math.min(n, f._b + FILM_SPAN);
       f.insertAdjacentHTML("beforeend", V.list.slice(f._b, b).map((y, k) => filmThumb(y, f._b + k)).join(""));
       f._b = b;
+      if (V.thumbsReady) thumbsLoad();
     }
   }
   // Straight to a photograph in this set (from the filmstrip, Home or End).
@@ -417,17 +436,29 @@
     V.i = i; V.frame = null;
     show({ dir: d });
   }
-  function bigW() { return Math.min(2560, Math.max(V.sw, V.sh) * Math.min(2, devicePixelRatio || 1)); }
+  // The width a photograph needs to be sharp: the box it fits on this stage, at the screen's pixel
+  // density. (Asking for the whole screen's width fetched an upright photograph at several times
+  // the pixels it shows, and it arrived that much later.)
+  const density = () => Math.min(2, devicePixelRatio || 1);
+  function bigW(y) { return Math.min(2560, Math.ceil(boxFor(y || cur()).w * density())); }
+  // the window grew, or the details panel closed: a sharper copy, if this one is now too small
+  function resharp() {
+    const x = cur();
+    if (!x || V.full || !V.open) return;
+    const l = H().src(x, bigW(x));
+    if (l && l !== V.large && widthOf(x, l, "") > widthOf(x, V.large, "")) { V.large = l; upgrade(x, V.token, V.img.getAttribute("src"), l, true); }
+  }
   /* ---------- loading: preview first, then the photograph at the screen's size ---------- */
   // The preview is quick to fetch (in the Workshop it is the preview the Workshop made; on the site,
   // Google's small copy of the public photograph). The copy sized to the screen replaces it only
   // once it has fully arrived and been decoded, so the swap is instant and never a blank.
   const PREVIEW = 720, SIZES = [360, 540, 720, 960, 1280, 1600, 2048, 2560];
   const loaded = (u) => { const im = u && V.pre.get(u); return !!(im && im.complete && im.naturalWidth); };
-  function warm(u) {
-    if (!u || V.pre.has(u)) return V.pre.get(u);
+  function warm(u, prio) {
+    if (!u || V.pre.has(u)) { const im = V.pre.get(u); if (im && prio === "high") im.fetchPriority = "high"; return im; }
     const im = new Image();
     im.decoding = "async";
+    if (prio) im.fetchPriority = prio;
     im.src = u;
     V.pre.set(u, im);
     if (V.pre.size > 48) V.pre = new Map([...V.pre].slice(-24));
@@ -441,28 +472,37 @@
     for (const w of SIZES) if (h.src(y, w) === u) return w;
     return 1;
   }
-  function upgrade(x, tok, first, large) {
+  function upgrade(x, tok, first, large, now) {
     const h = H(), pre = h.src(x, PREVIEW);
     V.sharp = widthOf(x, first, large);
-    // the big copy of the photograph before, if it is still on its way, gives way to this one's
+    // the copies of the photograph before, if still on their way, give way to this one's
     for (const im of V.loads || []) if (!im.complete) { V.pre.delete(im.src); im.src = ""; }
     V.loads = [];
     const step = (u, w, big) => {
       if (!u || V.sharp >= w) return;
-      const im = warm(u);
+      const im = warm(u, "high");
       if (big) V.loads.push(im);
       const ready = im.decode ? im.decode() : new Promise((res, rej) => { im.onload = res; im.onerror = rej; });
       ready.then(() => {
         if (tok !== V.token || V.full || V.sharp >= w) return;
         V.img.src = u;
         V.sharp = w;
-        if (big) preloadNext();
+        if (w >= 1e5) { preloadNext(); thumbsLoad(); }
       }, () => {});
     };
     step(pre, PREVIEW, false);
-    // the big copy once the photograph has been looked at for a moment, not for each one flicked past
+    // On a sharp (high-density) screen the box's width at one pixel a point comes first: a quarter
+    // of the pixels, so it lands well before the full copy and already looks clean.
+    const mid = density() > 1.2 ? h.src(x, boxFor(x).w) : "";
+    const midW = widthOf(x, mid, "");
+    // The big copy straight away when the viewer opens on a photograph; when stepping, once it has
+    // been looked at for a moment, not for each one flicked past.
     clearTimeout(V.bigT);
-    V.bigT = setTimeout(() => { if (tok === V.token) step(large, 1e5, true); }, loaded(large) ? 0 : 160);
+    V.bigT = setTimeout(() => {
+      if (tok !== V.token) return;
+      if (mid && mid !== large && midW > PREVIEW) step(mid, midW, true);
+      step(large, 1e5, true);
+    }, now || loaded(large) ? 0 : 160);
     // where originals can be had (the Workshop), the original follows on its own
     clearTimeout(V.fullT);
     if (GP.app.adapter.autoFull) V.fullT = setTimeout(() => { if (tok === V.token && V.open) loadFull(); }, 900);
@@ -470,14 +510,14 @@
   // the neighbours' previews at once (cheap), so a swipe or arrow always lands on one
   function preload() {
     const h = H();
-    for (const d of [1, -1]) { const t = target(d); if (t) warm(h.src(t.x, PREVIEW)); }
+    for (const d of [1, -1]) { const t = target(d); if (t) warm(h.src(t.x, PREVIEW), "low"); }
   }
   // once this photograph is sharp, the neighbours' big copies too, where the connection allows
   function preloadNext() {
     const c = navigator.connection;
     if (c && (c.saveData || /(^|-)2g|3g/.test(c.effectiveType || ""))) return;
-    const h = H(), w = bigW();
-    for (const d of [1, -1]) { const t = target(d); if (t) warm(h.src(t.x, w)); }
+    const h = H();
+    for (const d of [1, -1]) { const t = target(d); if (t) warm(h.src(t.x, bigW(t.x)), "low"); }
   }
   function moreLike(x) {
     const h = H(), list = similar(x);
@@ -493,7 +533,8 @@
       : x.rating ? `<div class="stars" aria-label="${x.rating} of 5">${"★".repeat(x.rating)}<span style="color:var(--line)">${"★".repeat(5 - x.rating)}</span></div>` : "";
     const pal = x.pal.length ? `<div class="pal" aria-label="Palette">${x.pal.map((c) => `<button style="background:${h.esc(c)}" data-colour="${h.esc(c)}" title="${h.esc(c)}" aria-label="Colour ${h.esc(c)}"></button>`).join("")}</div>` : "";
     const dl = GP.app.adapter.download ? GP.app.adapter.download(x) : null;
-    V.info.innerHTML = `
+    const panelOpen = V.el.classList.contains("info") && V.thumbsReady;
+    V.info.innerHTML = (panelOpen ? (s) => s : later)(`
 <div class="kicker">${h.esc([x.famName, x.light].filter(Boolean).join(" · ") || "Photograph")}</div>
 <h2${sp ? ` data-sing="${h.esc(sp.slug)}"` : ""}>${h.esc(h.titleOf(x))}</h2>${x.sci && x.common ? `<div class="binomial">${h.esc(x.sci)}${x.unsure ? " · probable" : ""}</div>` : ""}
 ${stars}
@@ -506,7 +547,7 @@ ${pal}
 <div class="acts">${dl ? `<a class="btn primary" data-v="download" ${typeof dl === "string" ? `href="${h.esc(dl)}" download="${h.esc(x.name)}"` : ""} target="_blank" rel="noopener">${h.ICON.download} Download original</a>` : ""}${shareUrl(x) ? `<button class="btn" data-v="share">${h.ICON.share} Share</button>` : ""}</div>
 <div class="acts">${sp ? `<a class="btn ghost" href="#/species/${h.esc(sp.slug)}">All ${h.esc(sp.name)} ${h.ICON.arrow}</a>` : ""}<a class="btn ghost" href="#/outings/${h.esc(x.oid || x.fid)}">This outing ${h.ICON.arrow}</a></div>
 ${moreLike(x)}
-${ws && ws.infoExtra ? ws.infoExtra(x) : ""}`;
+${ws && ws.infoExtra ? ws.infoExtra(x) : ""}`);
     if (GP.shot && V.el.classList.contains("info")) GP.shot.mount(V.info);
   }
 
@@ -645,7 +686,7 @@ ${ws && ws.infoExtra ? ws.infoExtra(x) : ""}`;
   // big copy or preview if loaded, else its picture on the page behind (a tile, a print, a card),
   // else its blurred placeholder, which is always to hand.
   function readySrc(y) {
-    const h = H(), big = h.src(y, bigW()), pre = h.src(y, PREVIEW);
+    const h = H(), big = h.src(y, bigW(y)), pre = h.src(y, PREVIEW);
     if (loaded(big)) return big;
     if (loaded(pre)) return pre;
     const id = CSS.escape(y.id);
@@ -929,7 +970,8 @@ ${ws && ws.infoExtra ? ws.infoExtra(x) : ""}`;
     $('[data-v="info"]', V.el).setAttribute("aria-pressed", String(on));
     store("gp-info", on ? "1" : "0");
     if (on && GP.shot) GP.shot.mount(V.info);
-    setTimeout(() => { layout(); fit(false); film({ instant: true }); }, 400);
+    if (on && V.thumbsReady) thumbsLoad();
+    setTimeout(() => { layout(); fit(false); film({ instant: true }); resharp(); }, 400);
     if (on) V.el.classList.remove("idle");
   }
   function store(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* ignore */ } }

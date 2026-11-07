@@ -196,7 +196,9 @@ main { min-height: 70vh; }
 .empty p { margin: 0; color: var(--muted); }
 
 /* ---------- toolbar: search + filters ---------- */
-.toolbar { position: sticky; top: calc(env(safe-area-inset-top, 0px) + var(--head-h, 64px)); z-index: 20; background: color-mix(in srgb, var(--bg) 90%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); padding-block: 12px; border-bottom: 1px solid var(--hair); margin-bottom: 8px; transition: top var(--t-scene) var(--ease-out); }
+.toolbar { position: sticky; top: calc(env(safe-area-inset-top, 0px) + var(--head-h, 64px)); z-index: 20; background: transparent; padding-block: 12px; border-bottom: 1px solid transparent; margin-bottom: 8px; transition: top var(--t-scene) var(--ease-out), background-color 240ms ease, border-color 240ms ease; }
+/* stuck under the header, with photographs passing beneath: a frosted bar of its own */
+.toolbar.stuck { background: color-mix(in srgb, var(--bg) 90%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom-color: var(--hair); }
 .gp-head.tucked ~ main .toolbar { top: env(safe-area-inset-top, 0px); }
 .search { display: flex; align-items: center; gap: 10px; border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 0 8px 0 16px; min-height: 46px; }
 .search svg { width: 18px; height: 18px; color: var(--muted); flex: none; }
@@ -501,7 +503,7 @@ img.veiled-img { filter: blur(22px) brightness(0.8) !important; }
 .vw-film { position: absolute; left: 0; right: 0; bottom: max(10px, env(safe-area-inset-bottom, 0px)); height: 44px; display: flex; align-items: center; gap: 3px; padding-inline: calc(50% - 26px); overflow-x: auto; overflow-y: hidden; scrollbar-width: none; overscroll-behavior-x: contain; touch-action: pan-x; -webkit-mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent); mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent); }
 .vw-film::-webkit-scrollbar { display: none; }
 .vw:not(.has-film) .vw-film { display: none; }
-.vw-film button { flex: none; width: 52px; height: 36px; margin: 0; padding: 0; border: 0; border-radius: 2px; overflow: hidden; opacity: 0.5; cursor: pointer; transition: opacity var(--t-fast), height var(--t-fast); }
+.vw-film button { flex: none; width: 52px; height: 36px; margin: 0; padding: 0; border: 0; border-radius: 2px; overflow: hidden; background-size: cover; background-position: center; opacity: 0.5; cursor: pointer; transition: opacity var(--t-fast), height var(--t-fast); }
 .vw-film button:hover, .vw-film button:focus-visible { opacity: 0.9; }
 .vw-film button.on { height: 42px; opacity: 1; outline: 2px solid #fff; outline-offset: 1px; }
 .vw-film img { display: block; width: 100%; height: 100%; object-fit: cover; }
@@ -874,7 +876,7 @@ kbd { font-family: var(--f-data); font-size: 12px; border: 1px solid var(--line)
    re-blurring whatever scrolls beneath three bars on every frame is heavy work for a phone's
    graphics chip, and at this opacity the difference is hard to see. */
 @media (pointer: coarse) {
-  .gp-head, .toolbar, .gp-tabs { -webkit-backdrop-filter: none; backdrop-filter: none; background: color-mix(in srgb, var(--bg) 96%, transparent); }
+  .gp-head, .toolbar.stuck, .gp-tabs { -webkit-backdrop-filter: none; backdrop-filter: none; background: color-mix(in srgb, var(--bg) 96%, transparent); }
 }
 
 /* ---------- lining up ---------- */

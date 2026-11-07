@@ -579,6 +579,26 @@ ${footer(nav)}
     markLoaded(main);
     if (after) try { after(main, signal); } catch (e) { console.error(e); }
     observeReveal(main);
+    stickyBars(main, signal);
+  }
+  // A bar that sticks under the header (the Gallery's search and filters) is see-through where it
+  // sits on the page, so the page's colour runs on behind it, and takes its own background only
+  // once it is stuck with photographs passing under it.
+  function stickyBars(root, signal) {
+    const bars = [...root.querySelectorAll(".toolbar")];
+    if (!bars.length) return;
+    let raf = 0;
+    const check = () => {
+      raf = 0;
+      for (const b of bars) {
+        if (!b.isConnected) continue;
+        const top = parseFloat(getComputedStyle(b).top) || 0;
+        b.classList.toggle("stuck", b.getBoundingClientRect().top <= top + 0.5 && scrollY > 0);
+      }
+    };
+    addEventListener("scroll", () => { if (!raf) raf = requestAnimationFrame(check); }, { passive: true, signal });
+    addEventListener("resize", () => { if (!raf) raf = requestAnimationFrame(check); }, { passive: true, signal });
+    check();
   }
   function markLoaded(root) {
     for (const img of root.querySelectorAll("img")) if (img.complete && img.naturalWidth) img.classList.add("in");
