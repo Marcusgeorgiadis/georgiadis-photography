@@ -2,6 +2,8 @@
 
 Wildlife of Central Florida: a gallery of the Finals from the Nikon archive.
 
+**License:** the code is open source under the [MIT License](LICENSE). The photographs, writing and photo data are **not**: they are © Marcus Georgiadis, all rights reserved (see [LICENSE-CONTENT.md](LICENSE-CONTENT.md)).
+
 The site is static (GitHub Pages) and rebuilds itself:
 
 1. **Google Drive.** `drive-sync/PublicGallerySync.gs` runs every 30 minutes in Google Apps Script. It copies every Finals photo from the Nikon folder into `Nikon/Public Gallery` (shared as "anyone with the link"), keeps the copies in step with the originals, and writes `manifest.json` there. RAW folders are never touched.
@@ -74,4 +76,14 @@ GDRIVE_SA_KEY=... python3 tools/build_site.py build --db <database dump> --repo 
 GDRIVE_SA_KEY=... python3 tools/dev_server.py --site .
 ```
 
-Photographs © Georgiadis Photography. Recordings © their recordists, under the licences named beside each one.
+## License
+
+| What | Licence |
+| --- | --- |
+| **Code**: `core/`, `site.js`, `index.template.html` and the built `index.html`, `workshop/`, `tools/`, `drive-sync/`, `newsletter/`, `data/taxonomy.json` and this README | Open source, [MIT License](LICENSE) |
+| **Photographs** (served from Google Drive) and everything made from them here, such as `depth/` | © Marcus Georgiadis, all rights reserved |
+| **Writing and photo data**: `data/gallery.json`, `data/field-notes.json`, `data/outing-notes.json`, `data/dispatches.json`, and the pages built from them in `p/`, `s/`, `o/`, `r/` | © Marcus Georgiadis, all rights reserved |
+| **The name "Georgiadis Photography" and its mark** (`favicon.svg`) | Not licensed for reuse |
+| **Bird call recordings** in `audio/calls/` | Their recordists' own Creative Commons licences, named beside each one and in `data/calls.json` |
+
+The photographs and writing are not open source: please don't copy, republish or reuse them (including to train machine-learning models) without permission. [LICENSE-CONTENT.md](LICENSE-CONTENT.md) has the details. If you build your own site from the code, use your own photographs, words, name and mark.
